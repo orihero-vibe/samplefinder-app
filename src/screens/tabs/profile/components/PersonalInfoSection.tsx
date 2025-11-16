@@ -1,0 +1,71 @@
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Colors } from '@/constants/Colors';
+
+export interface PersonalInfoData {
+  tierStatus?: string;
+  dateOfBirth?: string;
+  phoneNumber?: string;
+  email?: string;
+}
+
+interface PersonalInfoSectionProps {
+  data?: PersonalInfoData;
+}
+
+const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
+  data = {
+    tierStatus: 'NewbieSampler',
+    dateOfBirth: 'April 3, 1979',
+    phoneNumber: '(215) 555-1212',
+    email: 'thesamplefinder@gmail.com',
+  },
+}) => {
+  return (
+    <View style={styles.container}>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>TIER STATUS:</Text>
+        <Text style={styles.infoValue}>{data.tierStatus}</Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>DATE OF BIRTH:</Text>
+        <Text style={styles.infoValue}>{data.dateOfBirth}</Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>PHONE NUMBER:</Text>
+        <Text style={styles.infoValue}>{data.phoneNumber}</Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>EMAIL:</Text>
+        <Text style={styles.infoValue}>{data.email}</Text>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_700Bold',
+    color: Colors.brandPurpleDeep,
+    marginRight: 8,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_400Regular',
+    color: Colors.black,
+    flex: 1,
+  },
+});
+
+export default PersonalInfoSection;
+
