@@ -4,10 +4,10 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeStack from '@/navigation/HomeStack';
-import ProfileScreen from '@/screens/tabs/ProfileScreen';
+import ProfileStack from '@/navigation/ProfileStack';
 import FavoritesScreen from '@/screens/tabs/favorites/FavoritesScreen';
 import CalendarStack from '@/navigation/CalendarStack';
-import PromotionsScreen from '@/screens/tabs/PromotionsScreen';
+import { PromotionsScreen } from '@/screens/tabs/promotions';
 import { HomeIcon, ProfileIcon, HeartIcon, CalendarIcon, SparkleIcon } from '@/icons';
 import { Colors } from '@/constants/Colors';
 
@@ -23,12 +23,12 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const insets = useSafeAreaInsets();
-  
+
   const getIcon = (routeName: string, isFocused: boolean) => {
     const iconSize = 40;
     const iconColor = isFocused ? Colors.white : Colors.pinDarkBlue;
     const circleColor = Colors.white;
-    
+
     switch (routeName) {
       case 'Home':
         return <HomeIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
@@ -104,7 +104,7 @@ const TabNavigator = () => {
       }}
     >
       <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
       <Tab.Screen name="Favorites" component={FavoritesScreen} />
       <Tab.Screen name="Calendar" component={CalendarStack} />
       <Tab.Screen name="Promotions" component={PromotionsScreen} />

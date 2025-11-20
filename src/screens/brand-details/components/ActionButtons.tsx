@@ -7,12 +7,14 @@ interface ActionButtonsProps {
   onAddToCalendar: () => void;
   onAddFavorite: () => void;
   isFavorite: boolean;
+  isAddedToCalendar?: boolean;
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
   onAddToCalendar,
   onAddFavorite,
   isFavorite,
+  isAddedToCalendar = false,
 }) => {
   return (
     <View style={styles.actionsContainer}>
@@ -21,8 +23,14 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onAddToCalendar}
         activeOpacity={0.7}
       >
-        <Monicon name="mdi:calendar-plus" size={24} color={Colors.blueColorMode} />
-        <Text style={styles.actionButtonText}>Add to Calendar</Text>
+        <Monicon 
+          name={isAddedToCalendar ? 'mdi:calendar-check' : 'mdi:calendar-plus'} 
+          size={20} 
+          color={Colors.blueColorMode} 
+        />
+        <Text style={styles.actionButtonText}>
+          {isAddedToCalendar ? 'Added to Calendar' : 'Add to Calendar'}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -32,10 +40,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       >
         <Monicon
           name={isFavorite ? 'mdi:heart' : 'mdi:heart-outline'}
-          size={24}
+          size={20}
           color={Colors.blueColorMode}
         />
-        <Text style={styles.actionButtonText}>Add Favorite Brand</Text>
+        <Text style={styles.actionButtonText}>
+          {isFavorite ? 'Favorite Brand' : 'Add Favorite Brand'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -43,18 +53,23 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
 const styles = StyleSheet.create({
   actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    gap: 16,
     marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
   },
   actionButton: {
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     paddingVertical: 12,
+    flex: 1,
   },
   actionButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.blueColorMode,
   },

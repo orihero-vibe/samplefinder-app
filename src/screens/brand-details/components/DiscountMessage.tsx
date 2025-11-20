@@ -3,14 +3,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 interface DiscountMessageProps {
-  message?: string;
 }
 
-const DiscountMessage: React.FC<DiscountMessageProps> = ({ message }) => {
-  if (!message) {
-    return null;
-  }
-
+const DiscountMessage: React.FC<DiscountMessageProps> = () => {
+  const message = `Discount appears here 
+  when you check in at event! 
+  Check In Code provided on-site.`;
   return (
     <View style={styles.discountContainer}>
       <Text style={styles.discountText}>{message}</Text>
@@ -22,12 +20,15 @@ const styles = StyleSheet.create({
   discountContainer: {
     paddingHorizontal: 20,
     marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   discountText: {
-    fontSize: 14,
+    fontSize: 20,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
-    lineHeight: 20,
+    lineHeight: 24,
+    textAlign: 'center',
   },
 });
 

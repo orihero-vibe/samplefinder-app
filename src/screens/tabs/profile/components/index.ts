@@ -1,4 +1,3 @@
-export { default as ProfileHeader } from './ProfileHeader';
 export { default as TopLinks } from './TopLinks';
 export { default as ProfileOverview } from './ProfileOverview';
 export { default as PointsDisplay } from './PointsDisplay';

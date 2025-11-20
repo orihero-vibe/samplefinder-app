@@ -1,25 +1,26 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Platform } from 'react-native';
 import { Monicon } from '@monicon/native';
+import { Colors } from '@/constants/Colors';
 
-interface ProfileHeaderProps {
-  onBackPress?: () => void;
-  onSharePress?: () => void;
+interface BackShareHeaderProps {
+  onBack?: () => void;
+  onShare?: () => void;
 }
 
-const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onBackPress, onSharePress }) => {
+const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare }) => {
   return (
     <ImageBackground
       source={require('@/assets/main-header-bg.png')}
-      style={styles.background}
+      style={styles.headerBackground}
       resizeMode="cover"
     >
       <View style={styles.header}>
         <View style={styles.leftSection}>
-          <TouchableOpacity onPress={onBackPress} style={styles.iconButton}>
+          <TouchableOpacity onPress={onBack} style={styles.iconButton}>
             <Monicon name="mdi:arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onSharePress} style={styles.iconButton}>
+          <TouchableOpacity onPress={onShare} style={styles.iconButton}>
             <Monicon name="mdi:share-variant" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -33,7 +34,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onBackPress, onSharePress
 };
 
 const styles = StyleSheet.create({
-  background: {
+  headerBackground: {
     paddingTop: Platform.OS === 'android' ? 30 : 60,
     paddingBottom: 15,
   },
@@ -63,5 +64,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileHeader;
+export default BackShareHeader;
 

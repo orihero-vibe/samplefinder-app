@@ -5,18 +5,19 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, Share, StyleSheet, View } from 'react-native';
-import { useFavoritesStore } from '@/stores/favoritesStore';
 import {
   ActionButtons,
-  BrandDetailsHeader,
   BrandInfo,
   BrandLocationPin,
   DiscountMessage,
   EventInfoSection,
   ProductsSection,
+  CheckInCodeInput,
+  CheckInSuccess,
 } from './components';
+import BackShareHeader from '@/components/wrappers/BackShareHeader';
 
 export interface BrandDetailsData {
   id: string;
@@ -50,10 +51,16 @@ interface BrandDetailsScreenProps {
   };
 }
 
+type CheckInStatus = 'none' | 'input' | 'incorrect' | 'success';
+
 const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   const navigation = useNavigation<BrandDetailsScreenNavigationProp>();
   const { brand } = route.params;
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isAddedToCalendar, setIsAddedToCalendar] = useState(false);
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [checkInStatus, setCheckInStatus] = useState<CheckInStatus>('none');
+  const [hasSubmittedCode, setHasSubmittedCode] = useState(false);
 
   const handleTabPress = (tab: string) => {
     // Navigate to the appropriate tab
@@ -89,8 +96,9 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   };
 
   const handleAddToCalendar = () => {
+    setIsAddedToCalendar(!isAddedToCalendar);
     // TODO: Implement calendar integration
-    console.log('Add to calendar pressed');
+    console.log('Add to calendar pressed', !isAddedToCalendar);
   };
 
   const handleAddFavorite = () => {
@@ -99,10 +107,38 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     console.log('Add favorite pressed', !isFavorite);
   };
 
+  // Show code input after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowCodeInput(true);
+      setCheckInStatus('input');
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleCodeSubmit = (code: string) => {
+    if (code.length === 6) {
+      // Mock: First submission always shows incorrect
+      if (!hasSubmittedCode) {
+        setHasSubmittedCode(true);
+        setCheckInStatus('incorrect');
+      } else {
+        // After re-submission, show success
+        setCheckInStatus('success');
+      }
+    }
+  };
+
+  const handleLeaveReview = () => {
+    // TODO: Implement review functionality
+    console.log('Leave review pressed');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <BrandDetailsHeader onBack={handleBack} onShare={handleShare} />
+      <BackShareHeader onBack={handleBack} onShare={handleShare} />
 
       <ScrollView
         style={styles.scrollView}
@@ -113,11 +149,24 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         <BrandInfo brand={brand} />
         <ProductsSection products={brand.products} />
         <EventInfoSection eventInfo={brand.eventInfo} />
-        <DiscountMessage message={brand.discountMessage} />
+        <DiscountMessage />
+        
+        {showCodeInput && checkInStatus !== 'success' && (
+          <CheckInCodeInput
+            onCodeSubmit={handleCodeSubmit}
+            showError={checkInStatus === 'incorrect'}
+          />
+        )}
+
+        {checkInStatus === 'success' && (
+          <CheckInSuccess onLeaveReview={handleLeaveReview} />
+        )}
+
         <ActionButtons
           onAddToCalendar={handleAddToCalendar}
           onAddFavorite={handleAddFavorite}
           isFavorite={isFavorite}
+          isAddedToCalendar={isAddedToCalendar}
         />
       </ScrollView>
     </View>

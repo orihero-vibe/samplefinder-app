@@ -17,19 +17,26 @@ const EventInfoSection: React.FC<EventInfoSectionProps> = ({ eventInfo }) => {
 
 const styles = StyleSheet.create({
   section: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
     marginBottom: 24,
+    alignItems: 'flex-start',
+    width: '100%',
   },
   sectionLabel: {
     fontSize: 14,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
-    marginBottom: 12,
+    marginRight: 12,
+    minWidth: 100,
+    flex: 1,
+    textAlign: 'right',
   },
   eventInfoText: {
-    fontSize: 14,
+    flex: 10,
+    fontSize: 16,
     fontFamily: 'Quicksand_400Regular',
-    color: Colors.blueColorMode,
+    color: Colors.black,
     lineHeight: 20,
   },
 });

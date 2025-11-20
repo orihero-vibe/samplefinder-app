@@ -23,22 +23,29 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ products }) => {
 
 const styles = StyleSheet.create({
   section: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
     marginBottom: 24,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    width: '100%',
   },
   sectionLabel: {
     fontSize: 14,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
-    marginBottom: 12,
+    marginRight: 12,
+    minWidth: 100,
+    flex: 1,
+    textAlign: 'right',
   },
   productsList: {
-    gap: 8,
+    flex: 10,
   },
   productText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Quicksand_500Medium',
-    color: Colors.blueColorMode,
+    color: Colors.black,
   },
 });
 

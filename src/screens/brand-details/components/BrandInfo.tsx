@@ -14,7 +14,7 @@ const BrandInfo: React.FC<BrandInfoProps> = ({ brand }) => {
   const day = dateParts[1].replace(',', ''); // "1"
 
   return (
-    <>
+    <View style={styles.container}>
       {/* Brand Name */}
       <Text style={styles.brandName}>{brand.brandName}</Text>
 
@@ -33,15 +33,19 @@ const BrandInfo: React.FC<BrandInfoProps> = ({ brand }) => {
           </Text>
         </View>
       </View>
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    alignSelf: 'center',
+    width: '100%',
+  },
   brandName: {
     fontSize: 24,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.blueColorMode,
+    color: Colors.black,
     textAlign: 'center',
     marginBottom: 20,
     paddingHorizontal: 20,
@@ -54,31 +58,31 @@ const styles = StyleSheet.create({
   dateContainer: {
     alignItems: 'center',
     marginRight: 20,
+    flex: 1,
+    justifyContent: 'center',
   },
   monthText: {
-    fontSize: 16,
+    fontSize: 24,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
-    marginBottom: 4,
   },
   dayText: {
-    fontSize: 32,
+    fontSize: 26,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
   },
   storeDetails: {
-    flex: 1,
+    flex: 3,
   },
   storeName: {
-    fontSize: 16,
+    fontSize: 24,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.blueColorMode,
-    marginBottom: 8,
+    color: Colors.black,
   },
   storeInfo: {
-    fontSize: 14,
+    fontSize: 18,
     fontFamily: 'Quicksand_500Medium',
-    color: Colors.blueColorMode,
+    color: Colors.black,
     marginBottom: 4,
   },
 });
