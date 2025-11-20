@@ -21,19 +21,17 @@ const TierItem: React.FC<TierItemProps> = ({ tier }) => {
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <Monicon name="ph:seal-fill" size={24} color={Colors.pinDarkBlue} />
+        <Monicon name="ph:seal-fill" size={80} color={Colors.pinDarkBlue} />
       </View>
       <View style={styles.info}>
-        <View style={styles.header}>
-          <Text style={styles.name}>{tier.name}</Text>
-          {tier.badgeEarned ? (
-            <Text style={styles.badgeEarnedText}>Badge Earned!</Text>
-          ) : (
-            <Text style={styles.points}>
-              {tier.currentPoints} / {tier.requiredPoints.toLocaleString()} points
-            </Text>
-          )}
-        </View>
+        <Text style={styles.name}>{tier.name}</Text>
+        {tier.badgeEarned ? (
+          <Text style={styles.badgeEarnedText}>Badge Earned!</Text>
+        ) : (
+          <Text style={styles.points}>
+            {tier.currentPoints} / {tier.requiredPoints.toLocaleString()} points
+          </Text>
+        )}
         <View style={styles.progressBarContainer}>
           <View style={[styles.progressBar, { width: `${progress}%` }]} />
         </View>
@@ -46,33 +44,27 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     marginBottom: 20,
-    gap: 12,
   },
   iconContainer: {
     paddingTop: 4,
   },
   info: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-around',
+    paddingLeft: 10
   },
   name: {
-    fontSize: 14,
+    fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.black,
-    flex: 1,
+    color: Colors.blueColorMode,
   },
   points: {
-    fontSize: 12,
-    fontFamily: 'Quicksand_400Regular',
+    fontSize: 16,
+    fontFamily: 'Quicksand_400Normal',
     color: Colors.black,
   },
   badgeEarnedText: {
-    fontSize: 12,
+    fontSize: 16,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.success,
   },

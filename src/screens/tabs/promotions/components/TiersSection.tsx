@@ -13,7 +13,7 @@ const TiersSection: React.FC<TiersSectionProps> = ({ tiers }) => {
     <View style={styles.card}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionIconContainer}>
-          <Monicon name="ph:seal-check-light" size={24} color={Colors.pinDarkBlue} />
+          <Monicon name="ph:seal-check-light" size={40} color={Colors.pinDarkBlue} />
           <Text style={styles.sectionTitle}>TIERS</Text>
         </View>
         <Text style={styles.sectionDescription}>
@@ -46,12 +46,17 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     marginBottom: 20,
+    flexDirection: 'row',
+    width: '100%',
+
   },
   sectionIconContainer: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 8,
+    flex: 2,
+    justifyContent: 'center',
+    alignSelf: 'center',
   },
   sectionTitle: {
     fontSize: 18,
@@ -60,9 +65,13 @@ const styles = StyleSheet.create({
   },
   sectionDescription: {
     fontSize: 14,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_400Medium',
     color: Colors.black,
     lineHeight: 20,
+    flex: 3,
+    paddingRight: 20,
+    marginRight: 20,
+    textAlignVertical: 'center',
   },
 });
 

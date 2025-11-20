@@ -7,7 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
@@ -27,6 +27,18 @@ const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
   onReferSuccess,
 }) => {
   const snapPoints = useMemo(() => ['75%'], []);
+
+  const renderBackdrop = useMemo(
+    () => (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   const handleCopyCode = async () => {
     try {
@@ -58,6 +70,7 @@ const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
       onClose={onClose}
       backgroundStyle={styles.bottomSheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
+      backdropComponent={renderBackdrop}
     >
       <BottomSheetView style={styles.content}>
         {/* Header with close button */}

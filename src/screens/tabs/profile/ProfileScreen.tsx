@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import BottomSheet from '@gorhom/bottom-sheet';
 import { Colors } from '@/constants/Colors';
 import BackShareHeader from '@/components/wrappers/BackShareHeader';
+import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
+import ReferFriendSuccessBottomSheet from '@/components/shared/ReferFriendSuccessBottomSheet';
 import {
   TopLinks,
   ProfileOverview,
@@ -17,6 +20,8 @@ import {
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
+  const referFriendBottomSheetRef = useRef<BottomSheet>(null);
+  const referFriendSuccessBottomSheetRef = useRef<BottomSheet>(null);
 
   const handleBackPress = () => {
     // Handle back navigation
@@ -29,8 +34,24 @@ const ProfileScreen = () => {
   };
 
   const handleReferFriendPress = () => {
-    // Handle refer friend action
-    console.log('Refer friend pressed');
+    referFriendBottomSheetRef.current?.snapToIndex(0);
+  };
+
+  const handleReferFriendClose = () => {
+    referFriendBottomSheetRef.current?.close();
+  };
+
+  const handleReferSuccess = () => {
+    referFriendSuccessBottomSheetRef.current?.snapToIndex(0);
+  };
+
+  const handleReferSuccessClose = () => {
+    referFriendSuccessBottomSheetRef.current?.close();
+  };
+
+  const handleViewRewardsFromSuccess = () => {
+    referFriendSuccessBottomSheetRef.current?.close();
+    navigation.navigate('Promotions' as never);
   };
 
   const handleLogOutPress = () => {
@@ -47,8 +68,7 @@ const ProfileScreen = () => {
   };
 
   const handleNotificationsPress = () => {
-    // Handle notifications
-    console.log('Notifications pressed');
+    navigation.navigate('Notifications' as never);
   };
 
   const handleApplyHerePress = () => {
@@ -90,6 +110,22 @@ const ProfileScreen = () => {
         <NotificationsButton onPress={handleNotificationsPress} />
         <BrandAmbassadorSection onApplyPress={handleApplyHerePress} />
       </ScrollView>
+
+      {/* Refer Friend Bottom Sheet */}
+      <ReferFriendBottomSheet
+        bottomSheetRef={referFriendBottomSheetRef}
+        referralCode="JNKLOW"
+        onClose={handleReferFriendClose}
+        onReferSuccess={handleReferSuccess}
+      />
+
+      {/* Refer Friend Success Bottom Sheet */}
+      <ReferFriendSuccessBottomSheet
+        bottomSheetRef={referFriendSuccessBottomSheetRef}
+        points={100}
+        onClose={handleReferSuccessClose}
+        onViewRewards={handleViewRewardsFromSuccess}
+      />
     </View>
   );
 };
