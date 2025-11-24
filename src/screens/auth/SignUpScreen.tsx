@@ -9,11 +9,15 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '@/navigation/AppNavigator';
 import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 
-const SignUpScreen = ({ navigation }: any) => {
+type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
+
+const SignUpScreen = ({ navigation }: Props) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -77,6 +81,8 @@ const SignUpScreen = ({ navigation }: any) => {
         email,
         password,
       });
+      // Navigate to ConfirmAccount page after sign up
+      navigation.navigate('ConfirmAccount', { phoneNumber });
     } else {
       setShowError(true);
     }

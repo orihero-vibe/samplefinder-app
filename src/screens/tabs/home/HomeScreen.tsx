@@ -410,7 +410,7 @@ const HomeScreen = () => {
 
       <View style={styles.mapContainer}>
         <MapView
-          {...(Platform.OS === 'android' && { provider: PROVIDER_GOOGLE })}
+          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
           style={styles.map}
           initialRegion={initialRegion}
           showsUserLocation={false}

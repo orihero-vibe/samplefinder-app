@@ -61,6 +61,7 @@ const LoginScreen = () => {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
+          labelColor='white'
         />
 
         <CustomInput
@@ -71,6 +72,7 @@ const LoginScreen = () => {
           secureTextEntry={true}
           autoCapitalize="none"
           autoCorrect={false}
+          labelColor='white'
         />
 
         <View style={styles.optionsContainer}>
