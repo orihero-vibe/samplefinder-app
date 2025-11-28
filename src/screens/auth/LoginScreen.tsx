@@ -13,6 +13,7 @@ import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { RootStackParamList } from '@/navigation/AppNavigator';
+import { login } from '@/lib/auth';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -21,17 +22,66 @@ const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    // TODO: Implement login logic
-    console.log('Login pressed', { email, password, rememberMe });
-    console.log('Navigating to ConfirmAccount...');
+  const validateForm = (): boolean => {
+    if (!email.trim()) {
+      setError('Please enter your email address');
+      return false;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    if (!password) {
+      setError('Please enter your password');
+      return false;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleLogin = async () => {
+    setError('');
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      // Navigate to confirm account page after login
-      navigation.navigate('ConfirmAccount', { phoneNumber: email });
-      console.log('Navigation called successfully');
-    } catch (error) {
-      console.error('Navigation error:', error);
+      console.log('[LoginScreen] Starting login process...');
+      const user = await login({
+        email: email.trim(),
+        password: password,
+      });
+
+      console.log('[LoginScreen] Login successful:', {
+        id: user.$id,
+        email: user.email,
+        emailVerification: user.emailVerification,
+      });
+
+      // Always navigate to confirm account page after login to verify email OTP
+      console.log('[LoginScreen] Navigating to ConfirmAccount for email verification');
+      navigation.navigate('ConfirmAccount', {});
+    } catch (error: any) {
+      console.error('[LoginScreen] Login error:', error);
+      const errorMsg = error?.message || 'Login failed. Please check your credentials.';
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -56,30 +106,45 @@ const LoginScreen = () => {
         <CustomInput
           label="Email:"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setError(''); // Clear error when user types
+          }}
           placeholder="Enter email"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
           labelColor='white'
+          editable={!isLoading}
         />
 
         <CustomInput
           label="Password:"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setError(''); // Clear error when user types
+          }}
           placeholder="Enter password"
           secureTextEntry={true}
           autoCapitalize="none"
           autoCorrect={false}
           labelColor='white'
+          editable={!isLoading}
         />
+
+        {error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.optionsContainer}>
           <TouchableOpacity
             style={styles.rememberMeContainer}
             onPress={() => setRememberMe(!rememberMe)}
             activeOpacity={0.8}
+            disabled={isLoading}
           >
             <View style={styles.checkbox}>
               {rememberMe && (
@@ -89,7 +154,10 @@ const LoginScreen = () => {
             <Text style={styles.rememberMeText}>Remember Me</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleForgotPassword}>
+          <TouchableOpacity 
+            onPress={handleForgotPassword}
+            disabled={isLoading}
+          >
             <View style={styles.forgotPasswordContainer}>
               <MaterialIcons name="help-outline" size={20} color="#fff" />
               <Text style={styles.forgotPasswordText}>
@@ -101,9 +169,10 @@ const LoginScreen = () => {
 
         <View style={styles.buttonContainer}>
           <CustomButton
-            title="Log In"
+            title={isLoading ? 'Logging In...' : 'Log In'}
             onPress={handleLogin}
             variant="primary"
+            disabled={isLoading}
           />
         </View>
 
@@ -113,6 +182,7 @@ const LoginScreen = () => {
             title="Sign Up"
             onPress={handleSignUp}
             variant="secondary"
+            disabled={isLoading}
           />
         </View>
       </View>
@@ -138,6 +208,17 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
+  },
+  errorContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Medium',
+    textAlign: 'center',
   },
   optionsContainer: {
     flexDirection: 'row',

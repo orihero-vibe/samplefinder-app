@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
+import { signup } from '@/lib/auth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
@@ -30,6 +32,8 @@ const SignUpScreen = ({ navigation }: Props) => {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const validateFields = () => {
     return (
@@ -64,27 +68,43 @@ const SignUpScreen = ({ navigation }: Props) => {
     setShowPrivacyModal(true);
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (!ageVerified) {
       setShowAgeVerificationModal(true);
       return;
     }
-    if (validateFields()) {
-      setShowError(false);
-      // TODO: Implement sign up logic
-      console.log('Sign up pressed', {
-        firstName,
-        lastName,
-        phoneNumber,
-        dateOfBirth,
-        username,
-        email,
-        password,
-      });
-      // Navigate to ConfirmAccount page after sign up
-      navigation.navigate('ConfirmAccount', { phoneNumber });
-    } else {
+    
+    if (!validateFields()) {
       setShowError(true);
+      return;
+    }
+
+    setShowError(false);
+    setErrorMessage('');
+    setIsLoading(true);
+
+    try {
+      console.log('Starting sign up process...');
+      
+      await signup({
+        email: email.trim(),
+        password: password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phoneNumber: phoneNumber.trim(),
+        dateOfBirth: dateOfBirth.trim(),
+        username: username.trim(),
+      });
+
+      console.log('Sign up successful!');
+      // Navigate to ConfirmAccount page after successful sign up
+      navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      const errorMsg = error?.message || 'Sign up failed. Please try again.';
+      setErrorMessage(errorMsg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -107,7 +127,11 @@ const SignUpScreen = ({ navigation }: Props) => {
         <CustomInput
           label="First Name"
           value={firstName}
-          onChangeText={setFirstName}
+          onChangeText={(text) => {
+            setFirstName(text);
+            setErrorMessage(''); // Clear error when user types
+            setShowError(false);
+          }}
           type="text"
           labelColor="#000"
           error={showError && !firstName.trim()}
@@ -116,7 +140,11 @@ const SignUpScreen = ({ navigation }: Props) => {
         <CustomInput
           label="Last Name"
           value={lastName}
-          onChangeText={setLastName}
+          onChangeText={(text) => {
+            setLastName(text);
+            setErrorMessage(''); // Clear error when user types
+            setShowError(false);
+          }}
           type="text"
           labelColor="#000"
           error={showError && !lastName.trim()}
@@ -125,7 +153,11 @@ const SignUpScreen = ({ navigation }: Props) => {
         <CustomInput
           label="Phone Number"
           value={phoneNumber}
-          onChangeText={setPhoneNumber}
+          onChangeText={(text) => {
+            setPhoneNumber(text);
+            setErrorMessage(''); // Clear error when user types
+            setShowError(false);
+          }}
           type="phone"
           labelColor="#000"
           error={showError && !phoneNumber.trim()}
@@ -134,7 +166,11 @@ const SignUpScreen = ({ navigation }: Props) => {
         <CustomInput
           label="Date Of Birth"
           value={dateOfBirth}
-          onChangeText={setDateOfBirth}
+          onChangeText={(text) => {
+            setDateOfBirth(text);
+            setErrorMessage(''); // Clear error when user types
+            setShowError(false);
+          }}
           type="date"
           labelColor="#000"
           helpIcon={true}
@@ -144,7 +180,11 @@ const SignUpScreen = ({ navigation }: Props) => {
         <CustomInput
           label="Username"
           value={username}
-          onChangeText={setUsername}
+          onChangeText={(text) => {
+            setUsername(text);
+            setErrorMessage(''); // Clear error when user types
+            setShowError(false);
+          }}
           type="text"
           labelColor="#000"
           error={showError && !username.trim()}
@@ -153,7 +193,11 @@ const SignUpScreen = ({ navigation }: Props) => {
         <CustomInput
           label="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setErrorMessage(''); // Clear error when user types
+            setShowError(false);
+          }}
           type="email"
           labelColor="#000"
           error={showError && !email.trim()}
@@ -162,23 +206,42 @@ const SignUpScreen = ({ navigation }: Props) => {
         <CustomInput
           label="Password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setErrorMessage(''); // Clear error when user types
+            setShowError(false);
+          }}
           type="password"
           labelColor="#000"
           error={showError && !password.trim()}
         />
 
         {showError && (
-          <Text style={styles.errorText}>Please fill all fields.</Text>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Please fill all fields.</Text>
+          </View>
         )}
+        
+        {errorMessage ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.buttonContainer}>
           <CustomButton
-            title="Sign Up"
+            title={isLoading ? 'Signing Up...' : 'Sign Up'}
             onPress={handleSignUp}
             variant="dark"
-            disabled={!isFormValid}
+            disabled={!isFormValid || isLoading}
           />
+          {isLoading && (
+            <ActivityIndicator
+              size="small"
+              color="#fff"
+              style={styles.loader}
+            />
+          )}
         </View>
 
         <View style={styles.signInContainer}>
@@ -371,17 +434,27 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
   },
+  errorContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
   errorText: {
-    color: '#FF0000',
+    color: '#FF6B6B',
     fontSize: 14,
     fontFamily: 'Quicksand_500Medium',
     textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 16,
   },
   buttonContainer: {
     marginTop: 8,
     marginBottom: 20,
+    position: 'relative',
+  },
+  loader: {
+    position: 'absolute',
+    right: 20,
+    top: '50%',
+    transform: [{ translateY: -10 }],
   },
   signInContainer: {
     flexDirection: 'row',

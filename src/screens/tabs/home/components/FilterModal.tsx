@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 
@@ -10,6 +10,7 @@ export interface FilterOption {
 }
 
 interface FilterModalProps {
+  visible: boolean;
   title: string;
   options: FilterOption[];
   selectedValues: string[];
@@ -18,6 +19,7 @@ interface FilterModalProps {
 }
 
 const FilterModal: React.FC<FilterModalProps> = ({
+  visible,
   title,
   options,
   selectedValues,
@@ -25,53 +27,81 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onClose,
 }) => {
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
-          <Monicon name="mdi:close" size={24} color={Colors.blueColorMode} />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.optionsContainer}>
-        {options.map((option) => {
-          const isSelected = selectedValues.includes(option.value);
-          return (
-            <TouchableOpacity
-              key={option.id}
-              style={styles.optionRow}
-              onPress={() => onToggle(option.value)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                {isSelected && (
-                  <Monicon name="mdi:check" size={18} color={Colors.white} />
-                )}
-              </View>
-              <Text style={[styles.optionText, !isSelected && styles.optionTextDisabled]}>
-                {option.label}
-              </Text>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
+              <Monicon name="mdi:close" size={24} color={Colors.blueColorMode} />
             </TouchableOpacity>
-          );
-        })}
+          </View>
+          <ScrollView 
+            style={styles.optionsContainer}
+            contentContainerStyle={styles.optionsContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {options.map((option) => {
+              const isSelected = selectedValues.includes(option.value);
+              return (
+                <TouchableOpacity
+                  key={option.id}
+                  style={styles.optionRow}
+                  onPress={() => onToggle(option.value)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                    {isSelected && (
+                      <Monicon name="mdi:check" size={18} color={Colors.white} />
+                    )}
+                  </View>
+                  <Text style={[styles.optionText, !isSelected && styles.optionTextDisabled]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       </View>
-    </View>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
     backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    paddingVertical: 16,
-    maxHeight: 400,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   title: {
     fontSize: 20,
@@ -82,7 +112,11 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   optionsContainer: {
+    flex: 1,
+  },
+  optionsContent: {
     paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   optionRow: {
     flexDirection: 'row',

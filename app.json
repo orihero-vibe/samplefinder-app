@@ -14,7 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.samplefinder.app"
+      "bundleIdentifier": "com.samplefinder.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores."
+      }
     },
     "android": {
       "adaptiveIcon": {

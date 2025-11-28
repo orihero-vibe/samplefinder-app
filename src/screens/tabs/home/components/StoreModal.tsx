@@ -72,9 +72,11 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, onClose }) => {
           <View style={styles.header}>
             <View style={styles.storeInfo}>
               <Text style={styles.storeName}>{store.name}</Text>
-              <Text style={styles.address}>{store.address.street}</Text>
+              {store.address.street ? (
+                <Text style={styles.address}>{store.address.street}</Text>
+              ) : null}
               <Text style={styles.address}>
-                {store.address.city}, {store.address.state} {store.address.zip}
+                {store.address.city}{store.address.city && store.address.state ? ', ' : ''}{store.address.state} {store.address.zip}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>

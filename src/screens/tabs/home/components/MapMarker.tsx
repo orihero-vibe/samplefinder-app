@@ -52,7 +52,7 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
       </Marker>
     );
   } else if (marker.icon) {
-    // Small icon marker
+    // Icon marker with transparent background and dark blue icon
     return (
       <Marker
         coordinate={{
@@ -64,7 +64,7 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
       >
         <View style={styles.iconMarkerContainer}>
           <View style={styles.iconMarker}>
-            <Monicon name={marker.icon} size={16} color={Colors.white} />
+            <Monicon name={marker.icon} size={20} color={Colors.pinDarkBlue} />
           </View>
         </View>
       </Marker>
@@ -129,11 +129,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.badgePurpleLight,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.white,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,

@@ -71,3 +71,35 @@ export const isValidDate = (date: string): boolean => {
   );
 };
 
+/**
+ * Formats an ISO date string to a readable format (e.g., "April 3, 1979")
+ */
+export const formatDateForDisplay = (isoDate: string): string => {
+  if (!isoDate) return '';
+  
+  try {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) {
+      // If it's not a valid ISO date, try to parse as MM/DD/YYYY
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoDate)) {
+        const [month, day, year] = isoDate.split('/').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+      return isoDate; // Return as-is if can't parse
+    }
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch (error) {
+    console.error('[formatters.formatDateForDisplay] Error formatting date:', error);
+    return isoDate;
+  }
+};
+

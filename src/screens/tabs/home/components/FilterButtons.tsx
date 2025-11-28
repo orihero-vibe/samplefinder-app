@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 export type FilterType = 'radius' | 'dates' | 'categories' | 'reset';
@@ -31,12 +31,7 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        style={styles.scrollView}
-      >
+      <View style={styles.buttonsRow}>
         <TouchableOpacity
           style={[
             styles.filterButton,
@@ -113,7 +108,7 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
             Reset
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -122,25 +117,23 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 15,
     backgroundColor: Colors.white,
+    width: '100%',
   },
-  scrollView: {
-    flexGrow: 0,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
+  buttonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
   },
   filterButton: {
     paddingVertical: 4,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.blueColorMode,
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 100,
   },
   filterButtonSpacing: {
     marginRight: 10,

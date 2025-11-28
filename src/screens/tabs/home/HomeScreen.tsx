@@ -1,11 +1,15 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { View, StyleSheet, Platform, ActivityIndicator, Alert } from 'react-native';
+import { PROVIDER_GOOGLE } from 'react-native-maps';
+import ClusteredMapView from 'react-native-map-clustering';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import * as Location from 'expo-location';
 import MainHeader from '@/components/wrappers/MainHeader';
 import { Colors } from '@/constants/Colors';
+import { fetchClients, ClientData, fetchEventsByClient, EventRow, fetchCategories, CategoryData } from '@/lib/database';
 import {
   MapMarker,
+  ClusterMarker,
   FilterButtons,
   UpcomingEvents,
   RadiusFilter,
@@ -23,297 +27,233 @@ const HomeScreen = () => {
   const [radiusValues, setRadiusValues] = useState<string[]>([]);
   const [datesValues, setDatesValues] = useState<string[]>([]);
   const [categoriesValues, setCategoriesValues] = useState<string[]>([]);
+  const [categories, setCategories] = useState<CategoryData[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [selectedStore, setSelectedStore] = useState<StoreData | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [allClients, setAllClients] = useState<ClientData[]>([]);
+  const [markers, setMarkers] = useState<MapMarkerData[]>([]);
+  const [isLoadingClients, setIsLoadingClients] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const mapRef = useRef<ClusteredMapView>(null);
 
   // Snap points for the bottom sheet - collapsed shows only filters, expanded shows events + filters
-  const snapPoints = useMemo(() => ['10%', Platform.OS === 'android' ? '90%' : '86%'], []);
+  const snapPoints = useMemo(() => [Platform.OS==='ios' ? '10%' : '12%', Platform.OS === 'android' ? '90%' : '86%'], []);
 
-  // Sample events data
-  const events: EventData[] = [
-    {
-      id: '1',
-      product: 'Brand Product',
-      location: 'XYZ Supermarket',
-      distance: '0.2 mi away',
-      date: 'Aug 1, 2025',
-      time: '3 - 5 pm',
-    },
-    {
-      id: '2',
-      product: 'Brand Product',
-      location: 'ABC Market',
-      distance: '0.5 mi away',
-      date: 'Aug 2, 2025',
-      time: '10 - 12 pm',
-    },
-    {
-      id: '3',
-      product: 'Brand Product',
-      location: 'XYZ Supermarket',
-      distance: '0.3 mi away',
-      date: 'Aug 3, 2025',
-      time: '2 - 4 pm',
-    },
-    {
-      id: '4',
-      product: 'Brand Product',
-      location: 'DEF Store',
-      distance: '0.8 mi away',
-      date: 'Aug 4, 2025',
-      time: '11 - 1 pm',
-    },
-    {
-      id: '5',
-      product: 'Brand Product',
-      location: 'XYZ Supermarket',
-      distance: '0.4 mi away',
-      date: 'Aug 5, 2025',
-      time: '4 - 6 pm',
-    },
-  ];
+  // Get user's current location
+  useEffect(() => {
+    const getCurrentLocation = async () => {
+      try {
+        // Request location permissions
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        
+        if (status !== 'granted') {
+          console.log('[HomeScreen] Location permission denied');
+          setHasLocationPermission(false);
+          Alert.alert(
+            'Location Permission',
+            'Please enable location permissions in your device settings to see your location on the map.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
 
-  // Philadelphia city center coordinates
-  const initialRegion = {
-    latitude: 39.9526,
-    longitude: -75.1652,
-    latitudeDelta: 0.02,
-    longitudeDelta: 0.02,
-  };
+        setHasLocationPermission(true);
 
-  // Sample markers based on the screenshot
-  const markers: MapMarkerData[] = [
-    {
-      id: '1',
-      latitude: 39.9515,
-      longitude: -75.1635,
-      title: 'Store Name',
-      address: {
-        street: '100 Main Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19101',
-      },
-      events: [
-        {
-          id: '1',
-          product: 'Brand Product',
-          location: 'Store Name',
-          distance: '0.2 mi away',
-          date: 'Aug 1, 2025',
-          time: '3 - 5 pm',
+        // Get current position
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        const userCoords = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+
+        setUserLocation(userCoords);
+        console.log('[HomeScreen] User location:', userCoords);
+
+        // Navigate map to user's location after a short delay to ensure map is ready
+        setTimeout(() => {
+          if (mapRef.current && userCoords) {
+            (mapRef.current as any).animateToRegion(
+              {
+                ...userCoords,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
+              },
+              1000
+            );
+          }
+        }, 500);
+      } catch (error) {
+        console.error('[HomeScreen] Error getting location:', error);
+        setHasLocationPermission(false);
+      }
+    };
+
+    getCurrentLocation();
+  }, []);
+
+  // Fetch clients from Appwrite database
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        setIsLoadingClients(true);
+        const clients = await fetchClients();
+        setAllClients(clients);
+        console.log('[HomeScreen] Loaded clients:', clients.length);
+      } catch (error) {
+        console.error('[HomeScreen] Error loading clients:', error);
+        // On error, keep empty clients array
+        setAllClients([]);
+      } finally {
+        setIsLoadingClients(false);
+      }
+    };
+
+    loadClients();
+  }, []);
+
+  // Filter and transform clients to markers based on selected categories
+  useEffect(() => {
+    let filteredClients = allClients;
+
+    // Filter by categories if any are selected
+    if (categoriesValues.length > 0 && categories.length > 0) {
+      // Get the category IDs or slugs that match the selected values
+      const selectedCategoryIds = categories
+        .filter((cat) => {
+          const catValue = cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-');
+          return categoriesValues.includes(catValue);
+        })
+        .map((cat) => cat.$id);
+
+      // Filter clients that match any of the selected categories
+      // Check multiple possible field names: category, categoryId, categories, etc.
+      filteredClients = allClients.filter((client: any) => {
+        // Check if client has category field (could be ID, object, or array)
+        const clientCategory = client.category || client.categoryId || client.categories;
+        
+        if (!clientCategory) {
+          return false; // No category means it doesn't match
+        }
+
+        // Handle different category field formats
+        if (Array.isArray(clientCategory)) {
+          // If categories is an array, check if any matches
+          return clientCategory.some((cat: any) => {
+            const catId = typeof cat === 'object' ? cat.$id || cat.id : cat;
+            return selectedCategoryIds.includes(catId);
+          });
+        } else if (typeof clientCategory === 'object') {
+          // If category is an object, check its ID
+          const catId = clientCategory.$id || clientCategory.id;
+          return selectedCategoryIds.includes(catId);
+        } else {
+          // If category is a string/ID, check directly
+          return selectedCategoryIds.includes(clientCategory);
+        }
+      });
+    }
+
+    // Transform filtered clients to MapMarkerData format
+    const clientMarkers: MapMarkerData[] = filteredClients
+      .filter((client) => {
+        // Only include clients with valid coordinates
+        return (
+          client.latitude &&
+          client.longitude &&
+          !isNaN(client.latitude) &&
+          !isNaN(client.longitude) &&
+          client.latitude !== 0 &&
+          client.longitude !== 0
+        );
+      })
+      .map((client) => ({
+        id: client.$id,
+        latitude: client.latitude,
+        longitude: client.longitude,
+        title: client.name || client.title || 'Client',
+        icon: 'oi:map-marker', // Use the specified icon
+        address: {
+          street: client.address || client.street || '',
+          city: client.city || '',
+          state: client.state || '',
+          zip: client.zip || client.zipCode || '',
         },
-        {
-          id: '2',
-          product: 'Brand Product',
-          location: 'Store Name',
-          distance: '0.2 mi away',
-          date: 'Aug 1, 2025',
-          time: '3 - 5 pm',
-        },
-        {
-          id: '3',
-          product: 'Brand Product',
-          location: 'Store Name',
-          distance: '0.2 mi away',
-          date: 'Aug 1, 2025',
-          time: '3 - 5 pm',
-        },
-        {
-          id: '4',
-          product: 'Brand Product',
-          location: 'Store Name',
-          distance: '0.2 mi away',
-          date: 'Aug 1, 2025',
-          time: '3 - 5 pm',
-        },
-      ],
-    },
-    {
-      id: '2',
-      latitude: 39.9495,
-      longitude: -75.1605,
-      title: 'Location 2',
-      address: {
-        street: '200 Market Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19102',
-      },
-      events: [
-        {
-          id: '5',
-          product: 'Brand Product',
-          location: 'Location 2',
-          distance: '0.5 mi away',
-          date: 'Aug 2, 2025',
-          time: '10 - 12 pm',
-        },
-      ],
-    },
-    {
-      id: '3',
-      latitude: 39.9535,
-      longitude: -75.1585,
-      title: 'Location 3',
-      pinNumber: 4,
-      address: {
-        street: '300 Chestnut Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19103',
-      },
-      events: [
-        {
-          id: '6',
-          product: 'Brand Product',
-          location: 'Location 3',
-          distance: '0.3 mi away',
-          date: 'Aug 3, 2025',
-          time: '2 - 4 pm',
-        },
-      ],
-    },
-    {
-      id: '4',
-      latitude: 39.9505,
-      longitude: -75.1625,
-      title: 'Shopping',
-      icon: 'mdi:cart',
-      address: {
-        street: '400 Walnut Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19104',
-      },
-      events: [
-        {
-          id: '7',
-          product: 'Brand Product',
-          location: 'Shopping',
-          distance: '0.4 mi away',
-          date: 'Aug 4, 2025',
-          time: '11 - 1 pm',
-        },
-      ],
-    },
-    {
-      id: '5',
-      latitude: 39.9515,
-      longitude: -75.1595,
-      title: 'Hotel',
-      icon: 'mdi:bed',
-      address: {
-        street: '500 Spruce Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19105',
-      },
-      events: [
-        {
-          id: '8',
-          product: 'Brand Product',
-          location: 'Hotel',
-          distance: '0.6 mi away',
-          date: 'Aug 5, 2025',
-          time: '4 - 6 pm',
-        },
-      ],
-    },
-    {
-      id: '6',
-      latitude: 39.9525,
-      longitude: -75.1615,
-      title: 'Museum',
-      icon: 'mdi:chess-rook',
-      address: {
-        street: '600 Pine Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19106',
-      },
-      events: [
-        {
-          id: '9',
-          product: 'Brand Product',
-          location: 'Museum',
-          distance: '0.7 mi away',
-          date: 'Aug 6, 2025',
-          time: '1 - 3 pm',
-        },
-      ],
-    },
-    {
-      id: '7',
-      latitude: 39.9505,
-      longitude: -75.1605,
-      title: 'Museum 2',
-      icon: 'mdi:chess-rook',
-      address: {
-        street: '700 Locust Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19107',
-      },
-      events: [
-        {
-          id: '10',
-          product: 'Brand Product',
-          location: 'Museum 2',
-          distance: '0.8 mi away',
-          date: 'Aug 7, 2025',
-          time: '2 - 4 pm',
-        },
-      ],
-    },
-    {
-      id: '8',
-      latitude: 39.9495,
-      longitude: -75.1615,
-      title: 'Pet Store',
-      icon: 'mdi:cat',
-      address: {
-        street: '800 Sansom Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19108',
-      },
-      events: [
-        {
-          id: '11',
-          product: 'Brand Product',
-          location: 'Pet Store',
-          distance: '0.9 mi away',
-          date: 'Aug 8, 2025',
-          time: '10 - 12 pm',
-        },
-      ],
-    },
-    {
-      id: '9',
-      latitude: 39.9485,
-      longitude: -75.1605,
-      title: 'Pet Store 2',
-      icon: 'mdi:cat',
-      address: {
-        street: '900 Arch Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19109',
-      },
-      events: [
-        {
-          id: '12',
-          product: 'Brand Product',
-          location: 'Pet Store 2',
-          distance: '1.0 mi away',
-          date: 'Aug 9, 2025',
-          time: '3 - 5 pm',
-        },
-      ],
-    },
-  ];
+        events: [], // Events will be fetched when marker is pressed
+      }));
+
+    setMarkers(clientMarkers);
+    console.log('[HomeScreen] Filtered markers:', clientMarkers.length, 'from', allClients.length, 'clients');
+  }, [allClients, categoriesValues, categories]);
+
+  // Fetch categories from database
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        const fetchedCategories = await fetchCategories();
+        setCategories(fetchedCategories);
+        console.log('[HomeScreen] Loaded categories:', fetchedCategories.length);
+      } catch (error) {
+        console.error('[HomeScreen] Error loading categories:', error);
+        // On error, keep empty categories array
+        setCategories([]);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  // Events will be fetched from database or passed as props in the future
+  const events: EventData[] = [];
+
+  // Calculate initial region based on markers, or use default Philadelphia coordinates
+  const initialRegion = useMemo(() => {
+    if (markers.length === 0) {
+      // Default to Philadelphia city center if no markers
+      return {
+        latitude: 39.9526,
+        longitude: -75.1652,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      };
+    }
+
+    // Calculate bounds from markers
+    const latitudes = markers.map((m) => m.latitude).filter((lat) => !isNaN(lat));
+    const longitudes = markers.map((m) => m.longitude).filter((lng) => !isNaN(lng));
+
+    if (latitudes.length === 0 || longitudes.length === 0) {
+      return {
+        latitude: 39.9526,
+        longitude: -75.1652,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      };
+    }
+
+    const minLat = Math.min(...latitudes);
+    const maxLat = Math.max(...latitudes);
+    const minLng = Math.min(...longitudes);
+    const maxLng = Math.max(...longitudes);
+
+    const latDelta = (maxLat - minLat) * 1.5 || 0.02; // Add 50% padding
+    const lngDelta = (maxLng - minLng) * 1.5 || 0.02;
+
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: Math.max(latDelta, 0.02),
+      longitudeDelta: Math.max(lngDelta, 0.02),
+    };
+  }, [markers]);
 
   const handleFilterPress = (filter: FilterType) => {
     if (filter === 'reset') {
@@ -353,16 +293,87 @@ const HomeScreen = () => {
     setSelectedFilter(null);
   };
 
-  const handleMarkerPress = (marker: MapMarkerData) => {
-    if (marker.address && marker.events) {
-      const storeData: StoreData = {
-        id: marker.id,
-        name: marker.title || 'Store Name',
-        address: marker.address,
-        events: marker.events,
-      };
-      setSelectedStore(storeData);
-      setIsModalVisible(true);
+  const handleMarkerPress = async (marker: MapMarkerData) => {
+    if (marker.address) {
+      try {
+        // Fetch events for this client
+        const events = await fetchEventsByClient(marker.id);
+        
+        // Transform events to EventData format
+        const transformedEvents: EventData[] = events.map((event: EventRow) => {
+          // Format date (e.g., "Aug 1, 2025")
+          const eventDate = new Date(event.date);
+          const formattedDate = eventDate.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          });
+          
+          // Format time range (e.g., "3 - 5 pm")
+          const startTime = new Date(event.startTime);
+          const endTime = new Date(event.endTime);
+          const startHour = startTime.getHours();
+          const endHour = endTime.getHours();
+          const startMin = startTime.getMinutes();
+          const endMin = endTime.getMinutes();
+          
+          const formatTime = (hour: number, min: number) => {
+            const period = hour >= 12 ? 'pm' : 'am';
+            const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+            return min > 0 ? `${displayHour}:${min.toString().padStart(2, '0')} ${period}` : `${displayHour} ${period}`;
+          };
+          
+          const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
+          
+          return {
+            id: event.$id,
+            product: event.products || event.name || 'Brand Product',
+            location: marker.title || 'Store Name',
+            distance: '0.0 mi away', // Could calculate actual distance if needed
+            date: formattedDate,
+            time: formattedTime,
+          };
+        });
+        
+        const storeData: StoreData = {
+          id: marker.id,
+          name: marker.title || 'Store Name',
+          address: marker.address,
+          events: transformedEvents,
+        };
+        setSelectedStore(storeData);
+        setIsModalVisible(true);
+      } catch (error) {
+        console.error('[HomeScreen] Error fetching events:', error);
+        // Still show modal with empty events
+        const storeData: StoreData = {
+          id: marker.id,
+          name: marker.title || 'Store Name',
+          address: marker.address,
+          events: [],
+        };
+        setSelectedStore(storeData);
+        setIsModalVisible(true);
+      }
+    }
+  };
+
+  const handleClusterPress = (cluster: any) => {
+    const { geometry } = cluster;
+    const coordinate = {
+      latitude: geometry.coordinates[1],
+      longitude: geometry.coordinates[0],
+    };
+    // Zoom in on cluster press
+    if (mapRef.current) {
+      (mapRef.current as any).animateToRegion(
+        {
+          ...coordinate,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        500
+      );
     }
   };
 
@@ -374,10 +385,13 @@ const HomeScreen = () => {
   const hasAnyFilters = radiusValues.length > 0 || datesValues.length > 0 || categoriesValues.length > 0;
 
   const renderFilterModal = () => {
+    const isVisible = selectedFilter !== null && selectedFilter !== 'reset';
+    
     switch (selectedFilter) {
       case 'radius':
         return (
           <RadiusFilter
+            visible={isVisible}
             selectedValues={radiusValues}
             onToggle={handleRadiusToggle}
             onClose={handleCloseFilter}
@@ -386,6 +400,7 @@ const HomeScreen = () => {
       case 'dates':
         return (
           <DatesFilter
+            visible={isVisible}
             selectedValues={datesValues}
             onToggle={handleDatesToggle}
             onClose={handleCloseFilter}
@@ -394,9 +409,11 @@ const HomeScreen = () => {
       case 'categories':
         return (
           <CategoriesFilter
+            visible={isVisible}
             selectedValues={categoriesValues}
             onToggle={handleCategoriesToggle}
             onClose={handleCloseFilter}
+            categories={categories}
           />
         );
       default:
@@ -409,27 +426,62 @@ const HomeScreen = () => {
       <MainHeader />
 
       <View style={styles.mapContainer}>
-        <MapView
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-          style={styles.map}
-          initialRegion={initialRegion}
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-          toolbarEnabled={false}
-        >
-          {markers.map((marker) => (
-            <MapMarker key={marker.id} marker={marker} onPress={handleMarkerPress} />
-          ))}
-        </MapView>
+        {isLoadingClients ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.brandPurpleDeep} />
+          </View>
+        ) : (
+          <ClusteredMapView
+            ref={mapRef}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            style={styles.map}
+            initialRegion={initialRegion}
+            showsUserLocation={hasLocationPermission}
+            showsMyLocationButton={false}
+            userLocationPriority="high"
+            userLocationUpdateInterval={5000}
+            toolbarEnabled={false}
+            clusterColor={Colors.brandPurpleDeep}
+            clusterTextColor={Colors.white}
+            radius={100}
+            minZoom={10}
+            maxZoom={30}
+            extent={512}
+            nodeSize={64}
+            renderCluster={(cluster) => {
+              const { id, geometry, properties } = cluster;
+              const pointCount = properties?.point_count || 0;
+              const coordinate = {
+                latitude: geometry.coordinates[1],
+                longitude: geometry.coordinates[0],
+              };
+              return (
+                <ClusterMarker
+                  key={id}
+                  coordinate={coordinate}
+                  pointCount={pointCount}
+                  onPress={() => handleClusterPress(cluster)}
+                />
+              );
+            }}
+          >
+            {markers.map((marker) => (
+              <MapMarker key={marker.id} marker={marker} onPress={handleMarkerPress} />
+            ))}
+          </ClusteredMapView>
+        )}
       </View>
 
       <StoreModal visible={isModalVisible} store={selectedStore} onClose={handleCloseModal} />
+
+      {renderFilterModal()}
 
       <BottomSheet
         ref={bottomSheetRef}
         index={0}
         snapPoints={snapPoints}
         enablePanDownToClose={false}
+        enableContentPanningGesture={true}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.handleIndicator}
       >
@@ -444,11 +496,6 @@ const HomeScreen = () => {
               hasAnyFilters={hasAnyFilters}
             />
           </View>
-          {selectedFilter && (
-            <View style={styles.filterModalContainer}>
-              {renderFilterModal()}
-            </View>
-          )}
           <BottomSheetScrollView
             contentContainerStyle={styles.bottomSheetScrollContent}
             showsVerticalScrollIndicator={false}
@@ -494,21 +541,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0',
     zIndex: 2,
   },
-  filterModalContainer: {
-    position: 'absolute',
-    top: 70, // Position below filter buttons (approximate height)
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    backgroundColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.brandPurpleDeep,
   },
 });
 
