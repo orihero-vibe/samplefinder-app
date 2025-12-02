@@ -13,6 +13,7 @@ import {
 } from '@expo-google-fonts/quicksand';
 import AppNavigator from '@/navigation/AppNavigator';
 import { TriviaModal, TriviaQuestion, getRandomTriviaQuestion } from '@/components/trivia';
+import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();

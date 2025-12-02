@@ -103,3 +103,80 @@ export const formatDateForDisplay = (isoDate: string): string => {
   }
 };
 
+/**
+ * Parses event date and time strings into start and end Date objects
+ * @param dateString - Date in format "Aug 1, 2025"
+ * @param timeString - Time in format "3 - 5 pm" or "10 - 11 am"
+ * @returns Object with start and end Date objects
+ */
+export const parseEventDateTime = (
+  dateString: string,
+  timeString: string
+): { start: Date; end: Date } => {
+  // Parse date string (e.g., "Aug 1, 2025")
+  const dateParts = dateString.trim().split(' ');
+  if (dateParts.length < 3) {
+    throw new Error(`Invalid date format: ${dateString}`);
+  }
+
+  const monthAbbr = dateParts[0]; // "Aug"
+  const day = parseInt(dateParts[1].replace(',', ''), 10); // "1"
+  const year = parseInt(dateParts[2], 10); // "2025"
+
+  // Map month abbreviations to month numbers (0-indexed)
+  const monthMap: Record<string, number> = {
+    Jan: 0,
+    Feb: 1,
+    Mar: 2,
+    Apr: 3,
+    May: 4,
+    Jun: 5,
+    Jul: 6,
+    Aug: 7,
+    Sep: 8,
+    Oct: 9,
+    Nov: 10,
+    Dec: 11,
+  };
+
+  const month = monthMap[monthAbbr];
+  if (month === undefined) {
+    throw new Error(`Invalid month abbreviation: ${monthAbbr}`);
+  }
+
+  // Parse time string (e.g., "3 - 5 pm" or "10 - 11 am")
+  const timeMatch = timeString.trim().match(/^(\d+)\s*-\s*(\d+)\s*(am|pm)$/i);
+  if (!timeMatch) {
+    throw new Error(`Invalid time format: ${timeString}`);
+  }
+
+  let startHour = parseInt(timeMatch[1], 10);
+  let endHour = parseInt(timeMatch[2], 10);
+  const period = timeMatch[3].toLowerCase();
+
+  // Convert to 24-hour format
+  if (period === 'pm') {
+    if (startHour !== 12) startHour += 12;
+    if (endHour !== 12) endHour += 12;
+  } else if (period === 'am') {
+    if (startHour === 12) startHour = 0;
+    if (endHour === 12) endHour = 0;
+  }
+
+  // Create start and end Date objects
+  const start = new Date(year, month, day, startHour, 0, 0, 0);
+  const end = new Date(year, month, day, endHour, 0, 0, 0);
+
+  // Validate dates
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    throw new Error(`Invalid date/time values: ${dateString} ${timeString}`);
+  }
+
+  // Ensure end time is after start time
+  if (end <= start) {
+    throw new Error(`End time must be after start time: ${timeString}`);
+  }
+
+  return { start, end };
+};
+

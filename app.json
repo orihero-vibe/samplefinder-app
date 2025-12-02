@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.samplefinder.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores.",
+        "NSCalendarsUsageDescription": "This app needs access to your calendar to add events for brand sample sales."
       }
     },
     "android": {
@@ -30,7 +31,9 @@
       "package": "com.samplefinder.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR"
       ],
       "config": {
         "googleMaps": {
@@ -42,7 +45,13 @@
       "favicon": "./src/assets/favicon.png"
     },
     "plugins": [
-      "./app.plugin.js"
+      "./app.plugin.js",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "The app needs to access your calendar."
+        }
+      ]
     ]
   }
 }

@@ -399,6 +399,98 @@ export const resendVerificationEmail = async (userId: string, email: string): Pr
   }
 };
 
+/**
+ * Create password recovery token
+ * Sends a recovery email to the user with a secret code
+ * Returns the userId if available (Appwrite may include it in the response)
+ */
+export const createPasswordRecovery = async (email: string, url?: string): Promise<string | null> => {
+  console.log('[auth.createPasswordRecovery] Creating password recovery token');
+  console.log('[auth.createPasswordRecovery] Email:', email);
+  
+  try {
+    const trimmedEmail = email.trim();
+    // Appwrite's createRecovery requires both email and url parameters
+    // For React Native apps, we provide a valid HTTPS URL (required by Appwrite)
+    // The recovery email will contain the secret code that users enter in the app
+    // The URL is required by Appwrite's API but the code is what users actually use
+    const recoveryUrl = url || 'https://samplefinder.app/reset-password';
+    const result = await account.createRecovery(trimmedEmail, recoveryUrl);
+    console.log('[auth.createPasswordRecovery] Password recovery email sent successfully');
+    console.log('[auth.createPasswordRecovery] Recovery result:', result);
+    
+    // Appwrite's createRecovery might return userId in the response
+    // If not, we'll need to handle it differently in updatePasswordRecovery
+    const userId = (result as any)?.userId || (result as any)?.$id || null;
+    if (userId) {
+      console.log('[auth.createPasswordRecovery] UserId from response:', userId);
+    }
+    
+    return userId;
+  } catch (error: any) {
+    console.error('[auth.createPasswordRecovery] Error:', error);
+    console.error('[auth.createPasswordRecovery] Error message:', error?.message);
+    console.error('[auth.createPasswordRecovery] Error code:', error?.code);
+    
+    // Provide user-friendly error messages
+    if (error?.code === 404 || error?.message?.includes('not found')) {
+      throw new Error('No account found with this email address.');
+    }
+    
+    throw new Error(error.message || 'Failed to send password recovery email. Please try again.');
+  }
+};
+
+/**
+ * Update password using recovery secret
+ * This is called after the user verifies the recovery code
+ * Note: If userId is not provided, Appwrite might extract it from the secret
+ */
+export const updatePasswordRecovery = async (
+  secret: string,
+  password: string,
+  passwordAgain: string,
+  userId?: string
+): Promise<void> => {
+  console.log('[auth.updatePasswordRecovery] Updating password with recovery secret');
+  if (userId) {
+    console.log('[auth.updatePasswordRecovery] UserId:', userId);
+  } else {
+    console.log('[auth.updatePasswordRecovery] No userId provided - Appwrite will extract from secret');
+  }
+  
+  if (password !== passwordAgain) {
+    throw new Error('Passwords do not match. Please try again.');
+  }
+  
+  try {
+    // Appwrite's updateRecovery requires userId and secret
+    // If userId is not provided, we might need to try a different approach
+    // For now, we'll require userId - it should be passed from the recovery response or stored
+    if (!userId) {
+      throw new Error('User ID is required for password recovery. Please request a new password reset.');
+    }
+    
+    await account.updateRecovery(userId, secret, password, passwordAgain);
+    console.log('[auth.updatePasswordRecovery] Password updated successfully');
+  } catch (error: any) {
+    console.error('[auth.updatePasswordRecovery] Error:', error);
+    console.error('[auth.updatePasswordRecovery] Error message:', error?.message);
+    console.error('[auth.updatePasswordRecovery] Error code:', error?.code);
+    
+    // Provide user-friendly error messages
+    if (error?.message?.includes('Invalid token') || error?.message?.includes('invalid') || error?.message?.includes('expired')) {
+      throw new Error('Invalid or expired recovery code. Please request a new password reset.');
+    }
+    
+    if (error?.message?.includes('password') && error?.message?.includes('weak')) {
+      throw new Error('Password does not meet security requirements. Please choose a stronger password.');
+    }
+    
+    throw new Error(error.message || 'Failed to reset password. Please try again.');
+  }
+};
+
 export default {
   signup,
   login,
@@ -409,5 +501,7 @@ export default {
   sendEmailOTP,
   verifyEmail,
   resendVerificationEmail,
+  createPasswordRecovery,
+  updatePasswordRecovery,
 };
 

@@ -6,7 +6,9 @@ import { CompositeNavigationProp, useNavigation } from '@react-navigation/native
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect } from 'react';
-import { ScrollView, Share, StyleSheet, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, View, Alert, Linking } from 'react-native';
+import * as Calendar from 'expo-calendar';
+import { parseEventDateTime } from '@/utils/formatters';
 import {
   ActionButtons,
   BrandInfo,
@@ -95,10 +97,123 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     }
   };
 
-  const handleAddToCalendar = () => {
-    setIsAddedToCalendar(!isAddedToCalendar);
-    // TODO: Implement calendar integration
-    console.log('Add to calendar pressed', !isAddedToCalendar);
+  const handleAddToCalendar = async () => {
+    // If already added, just toggle the state (could implement removal later)
+    if (isAddedToCalendar) {
+      setIsAddedToCalendar(false);
+      return;
+    }
+
+    try {
+      // First, check the current permission status
+      const { status: currentStatus } = await Calendar.getCalendarPermissionsAsync();
+      console.log('Current calendar permission status:', currentStatus);
+
+      let finalStatus = currentStatus;
+
+      // Only request permissions if status is undetermined
+      // This ensures the native modal shows automatically on first request
+      if (currentStatus === 'undetermined') {
+        const { status: requestedStatus } = await Calendar.requestCalendarPermissionsAsync();
+        console.log('Calendar permission status after request:', requestedStatus);
+        finalStatus = requestedStatus;
+      }
+
+      // Handle different permission statuses
+      if (finalStatus !== 'granted') {
+        if (finalStatus === 'denied') {
+          // Permission was previously denied - guide user to settings
+          Alert.alert(
+            'Calendar Access Required',
+            'Please enable calendar access in your device settings to add events to your calendar.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => {
+                  Linking.openSettings();
+                },
+              },
+            ]
+          );
+        } else {
+          // Permission was denied just now or other status
+          Alert.alert(
+            'Permission Needed',
+            'Please grant calendar access to add events to your calendar.',
+            [{ text: 'OK' }]
+          );
+        }
+        return;
+      }
+
+      // Get available calendars
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      if (calendars.length === 0) {
+        Alert.alert(
+          'No Calendars',
+          'No calendars are available on your device.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Find the default/primary calendar, or use the first available
+      const defaultCalendar = calendars.find((cal) => cal.isPrimary) || calendars[0];
+      if (!defaultCalendar.allowsModifications) {
+        Alert.alert(
+          'Calendar Not Writable',
+          'The selected calendar does not allow modifications.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Parse date and time
+      let eventDates;
+      try {
+        eventDates = parseEventDateTime(brand.date, brand.time);
+      } catch (error) {
+        Alert.alert(
+          'Invalid Date/Time',
+          'Unable to parse the event date or time. Please check the event details.',
+          [{ text: 'OK' }]
+        );
+        console.error('Error parsing date/time:', error);
+        return;
+      }
+
+      // Format address string
+      const addressString = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;
+
+      // Create calendar event
+      const eventDetails = {
+        title: `${brand.brandName} at ${brand.storeName}`,
+        startDate: eventDates.start,
+        endDate: eventDates.end,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
+        location: addressString,
+        notes: brand.eventInfo || `Sample sale event for ${brand.brandName}`,
+      };
+
+      const eventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
+      
+      if (eventId) {
+        setIsAddedToCalendar(true);
+        Alert.alert(
+          'Success',
+          'Event added to your calendar!',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error adding event to calendar:', error);
+      Alert.alert(
+        'Error',
+        'Failed to add event to calendar. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleAddFavorite = () => {

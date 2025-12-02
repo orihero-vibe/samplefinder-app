@@ -6,7 +6,7 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
 import MainHeader from '@/components/wrappers/MainHeader';
 import { Colors } from '@/constants/Colors';
-import { fetchClients, ClientData, fetchEventsByClient, EventRow, fetchCategories, CategoryData } from '@/lib/database';
+import { fetchClients, fetchClientsWithFilters, ClientData, fetchEventsByClient, EventRow, fetchCategories, CategoryData } from '@/lib/database';
 import {
   MapMarker,
   ClusterMarker,
@@ -41,6 +41,39 @@ const HomeScreen = () => {
 
   // Snap points for the bottom sheet - collapsed shows only filters, expanded shows events + filters
   const snapPoints = useMemo(() => [Platform.OS==='ios' ? '10%' : '12%', Platform.OS === 'android' ? '90%' : '86%'], []);
+
+  // Helper function to convert date filter values to date ranges
+  const convertDateFilterToRange = (dateValue: string): { start: string; end: string } | null => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (dateValue) {
+      case 'today':
+        return {
+          start: new Date(today.getTime()).toISOString(),
+          end: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString(),
+        };
+      case '3days':
+        return {
+          start: new Date(today.getTime()).toISOString(),
+          end: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+      case '5days':
+        return {
+          start: new Date(today.getTime()).toISOString(),
+          end: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+      case 'week':
+        return {
+          start: new Date(today.getTime()).toISOString(),
+          end: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+      case 'all':
+        return null; // No date filter
+      default:
+        return null;
+    }
+  };
 
   // Get user's current location
   useEffect(() => {
@@ -97,14 +130,62 @@ const HomeScreen = () => {
     getCurrentLocation();
   }, []);
 
-  // Fetch clients from Appwrite database
+  // Fetch clients from Appwrite database with filters
   useEffect(() => {
     const loadClients = async () => {
       try {
         setIsLoadingClients(true);
-        const clients = await fetchClients();
-        setAllClients(clients);
-        console.log('[HomeScreen] Loaded clients:', clients.length);
+        
+        // Check if any filters are active
+        const hasFilters = radiusValues.length > 0 || datesValues.length > 0 || categoriesValues.length > 0;
+        
+        if (hasFilters) {
+          // Build filter parameters
+          const filters: any = {};
+          
+          // Radius filter - use the maximum selected radius
+          if (radiusValues.length > 0 && userLocation) {
+            const maxRadius = Math.max(...radiusValues.map(v => parseFloat(v)));
+            filters.radiusMiles = maxRadius;
+            filters.userLocation = userLocation;
+          }
+          
+          // Date filter - use the first selected date (or combine if multiple)
+          if (datesValues.length > 0) {
+            // If 'all' is selected, don't apply date filter
+            if (!datesValues.includes('all')) {
+              // Use the first date filter (or could combine ranges)
+              const dateRange = convertDateFilterToRange(datesValues[0]);
+              if (dateRange) {
+                filters.dateRange = dateRange;
+              }
+            }
+          }
+          
+          // Category filter
+          if (categoriesValues.length > 0 && categories.length > 0) {
+            const selectedCategoryIds = categories
+              .filter((cat) => {
+                const catValue = cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-');
+                return categoriesValues.includes(catValue);
+              })
+              .map((cat) => cat.$id);
+            
+            if (selectedCategoryIds.length > 0) {
+              filters.categoryIds = selectedCategoryIds;
+            }
+          }
+          
+          console.log('[HomeScreen] Fetching clients with filters:', filters);
+          const clients = await fetchClientsWithFilters(filters);
+          setAllClients(clients);
+          console.log('[HomeScreen] Loaded filtered clients:', clients.length);
+        } else {
+          // No filters - fetch all clients
+          const clients = await fetchClients();
+          setAllClients(clients);
+          console.log('[HomeScreen] Loaded all clients:', clients.length);
+        }
       } catch (error) {
         console.error('[HomeScreen] Error loading clients:', error);
         // On error, keep empty clients array
@@ -114,72 +195,38 @@ const HomeScreen = () => {
       }
     };
 
-    loadClients();
-  }, []);
+    // Debounce filter changes - wait 300ms after last change
+    const timeoutId = setTimeout(() => {
+      loadClients();
+    }, 300);
 
-  // Filter and transform clients to markers based on selected categories
+    return () => clearTimeout(timeoutId);
+  }, [radiusValues, datesValues, categoriesValues, categories, userLocation]);
+
+  // Transform clients to markers - filtering is now done server-side
   useEffect(() => {
-    let filteredClients = allClients;
-
-    // Filter by categories if any are selected
-    if (categoriesValues.length > 0 && categories.length > 0) {
-      // Get the category IDs or slugs that match the selected values
-      const selectedCategoryIds = categories
-        .filter((cat) => {
-          const catValue = cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-');
-          return categoriesValues.includes(catValue);
-        })
-        .map((cat) => cat.$id);
-
-      // Filter clients that match any of the selected categories
-      // Check multiple possible field names: category, categoryId, categories, etc.
-      filteredClients = allClients.filter((client: any) => {
-        // Check if client has category field (could be ID, object, or array)
-        const clientCategory = client.category || client.categoryId || client.categories;
-        
-        if (!clientCategory) {
-          return false; // No category means it doesn't match
-        }
-
-        // Handle different category field formats
-        if (Array.isArray(clientCategory)) {
-          // If categories is an array, check if any matches
-          return clientCategory.some((cat: any) => {
-            const catId = typeof cat === 'object' ? cat.$id || cat.id : cat;
-            return selectedCategoryIds.includes(catId);
-          });
-        } else if (typeof clientCategory === 'object') {
-          // If category is an object, check its ID
-          const catId = clientCategory.$id || clientCategory.id;
-          return selectedCategoryIds.includes(catId);
-        } else {
-          // If category is a string/ID, check directly
-          return selectedCategoryIds.includes(clientCategory);
-        }
-      });
-    }
-
-    // Transform filtered clients to MapMarkerData format
-    const clientMarkers: MapMarkerData[] = filteredClients
+    // Transform clients to MapMarkerData format
+    const clientMarkers: MapMarkerData[] = allClients
       .filter((client) => {
-        // Only include clients with valid coordinates
+        // Only include clients with valid location coordinates
         return (
-          client.latitude &&
-          client.longitude &&
-          !isNaN(client.latitude) &&
-          !isNaN(client.longitude) &&
-          client.latitude !== 0 &&
-          client.longitude !== 0
+          client.location &&
+          Array.isArray(client.location) &&
+          client.location.length >= 2 &&
+          !isNaN(client.location[0]) &&
+          !isNaN(client.location[1]) &&
+          client.location[0] !== 0 &&
+          client.location[1] !== 0
         );
       })
       .map((client) => ({
         id: client.$id,
-        latitude: client.latitude,
-        longitude: client.longitude,
+        latitude: client.location![1], // location[1] is latitude
+        longitude: client.location![0], // location[0] is longitude
         title: client.name || client.title || 'Client',
         icon: 'oi:map-marker', // Use the specified icon
         address: {
-          street: client.address || client.street || '',
+          street: client.street || client.address || '',
           city: client.city || '',
           state: client.state || '',
           zip: client.zip || client.zipCode || '',
@@ -188,8 +235,8 @@ const HomeScreen = () => {
       }));
 
     setMarkers(clientMarkers);
-    console.log('[HomeScreen] Filtered markers:', clientMarkers.length, 'from', allClients.length, 'clients');
-  }, [allClients, categoriesValues, categories]);
+    console.log('[HomeScreen] Transformed markers:', clientMarkers.length, 'from', allClients.length, 'clients');
+  }, [allClients]);
 
   // Fetch categories from database
   useEffect(() => {
