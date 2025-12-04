@@ -6,5 +6,6 @@ declare module '@env' {
   export const APPWRITE_CLIENTS_TABLE_ID: string;
   export const APPWRITE_EVENTS_TABLE_ID: string;
   export const APPWRITE_CATEGORIES_TABLE_ID: string;
+  export const APPWRITE_BUCKET_ID: string;
 }
 

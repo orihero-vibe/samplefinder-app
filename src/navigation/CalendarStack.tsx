@@ -5,7 +5,7 @@ import { BrandDetailsScreen, BrandDetailsData } from '@/screens/brand-details';
 
 export type CalendarStackParamList = {
   CalendarMain: undefined;
-  BrandDetails: { brand: BrandDetailsData };
+  BrandDetails: { eventId: string } | { brand: BrandDetailsData };
 };
 
 const Stack = createNativeStackNavigator<CalendarStackParamList>();

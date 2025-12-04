@@ -18,6 +18,11 @@ export interface FavoriteBrandData {
   };
   products?: string[];
   imageUrl?: string;
+  // Date and time for event-based favorites
+  date?: string;
+  time?: string;
+  eventInfo?: string;
+  discountMessage?: string;
 }
 
 interface FavoritesState {

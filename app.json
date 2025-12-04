@@ -18,7 +18,9 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores.",
-        "NSCalendarsUsageDescription": "This app needs access to your calendar to add events for brand sample sales."
+        "NSCalendarsUsageDescription": "This app needs access to your calendar to add events for brand sample sales.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile pictures.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take profile pictures."
       }
     },
     "android": {
@@ -33,7 +35,10 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "READ_CALENDAR",
-        "WRITE_CALENDAR"
+        "WRITE_CALENDAR",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
       ],
       "config": {
         "googleMaps": {

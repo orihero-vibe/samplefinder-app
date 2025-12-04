@@ -1,12 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Colors } from '@/constants/Colors';
 import { TabParamList } from '@/navigation/TabNavigator';
-import { BrandDetailsData } from '@/screens/brand-details';
+import { CalendarStackParamList } from '@/navigation/CalendarStack';
 
-type SelectedDateEventsNavigationProp = BottomTabNavigationProp<TabParamList, 'Calendar'>;
+type SelectedDateEventsNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>,
+  BottomTabNavigationProp<TabParamList, 'Calendar'>
+>;
 
 export interface CalendarEventDetail {
   id: string;
@@ -58,27 +63,8 @@ const SelectedDateEvents: React.FC<SelectedDateEventsProps> = ({
   });
 
   const handleEventPress = (event: CalendarEventDetail) => {
-    // Convert CalendarEventDetail to BrandDetailsData
-    const brandDetails: BrandDetailsData = {
-      id: event.id,
-      brandName: event.name,
-      storeName: event.location,
-      date: formattedDate,
-      time: event.time,
-      address: {
-        street: '100 Main Street', // Default address
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19101',
-      },
-      products: [event.name], // Default to brand name as product
-      eventInfo:
-        'Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Phasellus convallis pellentesque tortor sit amet suscipit.',
-      discountMessage:
-        'Discount appears here when you check in at event! Check In Code provided on-site.',
-    };
-
-    navigation.navigate('BrandDetails', { brand: brandDetails });
+    // Navigate to BrandDetailsScreen with eventId - it will fetch data from database
+    navigation.navigate('BrandDetails', { eventId: event.id });
   };
 
   return (

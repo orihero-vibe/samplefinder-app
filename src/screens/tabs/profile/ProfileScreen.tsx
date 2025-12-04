@@ -8,7 +8,7 @@ import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
 import ReferFriendSuccessBottomSheet from '@/components/shared/ReferFriendSuccessBottomSheet';
 import { logout, getCurrentUser } from '@/lib/auth';
-import { getUserProfile, UserProfileRow } from '@/lib/database';
+import { getUserProfile, getUserStatistics, calculateTierStatus, UserProfileRow } from '@/lib/database';
 import { formatDateForDisplay } from '@/utils/formatters';
 import {
   TopLinks,
@@ -30,6 +30,12 @@ const ProfileScreen = () => {
   const [authUser, setAuthUser] = useState<{ email: string; name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [statistics, setStatistics] = useState({
+    totalPoints: 0,
+    eventCheckIns: 0,
+    samplingReviews: 0,
+    badgeAchievements: 0,
+  });
 
   const loadProfile = async () => {
     try {
@@ -50,10 +56,15 @@ const ProfileScreen = () => {
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
       
+      // Fetch user statistics
+      const userStats = await getUserStatistics(user.$id);
+      setStatistics(userStats);
+      
       console.log('[ProfileScreen] Profile loaded:', {
         hasProfile: !!userProfile,
         username: userProfile?.username,
         email: user.email,
+        statistics: userStats,
       });
     } catch (err: any) {
       console.error('[ProfileScreen] Error loading profile:', err);
@@ -210,16 +221,18 @@ const ProfileScreen = () => {
           username={profile?.username || authUser?.name || 'User'}
           onEditProfilePress={handleEditProfilePress}
         />
-        <PointsDisplay points={4500} />
+        <PointsDisplay points={statistics.totalPoints} />
         <ActivityMetrics
-          eventCheckIns={150}
-          samplingReviews={15}
-          badgeAchievements={3}
+          data={{
+            eventCheckIns: statistics.eventCheckIns,
+            samplingReviews: statistics.samplingReviews,
+            badgeAchievements: statistics.badgeAchievements,
+          }}
         />
         <RewardsProgressButton onPress={handleViewRewardsPress} />
         <PersonalInfoSection
           data={{
-            tierStatus: 'NewbieSampler', // TODO: Get from profile or calculate
+            tierStatus: calculateTierStatus(statistics.totalPoints),
             dateOfBirth: formattedDOB,
             phoneNumber: profile?.phoneNumber || '',
             email: authUser?.email || '',

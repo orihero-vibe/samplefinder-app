@@ -4,11 +4,16 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Colors } from '@/constants/Colors';
 import { CalendarEventDetail } from './SelectedDateEvents';
 import { useNavigation } from '@react-navigation/native';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { TabParamList } from '@/navigation/TabNavigator';
-import { BrandDetailsData } from '@/screens/brand-details';
+import { CalendarStackParamList } from '@/navigation/CalendarStack';
 
-type DateEventsNavigationProp = BottomTabNavigationProp<TabParamList, 'Calendar'>;
+type DateEventsNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>,
+  BottomTabNavigationProp<TabParamList, 'Calendar'>
+>;
 
 interface DateEventsBottomSheetProps {
   bottomSheetRef: React.RefObject<BottomSheet | null>;
@@ -46,26 +51,8 @@ const DateEventsBottomSheet: React.FC<DateEventsBottomSheetProps> = ({
   });
 
   const handleEventPress = (event: CalendarEventDetail) => {
-    const brandDetails: BrandDetailsData = {
-      id: event.id,
-      brandName: event.name,
-      storeName: event.location,
-      date: formattedDate,
-      time: event.time,
-      address: {
-        street: '100 Main Street',
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19101',
-      },
-      products: [event.name],
-      eventInfo:
-        'Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Phasellus convallis pellentesque tortor sit amet suscipit.',
-      discountMessage:
-        'Discount appears here when you check in at event! Check In Code provided on-site.',
-    };
-
-    navigation.navigate('BrandDetails', { brand: brandDetails });
+    // Navigate to BrandDetailsScreen with eventId - it will fetch data from database
+    navigation.navigate('BrandDetails', { eventId: event.id });
   };
 
   return (

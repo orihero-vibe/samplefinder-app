@@ -442,6 +442,63 @@ export const createPasswordRecovery = async (email: string, url?: string): Promi
 };
 
 /**
+ * Update user email
+ */
+export const updateEmail = async (email: string, password: string): Promise<void> => {
+  console.log('[auth.updateEmail] Updating user email');
+  
+  try {
+    const trimmedEmail = email.trim();
+    await account.updateEmail(trimmedEmail, password);
+    console.log('[auth.updateEmail] Email updated successfully');
+  } catch (error: any) {
+    console.error('[auth.updateEmail] Error updating email:', error);
+    console.error('[auth.updateEmail] Error message:', error?.message);
+    console.error('[auth.updateEmail] Error code:', error?.code);
+    
+    // Provide user-friendly error messages
+    if (error?.message?.includes('password') || error?.message?.includes('credentials')) {
+      throw new Error('Current password is incorrect. Please try again.');
+    }
+    if (error?.code === 409 || error?.message?.includes('already exists')) {
+      throw new Error('This email is already in use. Please use a different email.');
+    }
+    
+    throw new Error(error.message || 'Failed to update email. Please try again.');
+  }
+};
+
+/**
+ * Update user password
+ */
+export const updatePassword = async (oldPassword: string, newPassword: string, newPasswordAgain: string): Promise<void> => {
+  console.log('[auth.updatePassword] Updating user password');
+  
+  if (newPassword !== newPasswordAgain) {
+    throw new Error('New passwords do not match. Please try again.');
+  }
+  
+  try {
+    await account.updatePassword(newPassword, oldPassword);
+    console.log('[auth.updatePassword] Password updated successfully');
+  } catch (error: any) {
+    console.error('[auth.updatePassword] Error updating password:', error);
+    console.error('[auth.updatePassword] Error message:', error?.message);
+    console.error('[auth.updatePassword] Error code:', error?.code);
+    
+    // Provide user-friendly error messages
+    if (error?.message?.includes('password') || error?.message?.includes('credentials') || error?.message?.includes('old')) {
+      throw new Error('Current password is incorrect. Please try again.');
+    }
+    if (error?.message?.includes('weak') || error?.message?.includes('requirements')) {
+      throw new Error('New password does not meet security requirements. Please choose a stronger password.');
+    }
+    
+    throw new Error(error.message || 'Failed to update password. Please try again.');
+  }
+};
+
+/**
  * Update password using recovery secret
  * This is called after the user verifies the recovery code
  * Note: If userId is not provided, Appwrite might extract it from the secret
@@ -503,5 +560,7 @@ export default {
   resendVerificationEmail,
   createPasswordRecovery,
   updatePasswordRecovery,
+  updateEmail,
+  updatePassword,
 };
 
