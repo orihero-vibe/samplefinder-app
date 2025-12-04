@@ -90,7 +90,10 @@ const LoginScreen = () => {
   };
 
   const handleForgotPassword = () => {
-    navigation.navigate('ForgotPassword');
+    // Pass email if it's entered
+    navigation.navigate('ForgotPassword', {
+      email: email.trim() || undefined,
+    });
   };
 
   return (

@@ -8,7 +8,6 @@ import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { HomeStackParamList } from '@/navigation/HomeStack';
-import { BrandDetailsData } from '@/screens/brand-details';
 
 type UpcomingEventsNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>,
@@ -32,28 +31,8 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events }) => {
   const navigation = useNavigation<UpcomingEventsNavigationProp>();
 
   const handleEventPress = (event: EventData) => {
-    // Convert EventData to BrandDetailsData with default values
-    // Parse location to extract address if possible, otherwise use defaults
-    const brandDetails: BrandDetailsData = {
-      id: event.id,
-      brandName: event.product, // Using product as brand name
-      storeName: event.location,
-      date: event.date,
-      time: event.time,
-      address: {
-        street: '100 Main Street', // Default address
-        city: 'Philadelphia',
-        state: 'PA',
-        zip: '19101',
-      },
-      products: [event.product], // Default to single product
-      eventInfo:
-        'Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Phasellus convallis pellentesque tortor sit amet suscipit.',
-      discountMessage:
-        'Discount appears here when you check in at event! Check In Code provided on-site.',
-    };
-
-    navigation.navigate('BrandDetails', { brand: brandDetails });
+    // Navigate to BrandDetailsScreen with eventId - it will fetch data from database
+    navigation.navigate('BrandDetails', { eventId: event.id });
   };
 
   return (

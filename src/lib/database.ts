@@ -184,6 +184,107 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
 };
 
 /**
+ * Update user profile in the database
+ */
+export const updateUserProfile = async (
+  profileId: string,
+  updates: Partial<Pick<UserProfileData, 'firstname' | 'lastname' | 'phoneNumber' | 'username' | 'dob'>> & {
+    avatarURL?: string | null;
+    zipCode?: string | null;
+  }
+): Promise<UserProfileRow> => {
+  console.log('[database.updateUserProfile] Updating user profile:', {
+    profileId,
+    updates: Object.keys(updates),
+  });
+
+  // Validate environment variables
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.updateUserProfile]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    // Prepare update data
+    const updateData: any = {};
+
+    if (updates.firstname !== undefined) {
+      updateData.firstname = updates.firstname.trim();
+    }
+    if (updates.lastname !== undefined) {
+      updateData.lastname = updates.lastname.trim();
+    }
+    if (updates.phoneNumber !== undefined) {
+      updateData.phoneNumber = updates.phoneNumber.trim();
+    }
+    if (updates.username !== undefined) {
+      updateData.username = updates.username.trim();
+    }
+    if (updates.avatarURL !== undefined) {
+      updateData.avatarURL = updates.avatarURL;
+    }
+    if (updates.zipCode !== undefined) {
+      updateData.zipCode = updates.zipCode;
+    }
+    if (updates.dob !== undefined) {
+      // Convert date to ISO format if needed
+      let dobISO = updates.dob;
+      if (dobISO && !dobISO.includes('T')) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dobISO)) {
+          dobISO = `${dobISO}T00:00:00.000Z`;
+        } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dobISO)) {
+          const [month, day, year] = dobISO.split('/');
+          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          if (!isNaN(date.getTime())) {
+            dobISO = date.toISOString();
+          }
+        }
+      }
+      updateData.dob = dobISO;
+    }
+
+    console.log('[database.updateUserProfile] Update data:', updateData);
+
+    // Update the row
+    const result = await tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      rowId: profileId,
+      data: updateData,
+    });
+
+    console.log('[database.updateUserProfile] Profile updated successfully:', {
+      rowId: result.$id,
+    });
+
+    // Return updated profile
+    const updatedProfile = result as any;
+    return {
+      $id: updatedProfile.$id,
+      authID: updatedProfile.authID,
+      firstname: updatedProfile.firstname || '',
+      lastname: updatedProfile.lastname || '',
+      phoneNumber: updatedProfile.phoneNumber || '',
+      dob: updatedProfile.dob || '',
+      username: updatedProfile.username || '',
+      role: updatedProfile.role || 'user',
+      $createdAt: updatedProfile.$createdAt,
+      $updatedAt: updatedProfile.$updatedAt,
+      avatarURL: updatedProfile.avatarURL,
+      zipCode: updatedProfile.zipCode,
+      referalCode: updatedProfile.referalCode,
+      isBlocked: updatedProfile.isBlocked || false,
+    };
+  } catch (error: any) {
+    console.error('[database.updateUserProfile] Error updating user profile:', error);
+    console.error('[database.updateUserProfile] Error message:', error?.message);
+    console.error('[database.updateUserProfile] Error code:', error?.code);
+    throw new Error(error.message || 'Failed to update user profile');
+  }
+};
+
+/**
  * Get user profile by authID
  */
 export const getUserProfile = async (authID: string): Promise<UserProfileRow | null> => {
@@ -252,8 +353,7 @@ export interface ClientData {
   $id: string;
   name?: string;
   title?: string;
-  latitude: number;
-  longitude: number;
+  location?: [number, number]; // Point type: [longitude, latitude]
   street?: string;
   city?: string;
   state?: string;
@@ -293,20 +393,33 @@ export const fetchClients = async (): Promise<ClientData[]> => {
     }
 
     // Map the rows to ClientData format
-    const clients: ClientData[] = result.rows.map((row: any) => ({
-      $id: row.$id,
-      name: row.name || row.title || '',
-      title: row.title || row.name || '',
-      latitude: typeof row.latitude === 'number' ? row.latitude : parseFloat(row.latitude) || 0,
-      longitude: typeof row.longitude === 'number' ? row.longitude : parseFloat(row.longitude) || 0,
-      street: row.address || row.street || row.address?.street || '',
-      city: row.city || row.address?.city || '',
-      state: row.state || row.address?.state || '',
-      zip: row.zip || row.zipCode || row.address?.zip || '',
-      $createdAt: row.$createdAt,
-      $updatedAt: row.$updatedAt,
-      ...row, // Include all other fields
-    }));
+    const clients: ClientData[] = result.rows.map((row: any) => {
+      // Extract location from point field - format: [longitude, latitude]
+      let location: [number, number] | undefined;
+      if (row.location) {
+        if (Array.isArray(row.location) && row.location.length >= 2) {
+          // Direct array format [longitude, latitude]
+          location = [row.location[0], row.location[1]];
+        } else if (row.location.coordinates && Array.isArray(row.location.coordinates) && row.location.coordinates.length >= 2) {
+          // GeoJSON format {coordinates: [longitude, latitude]}
+          location = [row.location.coordinates[0], row.location.coordinates[1]];
+        }
+      }
+      
+      return {
+        $id: row.$id,
+        name: row.name || row.title || '',
+        title: row.title || row.name || '',
+        location,
+        street: row.address || row.street || row.address?.street || '',
+        city: row.city || row.address?.city || '',
+        state: row.state || row.address?.state || '',
+        zip: row.zip || row.zipCode || row.address?.zip || '',
+        $createdAt: row.$createdAt,
+        $updatedAt: row.$updatedAt,
+        ...row, // Include all other fields
+      };
+    });
 
     console.log('[database.fetchClients] Clients fetched successfully:', clients.length);
     return clients;
@@ -315,6 +428,194 @@ export const fetchClients = async (): Promise<ClientData[]> => {
     console.error('[database.fetchClients] Error message:', error?.message);
     console.error('[database.fetchClients] Error code:', error?.code);
     throw new Error(error.message || 'Failed to fetch clients');
+  }
+};
+
+/**
+ * Fetch clients with filters applied (radius, date, category)
+ * Filters events first, then returns clients that have matching events
+ */
+export interface FetchClientsFilters {
+  radiusMiles?: number;
+  dateRange?: {
+    start: string; // ISO datetime
+    end: string; // ISO datetime
+  };
+  categoryIds?: string[];
+  userLocation?: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
+export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Promise<ClientData[]> => {
+  console.log('[database.fetchClientsWithFilters] Fetching clients with filters:', filters);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !CLIENTS_TABLE_ID || !EVENTS_TABLE_ID) {
+    const errorMsg = 'Database ID or Table IDs not configured. Please check your .env file.';
+    console.error('[database.fetchClientsWithFilters]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    // Step 1: Filter events by date and category (server-side)
+    const eventQueries: any[] = [];
+
+    // Filter out archived and hidden events
+    eventQueries.push(Query.equal('isArchived', false));
+    eventQueries.push(Query.equal('isHidden', false));
+
+    // Date filter
+    if (filters.dateRange) {
+      eventQueries.push(Query.greaterThanEqual('date', filters.dateRange.start));
+      eventQueries.push(Query.lessThanEqual('date', filters.dateRange.end));
+      console.log('[database.fetchClientsWithFilters] Date filter:', filters.dateRange);
+    }
+
+    // Category filter - use OR logic for multiple categories
+    if (filters.categoryIds && filters.categoryIds.length > 0) {
+      // For each category, add a query (Appwrite will handle OR for same field)
+      // Note: We'll need to handle this differently - fetch all and filter, or use multiple queries
+      // Since Appwrite may not support OR directly, we'll fetch events matching any category
+      // and combine results
+      const categoryQueries = filters.categoryIds.map((categoryId) =>
+        Query.equal('categories', categoryId)
+      );
+      // For now, we'll fetch with first category and filter client-side for others
+      // This is a limitation - ideally Appwrite would support OR queries
+      if (categoryQueries.length > 0) {
+        eventQueries.push(categoryQueries[0]);
+      }
+      console.log('[database.fetchClientsWithFilters] Category filter:', filters.categoryIds);
+    }
+
+    // Fetch filtered events (date and category filters applied server-side)
+    console.log('[database.fetchClientsWithFilters] Querying events with', eventQueries.length, 'queries');
+    const eventsResult = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: EVENTS_TABLE_ID,
+      queries: eventQueries,
+    });
+
+    console.log('[database.fetchClientsWithFilters] Events query result:', {
+      total: eventsResult.total,
+      rowsCount: eventsResult.rows?.length || 0,
+    });
+
+    // Additional client-side filtering for categories if multiple categories selected
+    // (This is needed because Appwrite doesn't support OR queries for the same field)
+    let filteredEvents = eventsResult.rows || [];
+    if (filters.categoryIds && filters.categoryIds.length > 1) {
+      filteredEvents = (eventsResult.rows || []).filter((event: any) => {
+        const eventCategoryId = event.categories?.$id || event.categories;
+        return eventCategoryId && filters.categoryIds!.includes(String(eventCategoryId));
+      });
+    }
+
+    // Extract unique client IDs from filtered events
+    // Handle both relationship object format and string ID format
+    const clientIdsFromEvents = new Set<string>();
+    filteredEvents.forEach((event: any) => {
+      const clientId = event.client?.$id || event.client;
+      if (clientId) {
+        clientIdsFromEvents.add(String(clientId));
+      }
+    });
+
+    console.log('[database.fetchClientsWithFilters] Client IDs from events:', clientIdsFromEvents.size);
+
+    // Step 2: Filter clients by radius (if specified) and by client IDs from events
+    const clientQueries: any[] = [];
+
+    // Radius filter - use Query.distanceLessThan on clients table (clients have location column)
+    if (filters.radiusMiles && filters.userLocation) {
+      const radiusMeters = filters.radiusMiles * 1609.34; // Convert miles to meters
+      const centerPoint: [number, number] = [filters.userLocation.longitude, filters.userLocation.latitude];
+      clientQueries.push(Query.distanceLessThan('location', centerPoint, radiusMeters));
+      console.log('[database.fetchClientsWithFilters] Radius filter on clients:', {
+        miles: filters.radiusMiles,
+        meters: radiusMeters,
+        center: centerPoint,
+      });
+    }
+
+    // Fetch clients (radius filter applied server-side if specified)
+    console.log('[database.fetchClientsWithFilters] Querying clients with', clientQueries.length, 'queries');
+    const clientsResult = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: CLIENTS_TABLE_ID,
+      queries: clientQueries.length > 0 ? clientQueries : undefined,
+    });
+
+    console.log('[database.fetchClientsWithFilters] Clients query result:', {
+      total: clientsResult.total,
+      rowsCount: clientsResult.rows?.length || 0,
+    });
+
+    if (!clientsResult.rows || clientsResult.rows.length === 0) {
+      console.log('[database.fetchClientsWithFilters] No clients found matching filters');
+      return [];
+    }
+
+    // Step 3: Filter clients to only include those that have matching events
+    // If no events matched, return empty array
+    if (clientIdsFromEvents.size === 0 && (filters.dateRange || (filters.categoryIds && filters.categoryIds.length > 0))) {
+      console.log('[database.fetchClientsWithFilters] No events matched date/category filters');
+      return [];
+    }
+
+    // Filter clients: must be in clientIdsFromEvents (if events were filtered) AND pass radius filter (if applied)
+    let filteredClients = clientsResult.rows;
+    if (clientIdsFromEvents.size > 0) {
+      filteredClients = clientsResult.rows.filter((client: any) => {
+        return clientIdsFromEvents.has(client.$id);
+      });
+    }
+
+    console.log('[database.fetchClientsWithFilters] Filtered clients count:', filteredClients.length);
+
+    if (filteredClients.length === 0) {
+      console.log('[database.fetchClientsWithFilters] No clients found matching all filters');
+      return [];
+    }
+
+    // Map filtered clients to ClientData format
+    const clients: ClientData[] = filteredClients.map((row: any) => {
+        // Extract location from point field - format: [longitude, latitude]
+        let location: [number, number] | undefined;
+        if (row.location) {
+          if (Array.isArray(row.location) && row.location.length >= 2) {
+            // Direct array format [longitude, latitude]
+            location = [row.location[0], row.location[1]];
+          } else if (row.location.coordinates && Array.isArray(row.location.coordinates) && row.location.coordinates.length >= 2) {
+            // GeoJSON format {coordinates: [longitude, latitude]}
+            location = [row.location.coordinates[0], row.location.coordinates[1]];
+          }
+        }
+
+        return {
+          $id: row.$id,
+          name: row.name || row.title || '',
+          title: row.title || row.name || '',
+          location,
+          street: row.address || row.street || row.address?.street || '',
+          city: row.city || row.address?.city || '',
+          state: row.state || row.address?.state || '',
+          zip: row.zip || row.zipCode || row.address?.zip || '',
+          $createdAt: row.$createdAt,
+          $updatedAt: row.$updatedAt,
+          ...row, // Include all other fields
+        };
+      });
+
+    console.log('[database.fetchClientsWithFilters] Clients fetched successfully:', clients.length);
+    return clients;
+  } catch (error: any) {
+    console.error('[database.fetchClientsWithFilters] Error fetching clients with filters:', error);
+    console.error('[database.fetchClientsWithFilters] Error message:', error?.message);
+    console.error('[database.fetchClientsWithFilters] Error code:', error?.code);
+    throw new Error(error.message || 'Failed to fetch clients with filters');
   }
 };
 
@@ -423,6 +724,72 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
 };
 
 /**
+ * Fetch a single event by ID with client relationship
+ */
+export const fetchEventById = async (eventId: string): Promise<EventRow | null> => {
+  console.log('[database.fetchEventById] Fetching event:', eventId);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !EVENTS_TABLE_ID) {
+    const errorMsg = 'Database ID or Events Table ID not configured. Please check your .env file.';
+    console.error('[database.fetchEventById]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    const result = await tablesDB.getRow({
+      databaseId: DATABASE_ID,
+      tableId: EVENTS_TABLE_ID,
+      rowId: eventId,
+    });
+
+    if (!result) {
+      console.log('[database.fetchEventById] Event not found:', eventId);
+      return null;
+    }
+
+    // Check if event is archived or hidden
+    const isArchived = result.isArchived === true || result.isArchived === 'true';
+    const isHidden = result.isHidder === true || result.isHidder === 'true';
+
+    if (isArchived || isHidden) {
+      console.log('[database.fetchEventById] Event is archived or hidden:', eventId);
+      return null;
+    }
+
+    const event: EventRow = {
+      $id: result.$id,
+      name: result.name || '',
+      date: result.date || '',
+      startTime: result.startTime || '',
+      endTime: result.endTime || '',
+      city: result.city || '',
+      address: result.address || '',
+      state: result.state || '',
+      zipCode: result.zipCode || '',
+      products: result.products || '',
+      client: result.client,
+      checkInCode: result.checkInCode || '',
+      checkInPoints: result.checkInPoints || 0,
+      reviewPoints: result.reviewPoints || 0,
+      eventInfo: result.eventInfo || '',
+      isArchived: result.isArchived || false,
+      isHidder: result.isHidder || false,
+      $createdAt: result.$createdAt,
+      $updatedAt: result.$updatedAt,
+    };
+
+    console.log('[database.fetchEventById] Event fetched successfully:', event.$id);
+    return event;
+  } catch (error: any) {
+    console.error('[database.fetchEventById] Error fetching event:', error);
+    console.error('[database.fetchEventById] Error message:', error?.message);
+    console.error('[database.fetchEventById] Error code:', error?.code);
+    throw new Error(error.message || 'Failed to fetch event');
+  }
+};
+
+/**
  * Category data interface
  */
 export interface CategoryData {
@@ -497,11 +864,106 @@ export const fetchCategories = async (): Promise<CategoryData[]> => {
   }
 };
 
+/**
+ * User statistics interface
+ */
+export interface UserStatistics {
+  totalPoints: number;
+  eventCheckIns: number;
+  samplingReviews: number;
+  badgeAchievements: number;
+}
+
+/**
+ * Get user statistics (points, check-ins, reviews, badges)
+ * NOTE: This function requires the following database tables/fields:
+ * - User Check-ins table (or checkIns field in UserProfile)
+ * - User Reviews table (or reviews field in UserProfile)
+ * - User Badges table (or badges field in UserProfile)
+ * - User Points table (or totalPoints field in UserProfile)
+ * 
+ * Currently returns default values until these tables are created.
+ */
+export const getUserStatistics = async (authID: string): Promise<UserStatistics> => {
+  console.log('[database.getUserStatistics] Fetching user statistics for authID:', authID);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.getUserStatistics]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    // TODO: Implement actual queries once these tables/fields exist:
+    // - Query user check-ins table filtered by authID
+    // - Query user reviews table filtered by authID
+    // - Query user badges table filtered by authID
+    // - Get total points from user points table or user profile
+    
+    // For now, return default values
+    // In production, you would:
+    // 1. Query check-ins: tablesDB.listRows({ tableId: 'user_checkins', queries: [Query.equal('authID', authID)] })
+    // 2. Query reviews: tablesDB.listRows({ tableId: 'user_reviews', queries: [Query.equal('authID', authID)] })
+    // 3. Query badges: tablesDB.listRows({ tableId: 'user_badges', queries: [Query.equal('authID', authID)] })
+    // 4. Get points: from user profile or points table
+    
+    const stats: UserStatistics = {
+      totalPoints: 0,
+      eventCheckIns: 0,
+      samplingReviews: 0,
+      badgeAchievements: 0,
+    };
+
+    console.log('[database.getUserStatistics] Returning default statistics:', stats);
+    console.warn('[database.getUserStatistics] WARNING: Using default values. Database tables for check-ins, reviews, badges, and points need to be created.');
+    
+    return stats;
+  } catch (error: any) {
+    console.error('[database.getUserStatistics] Error fetching user statistics:', error);
+    console.error('[database.getUserStatistics] Error message:', error?.message);
+    console.error('[database.getUserStatistics] Error code:', error?.code);
+    
+    // Return default values on error
+    return {
+      totalPoints: 0,
+      eventCheckIns: 0,
+      samplingReviews: 0,
+      badgeAchievements: 0,
+    };
+  }
+};
+
+/**
+ * Calculate user tier status based on points or activity
+ * Tier levels can be:
+ * - NewbieSampler: 0-999 points
+ * - ActiveSampler: 1000-4999 points
+ * - ProSampler: 5000-9999 points
+ * - EliteSampler: 10000+ points
+ */
+export const calculateTierStatus = (points: number): string => {
+  if (points >= 10000) {
+    return 'EliteSampler';
+  } else if (points >= 5000) {
+    return 'ProSampler';
+  } else if (points >= 1000) {
+    return 'ActiveSampler';
+  } else {
+    return 'NewbieSampler';
+  }
+};
+
 export default {
   createUserProfile,
   getUserProfile,
+  updateUserProfile,
   fetchClients,
+  fetchClientsWithFilters,
   fetchEventsByClient,
+  fetchEventById,
   fetchCategories,
+  getUserStatistics,
+  calculateTierStatus,
 };
 

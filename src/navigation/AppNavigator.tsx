@@ -15,8 +15,8 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ConfirmAccount: { phoneNumber?: string };
-  ForgotPassword: undefined;
-  PasswordReset: { phoneNumber?: string };
+  ForgotPassword: { email?: string };
+  PasswordReset: { email: string; userId?: string };
   MainTabs: undefined;
 };
 

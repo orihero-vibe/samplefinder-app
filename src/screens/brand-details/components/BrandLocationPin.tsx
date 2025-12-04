@@ -1,17 +1,25 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 
-const BrandLocationPin: React.FC = () => {
+interface BrandLocationPinProps {
+  logoUrl?: string | null;
+}
+
+const BrandLocationPin: React.FC<BrandLocationPinProps> = ({ logoUrl }) => {
   return (
     <View style={styles.pinContainer}>
-      <View style={styles.largePin}>
-        <Monicon name="mdi:map-marker" size={48} color={Colors.blueColorMode} />
-        <View style={styles.pinOverlay}>
-          <Monicon name="mdi:magnify" size={20} color={Colors.white} />
+      {logoUrl ? (
+        <Image source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="cover" />
+      ) : (
+        <View style={styles.largePin}>
+          <Monicon name="mdi:map-marker" size={48} color={Colors.blueColorMode} />
+          <View style={styles.pinOverlay}>
+            <Monicon name="mdi:magnify" size={20} color={Colors.white} />
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 };
@@ -45,6 +53,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: Colors.white,
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
   },
 });
 

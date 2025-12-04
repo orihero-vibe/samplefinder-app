@@ -9,7 +9,6 @@ import { Colors } from '@/constants/Colors';
 import { EventData } from './UpcomingEvents';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { HomeStackParamList } from '@/navigation/HomeStack';
-import { BrandDetailsData } from '@/screens/brand-details';
 
 type StoreModalNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>,
@@ -40,23 +39,9 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, onClose }) => {
   if (!store) return null;
 
   const handleEventPress = (event: EventData) => {
-    // Convert EventData + StoreData to BrandDetailsData
-    const brandDetails: BrandDetailsData = {
-      id: event.id,
-      brandName: event.product, // Using product as brand name
-      storeName: store.name,
-      date: event.date,
-      time: event.time,
-      address: store.address,
-      products: [event.product], // Default to single product
-      eventInfo:
-        'Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Phasellus convallis pellentesque tortor sit amet suscipit.',
-      discountMessage:
-        'Discount appears here when you check in at event! Check In Code provided on-site.',
-    };
-
+    // Navigate to BrandDetailsScreen with eventId - it will fetch data from database
     onClose(); // Close modal first
-    navigation.navigate('BrandDetails', { brand: brandDetails });
+    navigation.navigate('BrandDetails', { eventId: event.id });
   };
 
   return (
