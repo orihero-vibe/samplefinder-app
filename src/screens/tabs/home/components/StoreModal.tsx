@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import { EventCard, UnifiedEvent } from '@/components';
 import { EventData } from './UpcomingEvents';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { HomeStackParamList } from '@/navigation/HomeStack';
+import Monicon from '@monicon/native';
 
 type StoreModalNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>,
@@ -30,15 +31,16 @@ export interface StoreData {
 interface StoreModalProps {
   visible: boolean;
   store: StoreData | null;
+  isLoadingEvents?: boolean;
   onClose: () => void;
 }
 
-const StoreModal: React.FC<StoreModalProps> = ({ visible, store, onClose }) => {
+const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents = false, onClose }) => {
   const navigation = useNavigation<StoreModalNavigationProp>();
 
   if (!store) return null;
 
-  const handleEventPress = (event: EventData) => {
+  const handleEventPress = (event: UnifiedEvent) => {
     // Navigate to BrandDetailsScreen with eventId - it will fetch data from database
     onClose(); // Close modal first
     navigation.navigate('BrandDetails', { eventId: event.id });
@@ -73,28 +75,36 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, onClose }) => {
 
           {/* Products/Events List */}
           <ScrollView style={styles.eventsList} showsVerticalScrollIndicator={false}>
-            {store.events.map((event, index) => (
-              <TouchableOpacity
-                key={event.id}
-                onPress={() => handleEventPress(event)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.eventItem}>
-                  <View style={styles.iconContainer}>
-                    <Monicon name="mdi:map-marker" size={28} color={Colors.brandPurpleDeep} />
-                    <View style={styles.iconOverlay}>
-                      <Monicon name="mdi:magnify" size={14} color={Colors.white} />
-                    </View>
-                  </View>
-                  <View style={styles.eventDetails}>
-                    <Text style={styles.productText}>{event.product}</Text>
-                    <Text style={styles.dateText}>{event.date}</Text>
-                    <Text style={styles.timeText}>{event.time}</Text>
-                  </View>
-                </View>
-                {index < store.events.length - 1 && <View style={styles.separator} />}
-              </TouchableOpacity>
-            ))}
+            {isLoadingEvents ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.brandPurpleDeep} />
+                <Text style={styles.loadingText}>Loading events...</Text>
+              </View>
+            ) : store.events.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No events available</Text>
+              </View>
+            ) : (
+              store.events.map((event) => {
+                const unifiedEvent: UnifiedEvent = {
+                  id: event.id,
+                  name: event.name,
+                  location: event.location,
+                  distance: event.distance,
+                  time: event.time,
+                  date: event.date,
+                  logoURL: event.logoURL,
+                };
+                return (
+                  <EventCard
+                    key={event.id}
+                    event={unifiedEvent}
+                    onPress={handleEventPress}
+                    showDate={true}
+                  />
+                );
+              })
+            )}
           </ScrollView>
         </View>
       </View>
@@ -156,60 +166,29 @@ const styles = StyleSheet.create({
   },
   eventsList: {
     paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 20,
   },
-  eventItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 16,
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.white,
-    borderWidth: 2,
-    borderColor: Colors.brandPurpleDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    position: 'relative',
-  },
-  iconOverlay: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.brandPurpleDeep,
+  loadingContainer: {
+    paddingVertical: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  eventDetails: {
-    flex: 1,
-  },
-  productText: {
-    fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.black,
-    marginBottom: 6,
-  },
-  dateText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_500Medium',
-    color: Colors.black,
-    marginBottom: 4,
-  },
-  timeText: {
+  loadingText: {
+    marginTop: 12,
     fontSize: 14,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.black,
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginLeft: 72,
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.black,
   },
 });
 

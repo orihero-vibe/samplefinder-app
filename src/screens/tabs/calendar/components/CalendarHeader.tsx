@@ -6,7 +6,7 @@ import { Colors } from '@/constants/Colors';
 
 interface CalendarHeaderProps {
   month: string;
-  year: number;
+  year: number | null;
   onPreviousMonth: () => void;
   onNextMonth: () => void;
 }
@@ -28,7 +28,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         <TouchableOpacity onPress={onPreviousMonth} style={styles.iconButton}>
           <Monicon name="mdi:chevron-left" size={24} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.monthYear}>{month} {year}</Text>
+        <Text style={styles.monthYear}>{year !== null ? `${month} ${year}` : month}</Text>
         <TouchableOpacity onPress={onNextMonth} style={styles.iconButton}>
           <Monicon name="mdi:chevron-right" size={24} color={Colors.white} />
         </TouchableOpacity>

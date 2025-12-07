@@ -18,7 +18,7 @@ const BrandAmbassadorSection: React.FC<BrandAmbassadorSectionProps> = ({
       </Text>
       <CustomButton
         title="Apply Here!"
-        onPress={onApplyHerePress}
+        onPress={onApplyHerePress || (() => {})}
         variant="primary"
         size="medium"
         style={styles.applyButton}

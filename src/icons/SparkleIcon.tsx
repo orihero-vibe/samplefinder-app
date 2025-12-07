@@ -13,23 +13,19 @@ const SparkleIcon: React.FC<SparkleIconProps> = ({
   circleColor = '#FFFFFF' 
 }) => {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="11" fill={circleColor} stroke={color} strokeWidth="1"/>
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 27 27"
+      fill="none"
+    >
       <Path
-        d="M12 7L12.5 9.5L15 10L12.5 10.5L12 13L11.5 10.5L9 10L11.5 9.5L12 7Z"
-        fill="none"
+        d="M4.125 26v-6.25m0-12.5V1M1 4.125h6.25M1 22.875h6.25m7.5-20.625l-2.168 5.636c-.352.917-.529 1.375-.803 1.76a3.75 3.75 0 01-.883.883c-.385.274-.843.45-1.76.803L3.5 13.5l5.636 2.168c.917.352 1.375.529 1.76.803.342.242.64.541.883.883.274.385.45.843.803 1.76l2.168 5.636 2.168-5.636c.352-.917.529-1.375.803-1.76a3.75 3.75 0 01.883-.883c.385-.274.843-.45 1.76-.803L26 13.5l-5.636-2.168c-.917-.352-1.375-.529-1.76-.803a3.75 3.75 0 01-.883-.883c-.274-.385-.45-.843-.803-1.76L14.75 2.25z"
         stroke={color}
-        strokeWidth="1.5"
+        strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-      <Path
-        d="M8 12L9 12.5L8 13L7 12.5L8 12Z"
-        fill={color}
-      />
-      <Path
-        d="M16 12L17 12.5L16 13L15 12.5L16 12Z"
-        fill={color}
+        strokeOpacity={1}
       />
     </Svg>
   );

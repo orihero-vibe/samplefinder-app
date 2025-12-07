@@ -14,6 +14,7 @@ const configWithMonicon = withMonicon(config, {
     "mdi:calendar",
     "mdi:calendar-check",
     "mdi:calendar-plus",
+    "mdi:camera",
     "mdi:cart",
     "mdi:cat",
     "mdi:cellphone",

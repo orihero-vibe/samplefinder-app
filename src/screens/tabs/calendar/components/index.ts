@@ -5,7 +5,6 @@ export { default as EventList } from './EventList';
 export { default as DiscoverButton } from './DiscoverButton';
 export { default as SelectedDateEvents } from './SelectedDateEvents';
 export { default as DateEventsBottomSheet } from './DateEventsBottomSheet';
-
 export interface CalendarEvent {
   id: string;
   date: Date;

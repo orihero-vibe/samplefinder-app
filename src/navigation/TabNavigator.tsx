@@ -25,24 +25,31 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   const insets = useSafeAreaInsets();
 
   const getIcon = (routeName: string, isFocused: boolean) => {
-    const iconSize = 40;
-    const iconColor = isFocused ? Colors.white : Colors.pinDarkBlue;
+    const iconSize = 30;
+    const iconColor = Colors.pinDarkBlue;
     const circleColor = Colors.white;
+
+    let icon = null;
 
     switch (routeName) {
       case 'Home':
-        return <HomeIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        icon = <HomeIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        break;
       case 'Profile':
-        return <ProfileIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        icon = <ProfileIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        break;
       case 'Favorites':
-        return <HeartIcon size={iconSize} color={iconColor} circleColor={circleColor} filled={isFocused} />;
+        icon = <HeartIcon size={iconSize} color={iconColor} circleColor={circleColor} filled={isFocused} />;
+        break;
       case 'Calendar':
-        return <CalendarIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        icon = <CalendarIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        break;
       case 'Promotions':
-        return <SparkleIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
-      default:
-        return null;
+        icon = <SparkleIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        break;
     }
+
+    return <View style={styles.iconContainer}>{icon}</View>;
   };
 
   return (
@@ -128,6 +135,14 @@ const styles = StyleSheet.create({
     padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconContainer: {
+    width: 50,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderRadius: 100,
   },
 });
 

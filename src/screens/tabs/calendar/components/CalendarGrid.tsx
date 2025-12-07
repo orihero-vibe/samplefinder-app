@@ -4,7 +4,7 @@ import { Colors } from '@/constants/Colors';
 
 interface CalendarEvent {
   id: string;
-  date: Date;
+  date: Date | string;
 }
 
 interface CalendarGridProps {
@@ -29,9 +29,15 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   const daysInMonth = lastDayOfMonth.getDate();
   const startingDayOfWeek = firstDayOfMonth.getDay();
 
+  // Normalize date to compare only year, month, and day (ignore time)
+  const normalizeDate = (date: Date | string): Date => {
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+
   // Get events for this month
   const monthEvents = events.filter((event) => {
-    const eventDate = new Date(event.date);
+    const eventDate = normalizeDate(event.date);
     return (
       eventDate.getFullYear() === year && eventDate.getMonth() === month
     );
@@ -39,7 +45,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
 
   const hasEvent = (day: number): boolean => {
     return monthEvents.some((event) => {
-      const eventDate = new Date(event.date);
+      const eventDate = normalizeDate(event.date);
       return eventDate.getDate() === day;
     });
   };
@@ -109,6 +115,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
           const selected = isSelected(day);
           const hasEventDot = hasEvent(day);
           const pastDate = isPastDate(day);
+          const today = isToday(day);
 
           return (
             <TouchableOpacity
@@ -120,14 +127,16 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
               <View
                 style={[
                   styles.dateContainer,
+                  today && !selected && styles.todayDateContainer,
                   selected && styles.selectedDateContainer,
                 ]}
               >
                 <Text
                   style={[
                     styles.dateText,
+                    today && !selected && styles.todayDateText,
                     selected && styles.selectedDateText,
-                    pastDate && !selected && styles.pastDateText,
+                    pastDate && !selected && !today && styles.pastDateText,
                   ]}
                 >
                   {day}
@@ -137,6 +146,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                     style={[
                       styles.eventDot,
                       selected && styles.selectedEventDot,
+                      today && !selected && styles.todayEventDot,
                     ]}
                   />
                 )}
@@ -196,19 +206,29 @@ const styles = StyleSheet.create({
   selectedDateText: {
     color: Colors.white,
   },
+  todayDateContainer: {
+    borderWidth: 2,
+    borderColor: Colors.brandBlueBright,
+  },
+  todayDateText: {
+    color: Colors.brandBlueBright,
+  },
   pastDateText: {
     color: '#CCCCCC',
   },
   eventDot: {
     position: 'absolute',
     bottom: 2,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: Colors.brandPurpleDeep,
   },
   selectedEventDot: {
     backgroundColor: Colors.white,
+  },
+  todayEventDot: {
+    backgroundColor: Colors.brandBlueBright,
   },
 });
 

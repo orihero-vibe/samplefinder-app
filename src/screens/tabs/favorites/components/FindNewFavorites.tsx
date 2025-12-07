@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { HeartIcon } from '@/icons';
@@ -8,6 +8,9 @@ export interface NewBrandData {
   id: string;
   brandName: string;
   description: string;
+  productTypes: string[];
+  createdAt: string;
+  logoURL?: string | null;
   isFavorited?: boolean;
 }
 
@@ -28,15 +31,29 @@ const FindNewFavorites: React.FC<FindNewFavoritesProps> = ({ brands, onToggleFav
           activeOpacity={0.7}
         >
           <View style={styles.leftSection}>
-            <View style={styles.iconContainer}>
-              <Monicon name="mdi:map-marker" size={20} color={Colors.pinDarkBlue} />
-              <View style={styles.iconOverlay}>
-                <Monicon name="mdi:magnify" size={12} color={Colors.white} />
-              </View>
+            <View style={styles.logoContainer}>
+              {brand.logoURL ? (
+                <Image
+                  source={{ uri: brand.logoURL }}
+                  style={styles.logoImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <Monicon name="mdi:map-marker" size={20} color={Colors.pinDarkBlue} />
+                  <View style={styles.iconOverlay}>
+                    <Monicon name="mdi:magnify" size={12} color={Colors.white} />
+                  </View>
+                </View>
+              )}
             </View>
             <View style={styles.brandInfo}>
               <Text style={styles.brandName}>{brand.brandName}</Text>
-              <Text style={styles.description}>{brand.description}</Text>
+              <Text style={styles.description}>
+                {brand.productTypes && brand.productTypes.length > 0
+                  ? brand.productTypes.join(', ')
+                  : brand.description || 'No products listed'}
+              </Text>
             </View>
           </View>
           <TouchableOpacity
@@ -80,7 +97,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flex: 1,
   },
-  iconContainer: {
+  logoContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -91,6 +108,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
     position: 'relative',
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  logoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconOverlay: {
     position: 'absolute',
