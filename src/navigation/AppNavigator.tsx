@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import PasswordResetScreen from '@/screens/auth/PasswordResetScreen';
 import TabNavigator from '@/navigation/TabNavigator';
 import { getCurrentUser } from '@/lib/auth';
 import { Colors } from '@/constants/Colors';
+import { setNavigationRef, setupNotificationHandlers, getLastNotificationResponse } from '@/lib/notifications/handlers';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -25,9 +26,14 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRouteName, setInitialRouteName] = useState<keyof RootStackParamList>('Login');
+  const navigationRef = useRef<any>(null);
 
   useEffect(() => {
     checkAuthSession();
+    setupNotificationHandlers();
+    
+    // Check for notification that opened the app
+    getLastNotificationResponse();
   }, []);
 
   const checkAuthSession = async () => {
@@ -60,7 +66,12 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={(ref) => {
+        navigationRef.current = ref;
+        setNavigationRef(ref);
+      }}
+    >
       <Stack.Navigator
         initialRouteName={initialRouteName}
         screenOptions={{

@@ -1,6 +1,7 @@
 import { ID, Query } from 'react-native-appwrite';
 import { tablesDB, DATABASE_ID, USER_PROFILES_TABLE_ID } from './config';
 import type { UserProfileData, UserProfileRow } from './types';
+import type { NotificationPreferences } from '../notifications/types';
 
 /**
  * Create a user profile in the database
@@ -307,6 +308,109 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
     console.error('[database.getUserProfile] Error message:', error?.message);
     console.error('[database.getUserProfile] Error code:', error?.code);
     throw new Error(error.message || 'Failed to fetch user profile');
+  }
+};
+
+/**
+ * Get notification preferences for a user
+ */
+export const getNotificationPreferences = async (authID: string): Promise<NotificationPreferences | null> => {
+  console.log('[database.getNotificationPreferences] Fetching notification preferences for authID:', authID);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.getNotificationPreferences]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    // Get user profile first
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      console.log('[database.getNotificationPreferences] No profile found, returning default preferences');
+      return null;
+    }
+
+    // Extract notification preferences from profile
+    // Assuming preferences are stored as a JSON object in the profile
+    const preferences: NotificationPreferences = {
+      enablePushNotifications: (profile as any).notificationPreferences?.enablePushNotifications ?? true,
+      eventReminders: (profile as any).notificationPreferences?.eventReminders ?? true,
+      checkInConfirmations: (profile as any).notificationPreferences?.checkInConfirmations ?? true,
+      triviaGames: (profile as any).notificationPreferences?.triviaGames ?? true,
+      rewardsUpdates: (profile as any).notificationPreferences?.rewardsUpdates ?? true,
+      newEventsNearby: (profile as any).notificationPreferences?.newEventsNearby ?? true,
+      favoriteBrandUpdates: (profile as any).notificationPreferences?.favoriteBrandUpdates ?? false,
+    };
+
+    console.log('[database.getNotificationPreferences] Preferences retrieved:', preferences);
+    return preferences;
+  } catch (error: any) {
+    console.error('[database.getNotificationPreferences] Error fetching preferences:', error);
+    console.error('[database.getNotificationPreferences] Error message:', error?.message);
+    throw new Error(error.message || 'Failed to fetch notification preferences');
+  }
+};
+
+/**
+ * Update notification preferences for a user
+ */
+export const updateNotificationPreferences = async (
+  authID: string,
+  preferences: Partial<NotificationPreferences>
+): Promise<void> => {
+  console.log('[database.updateNotificationPreferences] Updating preferences for authID:', authID);
+  console.log('[database.updateNotificationPreferences] New preferences:', preferences);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.updateNotificationPreferences]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    // Get current profile
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      throw new Error('User profile not found');
+    }
+
+    // Get current preferences or use defaults
+    const currentPreferences: NotificationPreferences = {
+      enablePushNotifications: (profile as any).notificationPreferences?.enablePushNotifications ?? true,
+      eventReminders: (profile as any).notificationPreferences?.eventReminders ?? true,
+      checkInConfirmations: (profile as any).notificationPreferences?.checkInConfirmations ?? true,
+      triviaGames: (profile as any).notificationPreferences?.triviaGames ?? true,
+      rewardsUpdates: (profile as any).notificationPreferences?.rewardsUpdates ?? true,
+      newEventsNearby: (profile as any).notificationPreferences?.newEventsNearby ?? true,
+      favoriteBrandUpdates: (profile as any).notificationPreferences?.favoriteBrandUpdates ?? false,
+    };
+
+    // Merge with new preferences
+    const updatedPreferences: NotificationPreferences = {
+      ...currentPreferences,
+      ...preferences,
+    };
+
+    console.log('[database.updateNotificationPreferences] Merged preferences:', updatedPreferences);
+
+    // Update the profile with new preferences
+    await tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      rowId: profile.$id,
+      data: {
+        notificationPreferences: updatedPreferences,
+      },
+    });
+
+    console.log('[database.updateNotificationPreferences] Preferences updated successfully');
+  } catch (error: any) {
+    console.error('[database.updateNotificationPreferences] Error updating preferences:', error);
+    console.error('[database.updateNotificationPreferences] Error message:', error?.message);
+    throw new Error(error.message || 'Failed to update notification preferences');
   }
 };
 

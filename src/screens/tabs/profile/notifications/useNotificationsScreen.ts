@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NotificationSetting } from './components';
+import { getCurrentUser } from '@/lib/auth';
+import { getUserProfile, getNotificationPreferences, updateNotificationPreferences } from '@/lib/database/users';
 
 export const useNotificationsScreen = () => {
   const navigation = useNavigation();
+  const [isLoading, setIsLoading] = useState(true);
 
   // Location settings
   const [enableLocationAccess, setEnableLocationAccess] = useState(true);
@@ -50,16 +53,91 @@ export const useNotificationsScreen = () => {
     },
   ]);
 
+  // Load preferences from database on mount
+  useEffect(() => {
+    loadPreferences();
+  }, []);
+
+  const loadPreferences = async () => {
+    try {
+      setIsLoading(true);
+      const user = await getCurrentUser();
+      if (!user) {
+        console.warn('[notifications] No user logged in, using default preferences');
+        setIsLoading(false);
+        return;
+      }
+
+      const preferences = await getNotificationPreferences(user.$id);
+      if (preferences) {
+        setEnablePushNotifications(preferences.enablePushNotifications);
+        setNotificationSettings((prev) =>
+          prev.map((setting) => ({
+            ...setting,
+            enabled: preferences[setting.id as keyof typeof preferences] ?? setting.enabled,
+          }))
+        );
+      }
+    } catch (error: any) {
+      console.error('[notifications] Error loading preferences:', error);
+      // Continue with default preferences on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleBackPress = () => {
     navigation.goBack();
   };
 
-  const handleNotificationToggle = (id: string) => {
-    setNotificationSettings((prev) =>
-      prev.map((setting) =>
-        setting.id === id ? { ...setting, enabled: !setting.enabled } : setting
-      )
+  const handleNotificationToggle = async (id: string) => {
+    const updatedSettings = notificationSettings.map((setting) =>
+      setting.id === id ? { ...setting, enabled: !setting.enabled } : setting
     );
+    setNotificationSettings(updatedSettings);
+
+    // Save to database
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        console.warn('[notifications] No user logged in, cannot save preferences');
+        return;
+      }
+
+      const setting = updatedSettings.find((s) => s.id === id);
+      if (setting) {
+        await updateNotificationPreferences(user.$id, {
+          [id]: setting.enabled,
+        });
+        console.log('[notifications] Preference updated:', id, setting.enabled);
+      }
+    } catch (error: any) {
+      console.error('[notifications] Error saving preference:', error);
+      // Revert on error
+      setNotificationSettings(notificationSettings);
+    }
+  };
+
+  const handlePushNotificationsChange = async (value: boolean) => {
+    setEnablePushNotifications(value);
+
+    // Save to database
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        console.warn('[notifications] No user logged in, cannot save preferences');
+        return;
+      }
+
+      await updateNotificationPreferences(user.$id, {
+        enablePushNotifications: value,
+      });
+      console.log('[notifications] Push notifications preference updated:', value);
+    } catch (error: any) {
+      console.error('[notifications] Error saving push notifications preference:', error);
+      // Revert on error
+      setEnablePushNotifications(!value);
+    }
   };
 
   return {
@@ -67,11 +145,12 @@ export const useNotificationsScreen = () => {
     shareLocationWithBrands,
     enablePushNotifications,
     notificationSettings,
+    isLoading,
     setEnableLocationAccess,
     setShareLocationWithBrands,
-    setEnablePushNotifications,
     handleBackPress,
     handleNotificationToggle,
+    handlePushNotificationsChange,
   };
 };
 

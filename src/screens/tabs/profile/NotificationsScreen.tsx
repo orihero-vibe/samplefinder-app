@@ -19,11 +19,12 @@ const NotificationsScreen = () => {
     shareLocationWithBrands,
     enablePushNotifications,
     notificationSettings,
+    isLoading,
     setEnableLocationAccess,
     setShareLocationWithBrands,
-    setEnablePushNotifications,
     handleBackPress,
     handleNotificationToggle,
+    handlePushNotificationsChange,
   } = useNotificationsScreen();
 
   return (
@@ -64,7 +65,7 @@ const NotificationsScreen = () => {
         <NotificationSection
           enablePushNotifications={enablePushNotifications}
           notificationSettings={notificationSettings}
-          onPushNotificationsChange={setEnablePushNotifications}
+          onPushNotificationsChange={handlePushNotificationsChange}
           onNotificationToggle={handleNotificationToggle}
         />
       </ScrollView>

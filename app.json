@@ -16,13 +16,15 @@
       "buildNumber": "4",
       "supportsTablet": true,
       "bundleIdentifier": "com.samplefinder.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to show nearby events and stores.",
         "NSCalendarsUsageDescription": "This app needs access to your calendar to add events for brand sample sales.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile pictures.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile pictures."
-      }
+      },
+      "usesAppleSignIn": false
     },
     "android": {
       "adaptiveIcon": {
@@ -32,6 +34,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.samplefinder.app",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -39,7 +42,8 @@
         "WRITE_CALENDAR",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "CAMERA"
+        "CAMERA",
+        "POST_NOTIFICATIONS"
       ],
       "config": {
         "googleMaps": {
@@ -57,7 +61,19 @@
         {
           "calendarPermission": "The app needs to access your calendar."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/icon.png",
+          "color": "#1a1a2e",
+          "sounds": []
+        }
       ]
-    ]
+    ],
+    "notification": {
+      "icon": "./src/assets/icon.png",
+      "color": "#1a1a2e"
+    }
   }
 }

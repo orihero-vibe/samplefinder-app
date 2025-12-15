@@ -1,6 +1,7 @@
 import { Account, ID } from 'react-native-appwrite';
 import appwriteClient from './appwrite';
 import { createUserProfile } from './database';
+import { initializePushNotifications } from './notifications';
 
 const account = new Account(appwriteClient);
 
@@ -151,6 +152,14 @@ export const signup = async (credentials: SignUpCredentials): Promise<User> => {
       phoneVerification: updatedUser.phoneVerification,
     };
     console.log('[auth.signup] Signup completed successfully, returning user:', result);
+    
+    // Initialize push notifications after successful signup
+    console.log('[auth.signup] Initializing push notifications...');
+    initializePushNotifications().catch((error) => {
+      console.warn('[auth.signup] Failed to initialize push notifications:', error);
+      // Don't throw - push notifications are not critical for signup
+    });
+    
     return result;
   } catch (error: any) {
     console.error('[auth.signup] Signup error occurred:', error);
@@ -241,13 +250,22 @@ export const login = async (credentials: LoginCredentials): Promise<User> => {
     // OTP will be sent on ConfirmAccountScreen after session is deleted
     // No need to send it here
     
-    return {
+    const result = {
       $id: user.$id,
       email: user.email,
       name: user.name,
       emailVerification: user.emailVerification,
       phoneVerification: user.phoneVerification,
     };
+    
+    // Initialize push notifications after successful login
+    console.log('[auth.login] Initializing push notifications...');
+    initializePushNotifications().catch((error) => {
+      console.warn('[auth.login] Failed to initialize push notifications:', error);
+      // Don't throw - push notifications are not critical for login
+    });
+    
+    return result;
   } catch (error: any) {
     console.error('[auth.login] Login error occurred:', error);
     console.error('[auth.login] Error message:', error?.message);
@@ -287,6 +305,13 @@ export const getCurrentUser = async (): Promise<User | null> => {
  */
 export const logout = async (): Promise<void> => {
   try {
+    // Delete push target before logging out
+    const { deletePushTarget } = await import('./notifications');
+    await deletePushTarget().catch((error) => {
+      console.warn('[auth.logout] Failed to delete push target:', error);
+      // Don't throw - continue with logout even if push target deletion fails
+    });
+    
     await account.deleteSession('current');
   } catch (error: any) {
     throw new Error(error.message || 'Logout failed');

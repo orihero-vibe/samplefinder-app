@@ -13,6 +13,8 @@ import {
 } from '@expo-google-fonts/quicksand';
 import AppNavigator from '@/navigation/AppNavigator';
 import { TriviaModal, TriviaQuestion, getRandomTriviaQuestion } from '@/components/trivia';
+import { setupTokenRefreshListener, initializePushNotifications } from '@/lib/notifications';
+import { getCurrentUser } from '@/lib/auth';
 import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
@@ -35,6 +37,22 @@ export default function App() {
           Quicksand_600SemiBold,
           Quicksand_700Bold,
         });
+
+        // Set up push notification token refresh listener
+        setupTokenRefreshListener();
+
+        // Initialize push notifications if user is logged in
+        try {
+          const user = await getCurrentUser();
+          if (user) {
+            console.log('[App] User logged in, initializing push notifications...');
+            initializePushNotifications().catch((error) => {
+              console.warn('[App] Failed to initialize push notifications:', error);
+            });
+          }
+        } catch (error) {
+          console.log('[App] No user logged in, skipping push notification initialization');
+        }
 
         // Keep splash screen visible for at least 2 seconds
         await new Promise(resolve => setTimeout(resolve, 2000));
