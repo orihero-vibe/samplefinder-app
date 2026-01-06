@@ -19,6 +19,8 @@ export {
   initializePushNotifications,
   setupTokenRefreshListener,
   getStoredPushTargetId,
+  clearPushNotificationCache,
+  refreshPushNotifications,
 } from '../notifications';
 export {
   setNavigationRef,

@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { Account, ID } from 'react-native-appwrite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import appwriteClient from './appwrite';
@@ -52,16 +53,22 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
 
 /**
  * Get Expo push token
+ * @param forceRefresh - If true, always get a fresh token from Expo (ignores cached token)
  */
-export const getExpoPushToken = async (): Promise<string | null> => {
+export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
   try {
-    console.log('[notifications] Getting Expo push token...');
+    console.log('[notifications] Getting Expo push token...', { forceRefresh });
     
-    // Check if we already have a token stored
-    const storedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
-    if (storedToken) {
-      console.log('[notifications] Using stored push token');
-      return storedToken;
+    // Check if we already have a token stored (only if not forcing refresh)
+    if (!forceRefresh) {
+      const storedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+      if (storedToken) {
+        console.log('[notifications] Using stored push token');
+        return storedToken;
+      }
+    } else {
+      console.log('[notifications] Force refresh requested, clearing cached token');
+      await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
     }
     
     // Request permissions first
@@ -72,17 +79,47 @@ export const getExpoPushToken = async (): Promise<string | null> => {
     }
     
     // Get the token
-    // Note: projectId is optional in development but required in production
-    // For Expo managed workflow, it's automatically detected
-    // For bare workflow or custom builds, you may need to specify it
+    // Note: projectId is required in bare workflow or custom builds
+    // Try to get it from Constants first
+    let projectId: string | undefined;
+    
+    try {
+      // Try to get projectId from Constants.expoConfig.extra.eas.projectId
+      // This should be set in app.json under "extra.eas.projectId"
+      projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+      
+      if (projectId) {
+        console.log('[notifications] Found projectId in Constants:', projectId);
+      } else {
+        console.warn('[notifications] Project ID not found in Constants.expoConfig.extra.eas.projectId');
+        console.warn('[notifications] To fix this, add your EAS project ID to app.json:');
+        console.warn('[notifications]   "extra": { "eas": { "projectId": "your-project-id" } }');
+        console.warn('[notifications] You can find your project ID by running: npx eas project:info');
+      }
+    } catch (error) {
+      console.warn('[notifications] Error getting projectId from Constants:', error);
+    }
+    
+    // Get the token with or without projectId
     let tokenData;
     try {
-      tokenData = await Notifications.getExpoPushTokenAsync();
+      if (projectId) {
+        console.log('[notifications] Getting Expo push token with projectId...');
+        tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+      } else {
+        // Try without projectId first (works in managed workflow, may fail in bare workflow)
+        console.log('[notifications] Getting Expo push token without projectId (may fail in bare workflow)...');
+        tokenData = await Notifications.getExpoPushTokenAsync();
+      }
     } catch (error: any) {
-      // If it fails, try with projectId from app.json slug or EAS project
-      console.warn('[notifications] Failed to get token without projectId, trying with projectId...');
-      // You can add your Expo project ID here if needed
-      // tokenData = await Notifications.getExpoPushTokenAsync({ projectId: 'your-expo-project-id' });
+      // If it fails because projectId is missing, provide helpful error message
+      if (error?.message?.includes('projectId') || error?.message?.includes('No "projectId"')) {
+        console.error('[notifications] Error: projectId is required for Expo push tokens in bare workflow.');
+        console.error('[notifications] Please add your EAS project ID to app.json:');
+        console.error('[notifications]   "extra": { "eas": { "projectId": "your-project-id" } }');
+        console.error('[notifications] Find your project ID: npx eas project:info');
+        throw new Error('Expo push token requires projectId. Add it to app.json under extra.eas.projectId');
+      }
       throw error;
     }
     
@@ -131,8 +168,10 @@ export const registerPushTarget = async (identifier: string, providerId?: string
           identifier: identifier,
         };
       } catch (error: any) {
-        console.warn('[notifications] Failed to update push target, creating new one:', error);
-        // If update fails, try creating a new one
+        console.warn('[notifications] Failed to update push target:', error?.message);
+        // If update fails (target may be stale/deleted), clear the cached ID and create a new one
+        console.log('[notifications] Clearing stale push target ID and creating new one');
+        await AsyncStorage.removeItem(PUSH_TARGET_ID_KEY);
       }
     }
     
@@ -140,21 +179,33 @@ export const registerPushTarget = async (identifier: string, providerId?: string
     const targetId = ID.unique();
     console.log('[notifications] Creating new push target:', targetId);
     
-    const result = await account.createPushTarget({
-      targetId: targetId,
-      identifier: identifier,
-      providerId: providerId, // Optional: specify FCM provider ID if you have it
-    });
-    
-    console.log('[notifications] Push target created successfully:', result);
-    
-    // Store the target ID
-    await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, targetId);
-    
-    return {
-      targetId: targetId,
-      identifier: identifier,
-    };
+    try {
+      const result = await account.createPushTarget({
+        targetId: targetId,
+        identifier: identifier,
+        providerId: providerId, // Optional: specify FCM provider ID if you have it
+      });
+      
+      console.log('[notifications] Push target created successfully:', result);
+      
+      // Store the target ID
+      await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, targetId);
+      
+      return {
+        targetId: targetId,
+        identifier: identifier,
+      };
+    } catch (createError: any) {
+      // If creation fails with "target already exists" error, user might have an existing target
+      // that we don't have stored locally. Try to list and update the existing one.
+      if (createError?.code === 409 || createError?.message?.includes('already exists')) {
+        console.warn('[notifications] Push target already exists, attempting to get existing targets...');
+        // Can't easily get existing target, so just log the error
+        // User may need to log out and back in to fix this
+        console.error('[notifications] Please log out and back in to fix push notification registration');
+      }
+      throw createError;
+    }
   } catch (error: any) {
     console.error('[notifications] Error registering push target:', error);
     console.error('[notifications] Error details:', error?.message, error?.code);
@@ -222,6 +273,7 @@ export const deletePushTarget = async (): Promise<void> => {
 /**
  * Initialize push notifications
  * Call this after user logs in
+ * Always gets a fresh token to avoid expired token issues
  */
 export const initializePushNotifications = async (): Promise<boolean> => {
   try {
@@ -234,8 +286,9 @@ export const initializePushNotifications = async (): Promise<boolean> => {
       return false;
     }
     
-    // Get push token
-    const token = await getExpoPushToken();
+    // Always get a fresh push token on initialization to avoid expired token issues
+    // This ensures we're always registering with the latest valid token
+    const token = await getExpoPushToken(true); // Force refresh
     if (!token) {
       console.warn('[notifications] Could not get push token');
       return false;
@@ -282,5 +335,50 @@ export const setupTokenRefreshListener = (): void => {
  */
 export const getStoredPushTargetId = async (): Promise<string | null> => {
   return await AsyncStorage.getItem(PUSH_TARGET_ID_KEY);
+};
+
+/**
+ * Clear all cached push notification data
+ * Call this when you need to force a complete refresh of push tokens
+ */
+export const clearPushNotificationCache = async (): Promise<void> => {
+  console.log('[notifications] Clearing push notification cache...');
+  await AsyncStorage.removeItem(PUSH_TARGET_ID_KEY);
+  await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+  console.log('[notifications] Push notification cache cleared');
+};
+
+/**
+ * Refresh push notifications completely
+ * This clears all cached data and re-registers with a fresh token
+ * Use this when expired token errors are encountered
+ */
+export const refreshPushNotifications = async (): Promise<boolean> => {
+  try {
+    console.log('[notifications] Refreshing push notifications...');
+    
+    // Clear all cached data
+    await clearPushNotificationCache();
+    
+    // Delete existing push target from Appwrite (if any)
+    try {
+      const targetId = await AsyncStorage.getItem(PUSH_TARGET_ID_KEY);
+      if (targetId) {
+        await account.deletePushTarget({ targetId });
+      }
+    } catch (error) {
+      // Ignore errors when deleting - target might already be gone
+      console.log('[notifications] Could not delete old push target (may already be gone)');
+    }
+    
+    // Clear cache again to ensure clean state
+    await clearPushNotificationCache();
+    
+    // Re-initialize with fresh token
+    return await initializePushNotifications();
+  } catch (error: any) {
+    console.error('[notifications] Error refreshing push notifications:', error);
+    return false;
+  }
 };
 

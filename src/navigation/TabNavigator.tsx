@@ -26,7 +26,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
 
   const getIcon = (routeName: string, isFocused: boolean) => {
     const iconSize = 30;
-    const iconColor = Colors.pinDarkBlue;
+    const iconColor = Colors.blueColorMode;
     const circleColor = Colors.white;
 
     let icon = null;
@@ -143,6 +143,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'white',
     borderRadius: 100,
+    borderWidth: 2,
+    borderColor: Colors.blueColorMode,
   },
 });
 

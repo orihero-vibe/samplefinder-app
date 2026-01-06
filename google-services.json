@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:463221579770:android:1a25103aa10468c1598e43",
+        "mobilesdk_app_id": "1:463221579770:android:c70743658356653a598e43",
         "android_client_info": {
-          "package_name": "com.sampefinder.app"
+          "package_name": "com.samplefinder.app"
         }
       },
       "oauth_client": [],

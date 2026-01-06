@@ -347,6 +347,7 @@ export const fetchEventsByLocation = async (
 
   const functionId = APPWRITE_EVENTS_FUNCTION_ID || '';
 
+
   if (!functionId) {
     throw new Error('APPWRITE_EVENTS_FUNCTION_ID must be configured. Please check your .env file.');
   }

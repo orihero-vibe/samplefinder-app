@@ -74,6 +74,11 @@
     "notification": {
       "icon": "./src/assets/icon.png",
       "color": "#1a1a2e"
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
     }
   }
 }
