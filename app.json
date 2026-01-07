@@ -13,7 +13,7 @@
       "backgroundColor": "#1a1a2e"
     },
     "ios": {
-      "buildNumber": "4",
+      "buildNumber": "6",
       "supportsTablet": true,
       "bundleIdentifier": "com.samplefinder.app",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -24,7 +24,8 @@
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile pictures.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile pictures."
       },
-      "usesAppleSignIn": false
+      "usesAppleSignIn": false,
+      "appleTeamId": "AYNR8DRWG3"
     },
     "android": {
       "adaptiveIcon": {
@@ -43,7 +44,9 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "CAMERA",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ],
       "config": {
         "googleMaps": {
@@ -77,8 +80,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "559e8cf0-d874-4863-9cea-bab8178cc92c"
       }
-    }
+    },
+    "owner": "jawlon"
   }
 }
