@@ -3,7 +3,7 @@ import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/
 import { Alert } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { logout, getCurrentUser } from '@/lib/auth';
-import { getUserProfile, getUserStatistics, calculateTierStatus, UserProfileRow } from '@/lib/database';
+import { getUserProfile, calculateTierStatus, UserProfileRow } from '@/lib/database';
 import { formatDateForDisplay } from '@/utils/formatters';
 
 export const useProfileScreen = () => {
@@ -41,15 +41,23 @@ export const useProfileScreen = () => {
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
       
-      // Fetch user statistics
-      const userStats = await getUserStatistics(user.$id);
-      setStatistics(userStats);
+      // Use statistics directly from profile fields
+      if (userProfile) {
+        setStatistics({
+          totalPoints: userProfile.totalPoints ?? 0,
+          eventCheckIns: userProfile.totalEvents ?? 0,
+          samplingReviews: userProfile.totalReviews ?? 0,
+          badgeAchievements: 0, // Not stored in user_profiles table yet
+        });
+      }
       
       console.log('[ProfileScreen] Profile loaded:', {
         hasProfile: !!userProfile,
         username: userProfile?.username,
         email: user.email,
-        statistics: userStats,
+        totalPoints: userProfile?.totalPoints,
+        totalEvents: userProfile?.totalEvents,
+        totalReviews: userProfile?.totalReviews,
       });
     } catch (err: any) {
       console.error('[ProfileScreen] Error loading profile:', err);

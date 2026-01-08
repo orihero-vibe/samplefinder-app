@@ -240,6 +240,9 @@ export const updateUserProfile = async (
       zipCode: updatedProfile.zipCode,
       referalCode: updatedProfile.referalCode,
       isBlocked: updatedProfile.isBlocked || false,
+      totalPoints: updatedProfile.totalPoints ?? 0,
+      totalEvents: updatedProfile.totalEvents ?? 0,
+      totalReviews: updatedProfile.totalReviews ?? 0,
     };
   } catch (error: any) {
     console.error('[database.updateUserProfile] Error updating user profile:', error);
@@ -302,6 +305,9 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       zipCode: profile.zipCode,
       referalCode: profile.referalCode,
       isBlocked: profile.isBlocked || false,
+      totalPoints: profile.totalPoints ?? 0,
+      totalEvents: profile.totalEvents ?? 0,
+      totalReviews: profile.totalReviews ?? 0,
     };
   } catch (error: any) {
     console.error('[database.getUserProfile] Error fetching user profile:', error);

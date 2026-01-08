@@ -19,6 +19,9 @@ export interface UserProfileRow extends UserProfileData {
   zipCode?: string | null;
   referalCode?: string | null;
   isBlocked?: boolean;
+  totalPoints?: number;
+  totalEvents?: number;
+  totalReviews?: number;
 }
 
 /**
