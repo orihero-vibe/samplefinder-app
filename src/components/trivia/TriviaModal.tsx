@@ -7,37 +7,37 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SparkleIcon, LocationPinIcon } from '../../icons';
+import type { TriviaQuestion, SubmitAnswerResult } from '../../lib/database/trivia';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export interface TriviaQuestion {
-  id: string;
-  question: string;
-  answers: string[];
-  correctAnswerIndex: number;
-  points: number;
-}
+// Re-export the TriviaQuestion type for convenience
+export type { TriviaQuestion } from '../../lib/database/trivia';
 
 interface TriviaModalProps {
   visible: boolean;
   question: TriviaQuestion;
   onClose: () => void;
-  onAnswerSelected?: (isCorrect: boolean, points: number) => void;
+  onSubmitAnswer: (answerIndex: number) => Promise<SubmitAnswerResult>;
+  onAnswerResult?: (isCorrect: boolean, pointsAwarded: number) => void;
 }
 
-type AnswerState = 'idle' | 'correct' | 'incorrect';
+type AnswerState = 'idle' | 'submitting' | 'correct' | 'incorrect';
 
 export const TriviaModal: React.FC<TriviaModalProps> = ({
   visible,
   question,
   onClose,
-  onAnswerSelected,
+  onSubmitAnswer,
+  onAnswerResult,
 }) => {
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
+  const [pointsAwarded, setPointsAwarded] = useState<number>(0);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
 
@@ -45,6 +45,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     if (visible) {
       setSelectedAnswerIndex(null);
       setAnswerState('idle');
+      setPointsAwarded(0);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -64,21 +65,50 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     }
   }, [visible]);
 
-  const handleAnswerPress = (index: number) => {
-    if (selectedAnswerIndex !== null) return; // Prevent multiple selections
+  const handleAnswerPress = async (index: number) => {
+    if (selectedAnswerIndex !== null || answerState === 'submitting') return; // Prevent multiple selections
 
     setSelectedAnswerIndex(index);
-    const isCorrect = index === question.correctAnswerIndex;
-    setAnswerState(isCorrect ? 'correct' : 'incorrect');
+    setAnswerState('submitting');
 
-    if (onAnswerSelected) {
-      onAnswerSelected(isCorrect, isCorrect ? question.points : 0);
+    try {
+      const result = await onSubmitAnswer(index);
+      
+      if (result.success) {
+        const isCorrect = result.isCorrect ?? false;
+        const points = result.pointsAwarded ?? 0;
+        
+        setAnswerState(isCorrect ? 'correct' : 'incorrect');
+        setPointsAwarded(points);
+        
+        if (onAnswerResult) {
+          onAnswerResult(isCorrect, points);
+        }
+      } else {
+        // Handle error - treat as incorrect
+        console.error('[TriviaModal] Submit answer failed:', result.error);
+        setAnswerState('incorrect');
+        setPointsAwarded(0);
+        
+        if (onAnswerResult) {
+          onAnswerResult(false, 0);
+        }
+      }
+    } catch (error) {
+      console.error('[TriviaModal] Error submitting answer:', error);
+      setAnswerState('incorrect');
+      setPointsAwarded(0);
+      
+      if (onAnswerResult) {
+        onAnswerResult(false, 0);
+      }
     }
   };
 
   const handleClose = () => {
     setSelectedAnswerIndex(null);
     setAnswerState('idle');
+    setPointsAwarded(0);
     onClose();
   };
 
@@ -90,12 +120,11 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
 
   const renderAnswerButton = (answer: string, index: number) => {
     const isSelected = selectedAnswerIndex === index;
-    const isCorrect = index === question.correctAnswerIndex;
-    const showCorrectState = answerState === 'correct' && isCorrect;
-    const showIncorrectState = answerState === 'incorrect' && isSelected && !isCorrect;
+    const isSubmitting = answerState === 'submitting';
+    const showCorrectState = answerState === 'correct' && isSelected;
+    const showIncorrectState = answerState === 'incorrect' && isSelected;
 
     let buttonStyle = styles.answerButton;
-    let textStyle = styles.answerButtonText;
 
     if (isSelected) {
       if (showCorrectState) {
@@ -112,7 +141,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
         key={index}
         style={buttonStyle}
         onPress={() => handleAnswerPress(index)}
-        disabled={selectedAnswerIndex !== null}
+        disabled={selectedAnswerIndex !== null || isSubmitting}
         activeOpacity={0.8}
       >
         <LinearGradient
@@ -127,15 +156,19 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Text
-            style={[
-              textStyle,
-              isSelected && !showIncorrectState && styles.answerButtonTextSelected,
-              showIncorrectState && styles.answerButtonTextIncorrect,
-            ]}
-          >
-            {answer}
-          </Text>
+          {isSelected && isSubmitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text
+              style={[
+                styles.answerButtonText,
+                isSelected && !showIncorrectState && styles.answerButtonTextSelected,
+                showIncorrectState && styles.answerButtonTextIncorrect,
+              ]}
+            >
+              {answer}
+            </Text>
+          )}
         </LinearGradient>
         {showCorrectState && (
           <View style={styles.sparkleContainer}>
@@ -148,6 +181,14 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   };
 
   const renderResult = () => {
+    if (answerState === 'submitting') {
+      return (
+        <View style={styles.resultContainer}>
+          <Text style={styles.instructionText}>Checking your answer...</Text>
+        </View>
+      );
+    }
+    
     if (answerState === 'correct') {
       return (
         <View style={styles.resultContainer}>
@@ -156,7 +197,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
             <View style={styles.pointsBadge}>
               <Text style={styles.pointsBadgeLabel}>YOU EARNED POINTS!</Text>
               <View style={styles.pointsValueContainer}>
-                <Text style={styles.pointsValue}>{question.points}</Text>
+                <Text style={styles.pointsValue}>{pointsAwarded}</Text>
                 <SparkleIcon size={20} color="#DC2626" />
               </View>
               <Text style={styles.pointsCongrats}>CONGRATS!</Text>
@@ -192,6 +233,10 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     );
   };
 
+  // Get brand name for title
+  const brandName = question.client?.name || 'Brand';
+  const title = `${brandName} Trivia!`;
+
   return (
     <Modal
       visible={visible}
@@ -217,7 +262,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
 
           {renderLocationIcon()}
 
-          <Text style={styles.title}>Brand Name Trivia!</Text>
+          <Text style={styles.title}>{title}</Text>
 
           <Text style={styles.question}>{question.question}</Text>
 
@@ -300,6 +345,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
+    minHeight: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   answerButtonSelected: {
     borderColor: '#9333EA',
@@ -438,4 +486,3 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
 });
-

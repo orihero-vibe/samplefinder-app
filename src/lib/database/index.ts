@@ -43,6 +43,19 @@ export {
   calculateTierStatus,
 } from './statistics';
 
+// Re-export trivia functions
+export {
+  getActiveTrivia,
+  submitTriviaAnswer,
+} from './trivia';
+
+// Re-export trivia types
+export type {
+  TriviaQuestion,
+  SubmitAnswerResult,
+  GetActiveTriviaResponse,
+} from './trivia';
+
 // Default export for backward compatibility
 import { createUserProfile } from './users';
 import { getUserProfile } from './users';
@@ -57,6 +70,7 @@ import { fetchEventsByLocation } from './events';
 import { fetchCategories } from './categories';
 import { getUserStatistics } from './statistics';
 import { calculateTierStatus } from './statistics';
+import { getActiveTrivia, submitTriviaAnswer } from './trivia';
 
 export default {
   createUserProfile,
@@ -72,5 +86,7 @@ export default {
   fetchCategories,
   getUserStatistics,
   calculateTierStatus,
+  getActiveTrivia,
+  submitTriviaAnswer,
 };
 
