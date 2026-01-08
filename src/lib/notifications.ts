@@ -23,6 +23,9 @@ Notifications.setNotificationHandler({
 const PUSH_TARGET_ID_KEY = '@push_target_id';
 const PUSH_TOKEN_KEY = '@push_token';
 
+// Mutex to prevent concurrent push target registration
+let isRegistering = false;
+
 /**
  * Request notification permissions
  */
@@ -137,53 +140,78 @@ export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<s
 };
 
 /**
+ * Generate a deterministic target ID based on user ID and platform
+ * This ensures the same user on the same platform always uses the same target ID
+ */
+const generateTargetId = (userId: string): string => {
+  const platform = Platform.OS; // 'ios' or 'android'
+  // Create a deterministic ID: first 20 chars of a hash-like string
+  // Format: push_{platform}_{userId} truncated to valid Appwrite ID length
+  const baseId = `push_${platform}_${userId}`;
+  // Appwrite IDs must be alphanumeric with periods, hyphens, underscores (max 36 chars)
+  return baseId.substring(0, 36).replace(/[^a-zA-Z0-9._-]/g, '_');
+};
+
+/**
  * Register push target with Appwrite
  */
 export const registerPushTarget = async (identifier: string, providerId?: string): Promise<PushTargetInfo | null> => {
+  // Prevent concurrent registration attempts
+  if (isRegistering) {
+    console.log('[notifications] Registration already in progress, skipping...');
+    return null;
+  }
+  
+  isRegistering = true;
+  
   try {
     console.log('[notifications] Registering push target with Appwrite...');
     
     // Check if user is logged in
+    let currentUser;
     try {
-      await account.get();
+      currentUser = await account.get();
     } catch (error) {
       console.warn('[notifications] User not logged in, cannot register push target');
       return null;
     }
     
-    // Check if we already have a push target
-    const existingTargetId = await AsyncStorage.getItem(PUSH_TARGET_ID_KEY);
+    // Use deterministic target ID based on user ID
+    const targetId = generateTargetId(currentUser.$id);
+    console.log('[notifications] Using deterministic target ID:', targetId);
     
-    if (existingTargetId) {
-      // Update existing target
-      console.log('[notifications] Updating existing push target:', existingTargetId);
-      try {
-        await account.updatePushTarget({
-          targetId: existingTargetId,
-          identifier: identifier,
-        });
-        console.log('[notifications] Push target updated successfully');
-        return {
-          targetId: existingTargetId,
-          identifier: identifier,
-        };
-      } catch (error: any) {
-        console.warn('[notifications] Failed to update push target:', error?.message);
-        // If update fails (target may be stale/deleted), clear the cached ID and create a new one
-        console.log('[notifications] Clearing stale push target ID and creating new one');
-        await AsyncStorage.removeItem(PUSH_TARGET_ID_KEY);
+    // First, try to update the existing target (most common case)
+    try {
+      console.log('[notifications] Attempting to update existing push target...');
+      await account.updatePushTarget({
+        targetId: targetId,
+        identifier: identifier,
+      });
+      console.log('[notifications] Push target updated successfully');
+      
+      // Store the target ID
+      await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, targetId);
+      
+      return {
+        targetId: targetId,
+        identifier: identifier,
+      };
+    } catch (updateError: any) {
+      // If update fails (target doesn't exist yet), try to create it
+      if (updateError?.code === 404 || updateError?.message?.includes('not found')) {
+        console.log('[notifications] Target not found, creating new one...');
+      } else {
+        console.warn('[notifications] Update failed:', updateError?.message);
       }
     }
     
-    // Create new push target
-    const targetId = ID.unique();
-    console.log('[notifications] Creating new push target:', targetId);
-    
+    // Try to create new push target
     try {
+      console.log('[notifications] Creating new push target:', targetId);
       const result = await account.createPushTarget({
         targetId: targetId,
         identifier: identifier,
-        providerId: providerId, // Optional: specify FCM provider ID if you have it
+        providerId: providerId,
       });
       
       console.log('[notifications] Push target created successfully:', result);
@@ -196,13 +224,54 @@ export const registerPushTarget = async (identifier: string, providerId?: string
         identifier: identifier,
       };
     } catch (createError: any) {
-      // If creation fails with "target already exists" error, user might have an existing target
-      // that we don't have stored locally. Try to list and update the existing one.
+      // If target already exists (409), delete it and recreate
       if (createError?.code === 409 || createError?.message?.includes('already exists')) {
-        console.warn('[notifications] Push target already exists, attempting to get existing targets...');
-        // Can't easily get existing target, so just log the error
-        // User may need to log out and back in to fix this
-        console.error('[notifications] Please log out and back in to fix push notification registration');
+        console.warn('[notifications] Push target already exists with different owner, deleting and recreating...');
+        
+        try {
+          // Delete the existing target
+          await account.deletePushTarget({ targetId: targetId });
+          console.log('[notifications] Deleted existing push target');
+          
+          // Small delay to ensure deletion is processed
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Create new push target
+          const result = await account.createPushTarget({
+            targetId: targetId,
+            identifier: identifier,
+            providerId: providerId,
+          });
+          
+          console.log('[notifications] Push target recreated successfully:', result);
+          
+          // Store the target ID
+          await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, targetId);
+          
+          return {
+            targetId: targetId,
+            identifier: identifier,
+          };
+        } catch (retryError: any) {
+          console.error('[notifications] Failed to recreate push target:', retryError?.message);
+          // As last resort, try with a unique ID
+          const fallbackId = ID.unique();
+          console.log('[notifications] Trying with fallback unique ID:', fallbackId);
+          
+          const result = await account.createPushTarget({
+            targetId: fallbackId,
+            identifier: identifier,
+            providerId: providerId,
+          });
+          
+          console.log('[notifications] Push target created with fallback ID:', result);
+          await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, fallbackId);
+          
+          return {
+            targetId: fallbackId,
+            identifier: identifier,
+          };
+        }
       }
       throw createError;
     }
@@ -210,6 +279,8 @@ export const registerPushTarget = async (identifier: string, providerId?: string
     console.error('[notifications] Error registering push target:', error);
     console.error('[notifications] Error details:', error?.message, error?.code);
     return null;
+  } finally {
+    isRegistering = false;
   }
 };
 

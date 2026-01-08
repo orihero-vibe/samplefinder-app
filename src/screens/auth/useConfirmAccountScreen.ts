@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { getCurrentUser, verifyEmail, sendEmailOTP, resendVerificationEmail, logout } from '@/lib/auth';
+import { initializePushNotifications } from '@/lib/notifications';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 
 type ConfirmAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ConfirmAccount'>;
@@ -99,6 +100,14 @@ export const useConfirmAccountScreen = () => {
       console.log('[ConfirmAccount] Verifying email with code:', code);
       await verifyEmail(userId, code);
       console.log('[ConfirmAccount] Email verified successfully');
+      
+      // Initialize push notifications after successful verification
+      // This is the right time because we now have a valid session
+      console.log('[ConfirmAccount] Initializing push notifications...');
+      initializePushNotifications().catch((error) => {
+        console.warn('[ConfirmAccount] Failed to initialize push notifications:', error);
+        // Don't block navigation - push notifications are not critical
+      });
       
       // Navigate to MainTabs after successful verification
       navigation.replace('MainTabs');
