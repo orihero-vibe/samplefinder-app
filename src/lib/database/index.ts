@@ -8,6 +8,12 @@ export type {
   EventsByLocationResponse,
   CategoryData,
   UserStatistics,
+  CheckInData,
+  CheckInRow,
+  ReviewData,
+  ReviewRow,
+  TierData,
+  TierRow,
 } from './types';
 
 // Re-export user functions
@@ -37,11 +43,35 @@ export {
   fetchCategories,
 } from './categories';
 
+// Re-export check-in functions
+export {
+  createCheckIn,
+  getUserCheckIns,
+  getUserCheckInForEvent,
+  getUserCheckInsCount,
+} from './checkIns';
+
+// Re-export review functions
+export {
+  createReview,
+  getUserReviews,
+  getUserReviewForEvent,
+  getUserReviewsCount,
+  getEventReviews,
+} from './reviews';
+
 // Re-export statistics functions
 export {
   getUserStatistics,
   calculateTierStatus,
 } from './statistics';
+
+// Re-export tier functions
+export {
+  fetchTiers,
+  getUserCurrentTier,
+  getUserNextTier,
+} from './tiers';
 
 // Re-export trivia functions
 export {
@@ -70,6 +100,7 @@ import { fetchEventsByLocation } from './events';
 import { fetchCategories } from './categories';
 import { getUserStatistics } from './statistics';
 import { calculateTierStatus } from './statistics';
+import { fetchTiers, getUserCurrentTier, getUserNextTier } from './tiers';
 import { getActiveTrivia, submitTriviaAnswer } from './trivia';
 
 export default {
@@ -86,6 +117,9 @@ export default {
   fetchCategories,
   getUserStatistics,
   calculateTierStatus,
+  fetchTiers,
+  getUserCurrentTier,
+  getUserNextTier,
   getActiveTrivia,
   submitTriviaAnswer,
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import { FriendsIcon } from '@/icons';
 
 interface TopLinksProps {
   onReferFriendPress?: () => void;
@@ -12,7 +13,7 @@ const TopLinks: React.FC<TopLinksProps> = ({ onReferFriendPress, onLogOutPress }
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onReferFriendPress} style={styles.referFriendButton}>
-        <Monicon name="mdi:account-multiple" size={24} color={Colors.brandPurpleDeep} />
+        <FriendsIcon size={24} />
         <Text style={styles.referFriendText}>Refer a Friend</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={onLogOutPress} style={styles.logOutButton}>
@@ -38,15 +39,15 @@ const styles = StyleSheet.create({
   },
   referFriendText: {
     fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.brandPurpleDeep,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.blueColorMode,
   },
   logOutButton: {
     padding: 5,
   },
   logOutText: {
     fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Quicksand_500Medium',
     color: Colors.black,
   },
 });

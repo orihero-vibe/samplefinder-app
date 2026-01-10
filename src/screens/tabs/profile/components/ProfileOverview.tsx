@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { LocationPinIcon } from '@/icons';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 interface ProfileOverviewProps {
@@ -15,7 +14,11 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.profilePictureContainer}>
-        <LocationPinIcon size={100} color={Colors.brandPurpleDeep} />
+        <Image
+          source={require('@/assets/locationImage.png')}
+          style={{ width: 100, height: 100 }}
+          resizeMode="contain"
+        />
       </View>
       <Text style={styles.username}>{username}</Text>
       <TouchableOpacity onPress={onEditProfilePress}>

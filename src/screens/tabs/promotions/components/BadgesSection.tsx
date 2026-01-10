@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { SparkleIcon } from '@/icons';
+import { CertifiedInfluencerIcon, CertifiedBrandAmbassadorIcon } from '@/icons';
 import BadgeItem, { Badge } from './BadgeItem';
 
 interface BadgesSectionProps {
@@ -20,6 +20,7 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
 }) => {
   return (
     <View style={styles.card}>
+      {/* Section Header */}
       <View style={styles.sectionHeader}>
         <View style={styles.sectionIconContainer}>
           <View style={styles.sectionIcon}>
@@ -39,7 +40,7 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
         </Text>
         <View style={styles.badgesRow}>
           {eventBadges.map((badge) => (
-            <BadgeItem  key={badge.id} badge={badge} />
+            <BadgeItem key={badge.id} badge={badge} />
           ))}
         </View>
       </View>
@@ -51,7 +52,7 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
         </Text>
         <View style={styles.badgesRow}>
           {reviewBadges.map((badge) => (
-            <BadgeItem color={Colors.brandBlueBright} key={badge.id} badge={badge} />
+            <BadgeItem color={Colors.pinDarkBlue} key={badge.id} badge={badge} />
           ))}
         </View>
       </View>
@@ -61,25 +62,15 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
         <View style={styles.identifierHeader}>
           <Text style={styles.identifierTitle}>Identifier Badges</Text>
           <TouchableOpacity style={styles.helpButton}>
-            <Monicon name="mdi:help-circle" size={16} color="#999999" />
+            <Monicon name="mdi:help-circle-outline" size={18} color="#999999" />
           </TouchableOpacity>
         </View>
         <View style={styles.identifierBadgeRow}>
-          <View style={[styles.identifierBadgeCircle, { backgroundColor: Colors.orangeBA }]}>
-            <Monicon name="mdi:account" size={24} color={Colors.white} />
-            <View style={styles.badgeStarOverlay}>
-              <SparkleIcon size={12} color={Colors.white} circleColor="transparent" />
-            </View>
-          </View>
+          <CertifiedBrandAmbassadorIcon size={50} />
           <Text style={styles.identifierBadgeText}>Certified Brand Ambassador</Text>
         </View>
         <View style={styles.identifierBadgeRow}>
-          <View style={[styles.identifierBadgeCircle, { backgroundColor: Colors.pinkInfluencer }]}>
-            <Monicon name="mdi:cellphone" size={24} color={Colors.white} />
-            <View style={styles.badgeStarOverlay}>
-              <SparkleIcon size={12} color={Colors.white} circleColor="transparent" />
-            </View>
-          </View>
+          <CertifiedInfluencerIcon size={50} disabled />
           <Text style={[styles.identifierBadgeText, styles.disabledText]}>
             Certified Influencer
           </Text>
@@ -164,6 +155,7 @@ const styles = StyleSheet.create({
   identifierHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     marginBottom: 12,
   },
@@ -180,19 +172,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 12,
-  },
-  identifierBadgeCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  badgeStarOverlay: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
   },
   identifierBadgeText: {
     fontSize: 14,

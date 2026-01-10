@@ -8,7 +8,7 @@ import * as Location from 'expo-location';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
-import { fetchAllEvents, EventRow } from '@/lib/database';
+import { fetchAllEvents, fetchClients, EventRow, ClientData } from '@/lib/database';
 import { convertEventToCalendarEventDetail, extractClientFromEvent } from '@/utils/brandUtils';
 import { CalendarEvent, CalendarEventDetail } from './components';
 
@@ -30,13 +30,11 @@ export const useCalendarScreen = () => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Get user's current location for distance calculation
   useEffect(() => {
     const getCurrentLocation = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          console.log('[CalendarScreen] Location permission denied');
           return;
         }
 
@@ -49,42 +47,51 @@ export const useCalendarScreen = () => {
           longitude: location.coords.longitude,
         });
       } catch (error) {
-        console.error('[CalendarScreen] Error getting location:', error);
+        console.error('Error getting location:', error);
       }
     };
 
     getCurrentLocation();
   }, []);
 
-  // Fetch events from Appwrite
   useEffect(() => {
     const loadEvents = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Fetch all events from Appwrite
-        const eventRows: EventRow[] = await fetchAllEvents();
+        const [eventRows, allClients] = await Promise.all([
+          fetchAllEvents(),
+          fetchClients(),
+        ]);
 
-        // Transform events for calendar grid (simple dates)
         const simpleEvents: CalendarEvent[] = eventRows.map((event) => ({
           id: event.$id,
           date: new Date(event.date),
         }));
 
-        // Transform events for detailed view (with client data)
         const detailed: CalendarEventDetail[] = eventRows.map((event) => {
-          const client = extractClientFromEvent(event);
+          let client = extractClientFromEvent(event);
+          
+          if (!client || !client.location) {
+            const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
+            if (clientId) {
+              const fullClient = allClients.find((c) => c.$id === clientId);
+              if (fullClient) {
+                client = fullClient;
+              }
+            }
+          }
+          
           return convertEventToCalendarEventDetail(event, client, userLocation || undefined);
         });
 
-        // Sort detailed events by date
         detailed.sort((a, b) => a.date.getTime() - b.date.getTime());
 
         setCalendarEvents(simpleEvents);
         setDetailedEvents(detailed);
       } catch (err: any) {
-        console.error('[CalendarScreen] Error loading events:', err);
+        console.error('Error loading events:', err);
         setError(err.message || 'Failed to load events');
       } finally {
         setIsLoading(false);
@@ -92,18 +99,16 @@ export const useCalendarScreen = () => {
     };
 
     loadEvents();
-  }, [userLocation]); // Reload when user location changes
+  }, [userLocation]);
 
   const handlePreviousMonth = () => {
     if (viewType === 'list') {
-      // In list view, navigate to previous day
       const displayDate = selectedDate || currentDate;
       const newDate = new Date(displayDate);
       newDate.setDate(newDate.getDate() - 1);
       setSelectedDate(newDate);
       setCurrentDate(newDate);
     } else {
-      // In calendar view, navigate to previous month
       const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
       setCurrentDate(newDate);
       setSelectedDate(null);
@@ -113,14 +118,12 @@ export const useCalendarScreen = () => {
 
   const handleNextMonth = () => {
     if (viewType === 'list') {
-      // In list view, navigate to next day
       const displayDate = selectedDate || currentDate;
       const newDate = new Date(displayDate);
       newDate.setDate(newDate.getDate() + 1);
       setSelectedDate(newDate);
       setCurrentDate(newDate);
     } else {
-      // In calendar view, navigate to next month
       const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
       setCurrentDate(newDate);
       setSelectedDate(null);
@@ -130,7 +133,6 @@ export const useCalendarScreen = () => {
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
-    // Open bottom sheet
     bottomSheetRef.current?.expand();
   };
 
@@ -147,7 +149,6 @@ export const useCalendarScreen = () => {
     navigation.navigate('DiscoverEvents');
   };
 
-  // Filter events for selected date
   const selectedDateEvents = detailedEvents.filter((event) => {
     if (!selectedDate) return false;
     const eventDate = new Date(event.date);
@@ -158,7 +159,6 @@ export const useCalendarScreen = () => {
     );
   });
 
-  // Month names array
   const monthNames = [
     'January',
     'February',
@@ -174,11 +174,8 @@ export const useCalendarScreen = () => {
     'December',
   ];
 
-  // Derived values for calendar display
   const monthName = useMemo(() => monthNames[currentDate.getMonth()], [currentDate]);
   const year = useMemo(() => currentDate.getFullYear(), [currentDate]);
-  
-  // Get the date to display in list view header (selected date or current date)
   const displayDate = useMemo(() => selectedDate || currentDate, [selectedDate, currentDate]);
   const displayDateFormatted = useMemo(
     () => displayDate.toLocaleDateString('en-US', {

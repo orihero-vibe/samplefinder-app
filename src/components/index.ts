@@ -7,6 +7,8 @@ export { default as CustomButton } from './shared/CustomButton';
 export { default as CodeInput } from './shared/CodeInput';
 export { default as EventCard } from './shared/EventCard';
 export type { UnifiedEvent } from './shared/EventCard';
+export { default as ReviewModal } from './shared/ReviewModal';
+export { default as PointsEarnedModal } from './shared/PointsEarnedModal';
 export { TriviaModal } from './trivia';
 export type { TriviaQuestion } from './trivia';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, ActivityIndicator, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
@@ -32,6 +32,8 @@ const PromotionsScreen = () => {
     achievementModalVisible,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
+    isLoading,
+    totalPoints,
     setActiveTab,
     handleBackPress,
     handleSharePress,
@@ -56,39 +58,47 @@ const PromotionsScreen = () => {
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <PromotionsHeader />
-          <PromotionsTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.white} />
+            <Text style={styles.loadingText}>Loading your achievements...</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <PromotionsHeader totalPoints={totalPoints} />
+            <PromotionsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-          {activeTab === 'inProgress' && (
-            <View style={styles.contentContainer}>
-              <BadgesSection
-                eventCheckIns={eventCheckIns}
-                reviews={reviews}
-                eventBadges={eventBadges}
-                reviewBadges={reviewBadges}
-              />
-              <TiersSection tiers={tiers} />
-            </View>
-          )}
+            {activeTab === 'inProgress' && (
+              <View style={styles.inProgressContainer}>
+                <BadgesSection
+                  eventCheckIns={eventCheckIns}
+                  reviews={reviews}
+                  eventBadges={eventBadges}
+                  reviewBadges={reviewBadges}
+                />
+                <TiersSection tiers={tiers} />
+              </View>
+            )}
 
-          {activeTab === 'earned' && (
-            <>
-              <EarnedSection
-                eventBadges={eventBadges}
-                reviewBadges={reviewBadges}
-                tiers={tiers}
-                onTierPress={handleTierPress}
-                onPointsPress={handlePointsPress}
-              />
-              <HistorySection historyItems={historyItems} />
-            </>
-          )}
-        </ScrollView>
+            {activeTab === 'earned' && (
+              <>
+                <EarnedSection
+                  eventBadges={eventBadges}
+                  reviewBadges={reviewBadges}
+                  tiers={tiers}
+                  totalPoints={totalPoints}
+                  onTierPress={handleTierPress}
+                  onPointsPress={handlePointsPress}
+                />
+                <HistorySection historyItems={historyItems} />
+              </>
+            )}
+          </ScrollView>
+        )}
       </LinearGradient>
 
       <ReferFriendBottomSheet

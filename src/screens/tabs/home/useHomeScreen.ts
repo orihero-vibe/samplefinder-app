@@ -5,6 +5,7 @@ import ClusteredMapView from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import { fetchClients, fetchClientsWithFilters, ClientData, fetchEventsByClient, EventRow, fetchCategories, CategoryData, fetchEventsByLocation } from '@/lib/database';
 import { MapMarkerData, FilterType, EventData, StoreData } from './components';
+import { formatEventDistance } from '@/utils/formatters';
 
 export const useHomeScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null);
@@ -64,19 +65,16 @@ export const useHomeScreen = () => {
     }
   };
 
-  // Get user's current location
   useEffect(() => {
     const getCurrentLocation = async () => {
       try {
-        // Request location permissions
         const { status } = await Location.requestForegroundPermissionsAsync();
 
         if (status !== 'granted') {
-          console.log('[HomeScreen] Location permission denied');
           setHasLocationPermission(false);
           Alert.alert(
-            'Location Permission',
-            'Please enable location permissions in your device settings to see your location on the map.',
+            'Location Permission Required',
+            'This app needs location access to show nearby events and your current position on the map. Please enable location permissions in your device settings.',
             [{ text: 'OK' }]
           );
           return;
@@ -84,9 +82,10 @@ export const useHomeScreen = () => {
 
         setHasLocationPermission(true);
 
-        // Get current position
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
+          timeInterval: 10000,
+          distanceInterval: 10,
         });
 
         const userCoords = {
@@ -95,9 +94,7 @@ export const useHomeScreen = () => {
         };
 
         setUserLocation(userCoords);
-        console.log('[HomeScreen] User location:', userCoords);
 
-        // Navigate map to user's location after a short delay to ensure map is ready
         setTimeout(() => {
           if (mapRef.current && userCoords) {
             (mapRef.current as any).animateToRegion(
@@ -111,42 +108,40 @@ export const useHomeScreen = () => {
           }
         }, 500);
       } catch (error) {
-        console.error('[HomeScreen] Error getting location:', error);
+        console.error('Error getting location:', error);
         setHasLocationPermission(false);
+        
+        Alert.alert(
+          'Location Error',
+          'Unable to get your current location. Please make sure location services are enabled on your device.',
+          [{ text: 'OK' }]
+        );
       }
     };
 
     getCurrentLocation();
   }, []);
 
-  // Fetch clients from Appwrite database with filters
   useEffect(() => {
     const loadClients = async () => {
       try {
-        // Only show loading on initial load, not when filters change
         if (!isMapInitialized) {
           setIsLoadingClients(true);
         }
 
-        // Check if any filters are active
         const hasFilters = radiusValues.length > 0 || datesValues.length > 0 || categoriesValues.length > 0;
 
         if (hasFilters) {
-          // Build filter parameters
           const filters: any = {};
 
-          // Radius filter - use the maximum selected radius
           if (radiusValues.length > 0 && userLocation) {
             const maxRadius = Math.max(...radiusValues.map(v => parseFloat(v)));
             filters.radiusMiles = maxRadius;
             filters.userLocation = userLocation;
           }
 
-          // Date filter - use the first selected date (or combine if multiple)
           if (datesValues.length > 0) {
-            // If 'all' is selected, don't apply date filter
             if (!datesValues.includes('all')) {
-              // Use the first date filter (or could combine ranges)
               const dateRange = convertDateFilterToRange(datesValues[0]);
               if (dateRange) {
                 filters.dateRange = dateRange;
@@ -154,7 +149,6 @@ export const useHomeScreen = () => {
             }
           }
 
-          // Category filter
           if (categoriesValues.length > 0 && categories.length > 0) {
             const selectedCategoryIds = categories
               .filter((cat) => {
@@ -168,19 +162,14 @@ export const useHomeScreen = () => {
             }
           }
 
-          console.log('[HomeScreen] Fetching clients with filters:', filters);
           const clients = await fetchClientsWithFilters(filters);
           setAllClients(clients);
-          console.log('[HomeScreen] Loaded filtered clients:', clients.length);
         } else {
-          // No filters - fetch all clients
           const clients = await fetchClients();
           setAllClients(clients);
-          console.log('[HomeScreen] Loaded all clients:', clients.length);
         }
       } catch (error) {
-        console.error('[HomeScreen] Error loading clients:', error);
-        // On error, keep empty clients array
+        console.error('Error loading clients:', error);
         setAllClients([]);
       } finally {
         setIsLoadingClients(false);
@@ -188,7 +177,6 @@ export const useHomeScreen = () => {
       }
     };
 
-    // Debounce filter changes - wait 300ms after last change
     const timeoutId = setTimeout(() => {
       loadClients();
     }, 300);
@@ -196,12 +184,9 @@ export const useHomeScreen = () => {
     return () => clearTimeout(timeoutId);
   }, [radiusValues, datesValues, categoriesValues, categories, userLocation, isMapInitialized]);
 
-  // Transform clients to markers - filtering is now done server-side
   useEffect(() => {
-    // Transform clients to MapMarkerData format
     const clientMarkers: MapMarkerData[] = allClients
       .filter((client) => {
-        // Only include clients with valid location coordinates
         return (
           client.location &&
           Array.isArray(client.location) &&
@@ -214,34 +199,30 @@ export const useHomeScreen = () => {
       })
       .map((client) => ({
         id: client.$id,
-        latitude: client.location![1], // location[1] is latitude
-        longitude: client.location![0], // location[0] is longitude
+        latitude: client.location![1],
+        longitude: client.location![0],
         title: client.name || client.title || 'Client',
-        icon: 'oi:map-marker', // Use the specified icon
+        icon: 'oi:map-marker',
         address: {
           street: client.street || client.address || '',
           city: client.city || '',
           state: client.state || '',
           zip: client.zip || client.zipCode || '',
         },
-        events: [], // Events will be fetched when marker is pressed
+        events: [],
       }));
 
     setMarkers(clientMarkers);
-    console.log('[HomeScreen] Transformed markers:', clientMarkers.length, 'from', allClients.length, 'clients');
   }, [allClients]);
 
-  // Fetch categories from database
   useEffect(() => {
     const loadCategories = async () => {
       try {
         setIsLoadingCategories(true);
         const fetchedCategories = await fetchCategories();
         setCategories(fetchedCategories);
-        console.log('[HomeScreen] Loaded categories:', fetchedCategories.length);
       } catch (error) {
-        console.error('[HomeScreen] Error loading categories:', error);
-        // On error, keep empty categories array
+        console.error('Error loading categories:', error);
         setCategories([]);
       } finally {
         setIsLoadingCategories(false);
@@ -251,35 +232,28 @@ export const useHomeScreen = () => {
     loadCategories();
   }, []);
 
-  // Fetch upcoming events by location
   useEffect(() => {
     const loadEvents = async () => {
-      // Only fetch if we have user location
       if (!userLocation) {
-        console.log('[HomeScreen] Skipping events fetch - no user location');
         return;
       }
 
       try {
         setIsLoadingUpcomingEvents(true);
-        console.log('[HomeScreen] Fetching events for location:', userLocation);
 
         const response = await fetchEventsByLocation(
           userLocation.latitude,
           userLocation.longitude,
-          1, // page
-          10 // pageSize
+          1,
+          10
         );
 
-        // Transform API response to EventData format
         if (!response.events) {
-          console.warn('[HomeScreen] No events in response');
           setEvents([]);
           return;
         }
 
         const transformedEvents: EventData[] = response.events.map((event) => {
-          // Format date (e.g., "Aug 1, 2025")
           const eventDate = new Date(event.date);
           const formattedDate = eventDate.toLocaleDateString('en-US', {
             month: 'short',
@@ -287,7 +261,6 @@ export const useHomeScreen = () => {
             year: 'numeric',
           });
 
-          // Format time range (e.g., "3 - 5 pm")
           const startTime = new Date(event.startTime);
           const endTime = new Date(event.endTime);
           const startHour = startTime.getHours();
@@ -303,11 +276,9 @@ export const useHomeScreen = () => {
 
           const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
 
-          // Convert distance from km to miles and format
-          const distanceMiles = event.distance * 0.621371;
-          const formattedDistance = `${distanceMiles.toFixed(1)} mi away`;
+          // Backend returns distance in meters, not kilometers
+          const formattedDistance = formatEventDistance({ distanceMeters: event.distance });
 
-          // Use client name if available, otherwise use city
           const location = event.client?.name || event.city || 'Location';
 
           return {
@@ -315,17 +286,15 @@ export const useHomeScreen = () => {
             name: event.products || event.name || 'Brand Product',
             location,
             distance: formattedDistance,
-            date: new Date(event.date), // Use Date object for consistency
+            date: new Date(event.date),
             time: formattedTime,
             logoURL: event.discountImageURL || event.client?.logoURL || null,
           };
         });
 
         setEvents(transformedEvents);
-        console.log('[HomeScreen] Events loaded successfully:', transformedEvents.length);
       } catch (error) {
-        console.error('[HomeScreen] Error loading events:', error);
-        // On error, keep empty events array
+        console.error('Error loading events:', error);
         setEvents([]);
       } finally {
         setIsLoadingUpcomingEvents(false);
@@ -335,16 +304,14 @@ export const useHomeScreen = () => {
     loadEvents();
   }, [userLocation]);
 
-  // Calculate initial region only once on mount - never recalculate to prevent map rerenders
   const initialRegion = useMemo(() => {
-    // Default to Philadelphia city center
     return {
       latitude: 39.9526,
       longitude: -75.1652,
       latitudeDelta: 0.02,
       longitudeDelta: 0.02,
     };
-  }, []); // Empty dependency array - only calculate once
+  }, []);
 
   const handleFilterPress = (filter: FilterType) => {
     if (filter === 'reset') {
@@ -386,7 +353,6 @@ export const useHomeScreen = () => {
 
   const handleMarkerPress = async (marker: MapMarkerData) => {
     if (marker.address) {
-      // Open modal immediately with loading state
       const storeData: StoreData = {
         id: marker.id,
         name: marker.title || 'Store Name',
@@ -398,12 +364,9 @@ export const useHomeScreen = () => {
       setIsLoadingEvents(true);
 
       try {
-        // Fetch events for this client
         const events = await fetchEventsByClient(marker.id);
 
-        // Transform events to EventData format
         const transformedEvents: EventData[] = events.map((event: EventRow) => {
-          // Format time range (e.g., "3 - 5 pm")
           const startTime = new Date(event.startTime);
           const endTime = new Date(event.endTime);
           const startHour = startTime.getHours();
@@ -423,21 +386,19 @@ export const useHomeScreen = () => {
             id: event.$id,
             name: event.products || event.name || 'Brand Product',
             location: marker.title || 'Store Name',
-            distance: '0.0 mi away', // Could calculate actual distance if needed
-            date: new Date(event.date), // Use Date object for consistency
+            distance: '0.0 mi away',
+            date: new Date(event.date),
             time: formattedTime,
             logoURL: event.discountImageURL || (typeof event.client === 'object' && event.client?.logoURL) || null,
           };
         });
 
-        // Update store data with fetched events
         setSelectedStore({
           ...storeData,
           events: transformedEvents,
         });
       } catch (error) {
-        console.error('[HomeScreen] Error fetching events:', error);
-        // Keep modal open with empty events
+        console.error('Error fetching events:', error);
       } finally {
         setIsLoadingEvents(false);
       }
@@ -450,7 +411,6 @@ export const useHomeScreen = () => {
       latitude: geometry.coordinates[1],
       longitude: geometry.coordinates[0],
     };
-    // Zoom in on cluster press
     if (mapRef.current) {
       (mapRef.current as any).animateToRegion(
         {
@@ -463,7 +423,6 @@ export const useHomeScreen = () => {
     }
   }, []);
 
-  // Memoize renderCluster to prevent map rerenders
   const renderCluster = useCallback((cluster: any) => {
     const { id, geometry, properties } = cluster;
     const pointCount = properties?.point_count || 0;

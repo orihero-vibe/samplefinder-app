@@ -15,7 +15,19 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 30,
   },
-  contentContainer: {
+  inProgressContainer: {
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.white,
+    fontFamily: 'Quicksand_600SemiBold',
   },
 });
 

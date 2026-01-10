@@ -27,7 +27,6 @@ export const useProfileScreen = () => {
       setIsLoading(true);
       setError('');
       
-      // Get current authenticated user
       const user = await getCurrentUser();
       if (!user) {
         setError('Not authenticated. Please log in again.');
@@ -37,7 +36,6 @@ export const useProfileScreen = () => {
 
       setAuthUser({ email: user.email, name: user.name });
 
-      // Fetch user profile from database
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
       
@@ -60,7 +58,7 @@ export const useProfileScreen = () => {
         totalReviews: userProfile?.totalReviews,
       });
     } catch (err: any) {
-      console.error('[ProfileScreen] Error loading profile:', err);
+      console.error('Error loading profile:', err);
       setError(err?.message || 'Failed to load profile');
     } finally {
       setIsLoading(false);
@@ -75,8 +73,8 @@ export const useProfileScreen = () => {
   );
 
   const handleBackPress = () => {
-    // Handle back navigation
-    console.log('Back pressed');
+    // Navigate back to Home tab
+    navigation.goBack();
   };
 
   const handleSharePress = () => {
@@ -161,14 +159,10 @@ export const useProfileScreen = () => {
   };
 
   const handleApplyHerePress = () => {
-    // Handle brand ambassador application
     console.log('Apply here pressed');
   };
 
-  // Format date of birth for display
   const formattedDOB = profile?.dob ? formatDateForDisplay(profile.dob) : '';
-  
-  // Get referral code from profile or use default
   const referralCode = profile?.referalCode || 'N/A';
 
   return {
