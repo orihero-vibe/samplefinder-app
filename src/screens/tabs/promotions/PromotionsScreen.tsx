@@ -34,6 +34,8 @@ const PromotionsScreen = () => {
     referFriendSuccessBottomSheetRef,
     isLoading,
     totalPoints,
+    isAmbassador,
+    isInfluencer,
     setActiveTab,
     handleBackPress,
     handleSharePress,
@@ -79,6 +81,8 @@ const PromotionsScreen = () => {
                   reviews={reviews}
                   eventBadges={eventBadges}
                   reviewBadges={reviewBadges}
+                  isAmbassador={isAmbassador}
+                  isInfluencer={isInfluencer}
                 />
                 <TiersSection tiers={tiers} />
               </View>
@@ -93,6 +97,8 @@ const PromotionsScreen = () => {
                   totalPoints={totalPoints}
                   onTierPress={handleTierPress}
                   onPointsPress={handlePointsPress}
+                  isAmbassador={isAmbassador}
+                  isInfluencer={isInfluencer}
                 />
                 <HistorySection historyItems={historyItems} />
               </>

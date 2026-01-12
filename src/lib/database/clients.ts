@@ -71,6 +71,66 @@ export const fetchClients = async (): Promise<ClientData[]> => {
 };
 
 /**
+ * Fetch a single client by ID
+ */
+export const fetchClientById = async (clientId: string): Promise<ClientData | null> => {
+  console.log('[database.fetchClientById] Fetching client:', clientId);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !CLIENTS_TABLE_ID) {
+    const errorMsg = 'Database ID or Clients Table ID not configured. Please check your .env file.';
+    console.error('[database.fetchClientById]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    const result = await tablesDB.getRow({
+      databaseId: DATABASE_ID,
+      tableId: CLIENTS_TABLE_ID,
+      rowId: clientId,
+    });
+
+    if (!result) {
+      console.log('[database.fetchClientById] Client not found:', clientId);
+      return null;
+    }
+
+    // Extract location from point field - format: [longitude, latitude]
+    let location: [number, number] | undefined;
+    if (result.location) {
+      if (Array.isArray(result.location) && result.location.length >= 2) {
+        // Direct array format [longitude, latitude]
+        location = [result.location[0], result.location[1]];
+      } else if (result.location.coordinates && Array.isArray(result.location.coordinates) && result.location.coordinates.length >= 2) {
+        // GeoJSON format {coordinates: [longitude, latitude]}
+        location = [result.location.coordinates[0], result.location.coordinates[1]];
+      }
+    }
+
+    const client: ClientData = {
+      ...result, // Include all other fields including logoURL
+      $id: result.$id,
+      name: result.name || result.title || '',
+      title: result.title || result.name || '',
+      location,
+      street: result.address || result.street || result.address?.street || '',
+      city: result.city || result.address?.city || '',
+      state: result.state || result.address?.state || '',
+      zip: result.zip || result.zipCode || result.address?.zip || '',
+    };
+
+    console.log('[database.fetchClientById] Client fetched successfully:', client.$id);
+    console.log('[database.fetchClientById] Client logoURL:', client.logoURL);
+    return client;
+  } catch (error: any) {
+    console.error('[database.fetchClientById] Error fetching client:', error);
+    console.error('[database.fetchClientById] Error message:', error?.message);
+    console.error('[database.fetchClientById] Error code:', error?.code);
+    return null; // Return null instead of throwing to avoid breaking the flow
+  }
+};
+
+/**
  * Fetch clients with filters applied (radius, date, category)
  * Filters events first, then returns clients that have matching events
  */

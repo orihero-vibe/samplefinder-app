@@ -27,6 +27,7 @@ export {
 export {
   fetchClients,
   fetchClientsWithFilters,
+  fetchClientById,
 } from './clients';
 
 // Re-export event functions
@@ -92,6 +93,7 @@ import { getUserProfile } from './users';
 import { updateUserProfile } from './users';
 import { fetchClients } from './clients';
 import { fetchClientsWithFilters } from './clients';
+import { fetchClientById } from './clients';
 import { fetchEventsByClient } from './events';
 import { fetchAllEvents } from './events';
 import { fetchAllUpcomingEvents } from './events';
@@ -109,6 +111,7 @@ export default {
   updateUserProfile,
   fetchClients,
   fetchClientsWithFilters,
+  fetchClientById,
   fetchEventsByClient,
   fetchAllEvents,
   fetchAllUpcomingEvents,

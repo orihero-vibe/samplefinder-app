@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Share } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
@@ -33,6 +34,8 @@ export const usePromotionsScreen = () => {
   const [reviewsCount, setReviewsCount] = useState(0);
   const [historyItems, setHistoryItems] = useState<HistoryItemData[]>([]);
   const [tiersData, setTiersData] = useState<TierRow[]>([]);
+  const [isAmbassador, setIsAmbassador] = useState(false);
+  const [isInfluencer, setIsInfluencer] = useState(false);
   
   // Fetch user statistics and history on mount
   useEffect(() => {
@@ -60,6 +63,10 @@ export const usePromotionsScreen = () => {
         setIsLoading(false);
         return;
       }
+
+      // Set ambassador and influencer status from profile
+      setIsAmbassador(userProfile.isAmbassador || false);
+      setIsInfluencer(userProfile.isInfluencer || false);
 
       const stats = await getUserStatistics(authUser.$id);
       setTotalPoints(stats.totalPoints);
@@ -92,6 +99,9 @@ export const usePromotionsScreen = () => {
         if (event) {
           const reviewForEvent = reviews.find(r => r.event === checkIn.eventID);
           
+          console.log('[buildHistoryItems] Event client data:', JSON.stringify(event.client, null, 2));
+          console.log('[buildHistoryItems] Brand photo URL:', event.client?.logoURL);
+          
           items.push({
             id: checkIn.$id,
             brandProduct: event.name || 'Event',
@@ -103,6 +113,7 @@ export const usePromotionsScreen = () => {
             }),
             points: checkIn.pointsEarned + (reviewForEvent?.pointsEarned || 0),
             review: reviewForEvent?.review,
+            brandPhotoURL: event.client?.logoURL || null,
           });
         }
       } catch (error) {
@@ -119,8 +130,17 @@ export const usePromotionsScreen = () => {
     navigation.goBack();
   };
 
-  const handleSharePress = () => {
-    console.log('Share pressed');
+  const handleSharePress = async () => {
+    try {
+      const earnedBadges = [...eventBadges, ...reviewBadges].filter(badge => badge.achieved).length;
+      const earnedTiers = tiers.filter(tier => tier.badgeEarned).length;
+      
+      await Share.share({
+        message: `I've earned ${totalPoints} points, ${earnedBadges} badges, and ${earnedTiers} tiers on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+      });
+    } catch (error) {
+      console.error('Error sharing achievements:', error);
+    }
   };
 
   const handleCloseReferFriend = () => {
@@ -157,8 +177,20 @@ export const usePromotionsScreen = () => {
     setSelectedTier(null);
   };
 
-  const handleShareAchievement = () => {
-    console.log('Share achievement:', selectedTier?.name, selectedPoints);
+  const handleShareAchievement = async () => {
+    try {
+      if (selectedTier) {
+        await Share.share({
+          message: `I just earned the ${selectedTier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+        });
+      } else {
+        await Share.share({
+          message: `I just earned ${selectedPoints} points on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing achievement:', error);
+    }
   };
 
   const eventBadges: Badge[] = [
@@ -213,6 +245,8 @@ export const usePromotionsScreen = () => {
     referFriendSuccessBottomSheetRef,
     isLoading,
     totalPoints,
+    isAmbassador,
+    isInfluencer,
     setActiveTab,
     handleBackPress,
     handleSharePress,

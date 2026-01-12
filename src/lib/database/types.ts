@@ -22,6 +22,8 @@ export interface UserProfileRow extends UserProfileData {
   totalEvents?: number;
   totalReviews?: number;
   totalPoints?: number;
+  isAmbassador?: boolean;
+  isInfluencer?: boolean;
 }
 
 /**

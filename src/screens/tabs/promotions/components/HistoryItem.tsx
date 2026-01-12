@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 
@@ -10,6 +10,7 @@ export interface HistoryItemData {
   date: string; // Format: "Aug 1, 2025"
   points: number;
   review?: string;
+  brandPhotoURL?: string | null;
 }
 
 interface HistoryItemProps {
@@ -30,10 +31,19 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
         {/* Icon and Main Info */}
         <View style={styles.mainRow}>
           <View style={styles.iconContainer}>
-            <Monicon name="mdi:map-marker" size={32} color={Colors.pinDarkBlue} />
-            <View style={styles.magnifierOverlay}>
-              <Monicon name="mdi:magnify" size={14} color={Colors.pinDarkBlue} />
-            </View>
+            {item.brandPhotoURL ? (
+              <Image 
+                source={{ uri: item.brandPhotoURL }} 
+                style={styles.brandPhoto}
+                resizeMode="cover"
+              />
+            ) : (
+              <Image
+                source={require('@/assets/locationImage.png')}
+                style={styles.brandPhoto}
+                resizeMode="contain"
+              />
+            )}
           </View>
           <View style={styles.infoContainer}>
             <Text style={styles.brandProduct}>{item.brandProduct}</Text>
@@ -106,6 +116,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
     position: 'relative',
+  },
+  brandPhoto: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
   },
   magnifierOverlay: {
     position: 'absolute',
