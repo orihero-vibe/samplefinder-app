@@ -320,6 +320,8 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       totalEvents: profile.totalEvents || 0,
       totalReviews: profile.totalReviews || 0,
       totalPoints: profile.totalPoints || 0,
+      isAmbassador: profile.isAmbassador || false,
+      isInfluencer: profile.isInfluencer || false,
     };
   } catch (error: any) {
     console.error('[database.getUserProfile] Error fetching user profile:', error);

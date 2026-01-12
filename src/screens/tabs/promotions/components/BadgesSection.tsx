@@ -10,6 +10,8 @@ interface BadgesSectionProps {
   reviews: number;
   eventBadges: Badge[];
   reviewBadges: Badge[];
+  isAmbassador?: boolean;
+  isInfluencer?: boolean;
 }
 
 const BadgesSection: React.FC<BadgesSectionProps> = ({
@@ -17,6 +19,8 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
   reviews,
   eventBadges,
   reviewBadges,
+  isAmbassador = false,
+  isInfluencer = false,
 }) => {
   return (
     <View style={styles.card}>
@@ -66,12 +70,14 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
           </TouchableOpacity>
         </View>
         <View style={styles.identifierBadgeRow}>
-          <CertifiedBrandAmbassadorIcon size={50} />
-          <Text style={styles.identifierBadgeText}>Certified Brand Ambassador</Text>
+          <CertifiedBrandAmbassadorIcon size={50} disabled={!isAmbassador} />
+          <Text style={[styles.identifierBadgeText, !isAmbassador && styles.disabledText]}>
+            Certified Brand Ambassador
+          </Text>
         </View>
         <View style={styles.identifierBadgeRow}>
-          <CertifiedInfluencerIcon size={50} disabled />
-          <Text style={[styles.identifierBadgeText, styles.disabledText]}>
+          <CertifiedInfluencerIcon size={50} disabled={!isInfluencer} />
+          <Text style={[styles.identifierBadgeText, !isInfluencer && styles.disabledText]}>
             Certified Influencer
           </Text>
         </View>

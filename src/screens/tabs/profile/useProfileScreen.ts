@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
-import { Alert } from 'react-native';
+import { Alert, Share } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { logout, getCurrentUser } from '@/lib/auth';
 import { getUserProfile, calculateTierStatus, UserProfileRow } from '@/lib/database';
@@ -77,9 +77,17 @@ export const useProfileScreen = () => {
     navigation.goBack();
   };
 
-  const handleSharePress = () => {
-    // Handle share action
-    console.log('Share pressed');
+  const handleSharePress = async () => {
+    try {
+      const username = profile?.username || authUser?.name || 'User';
+      const tierStatus = calculateTierStatus(statistics.totalPoints);
+      
+      await Share.share({
+        message: `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus.tier} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`,
+      });
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+    }
   };
 
   const handleReferFriendPress = () => {

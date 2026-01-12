@@ -5,11 +5,18 @@ import CustomButton from '@/components/shared/CustomButton';
 
 interface BrandAmbassadorSectionProps {
   onApplyHerePress?: () => void;
+  isAmbassador?: boolean;
 }
 
 const BrandAmbassadorSection: React.FC<BrandAmbassadorSectionProps> = ({
   onApplyHerePress,
+  isAmbassador = false,
 }) => {
+  // Don't show the section if user is already an ambassador
+  if (isAmbassador) {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.text}>

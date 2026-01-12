@@ -13,6 +13,8 @@ interface EarnedSectionProps {
   totalPoints: number;
   onTierPress?: (tier: Tier, points: number) => void;
   onPointsPress?: (points: number, tier?: Tier) => void;
+  isAmbassador?: boolean;
+  isInfluencer?: boolean;
 }
 
 const EarnedSection: React.FC<EarnedSectionProps> = ({
@@ -22,6 +24,8 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
   totalPoints,
   onTierPress,
   onPointsPress,
+  isAmbassador = false,
+  isInfluencer = false,
 }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -89,12 +93,16 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
       {/* Certifications */}
       <View style={styles.certificationsContainer}>
         <View style={styles.certificationRow}>
-          <CertifiedBrandAmbassadorIcon size={50} />
-          <Text style={styles.certificationText}>Certified Brand Ambassador</Text>
+          <CertifiedBrandAmbassadorIcon size={50} disabled={!isAmbassador} />
+          <Text style={[styles.certificationText, !isAmbassador && { color: '#999999' }]}>
+            Certified Brand Ambassador
+          </Text>
         </View>
         <View style={styles.certificationRow}>
-          <CertifiedInfluencerIcon size={50} />
-          <Text style={styles.certificationText}>Certified Influencer</Text>
+          <CertifiedInfluencerIcon size={50} disabled={!isInfluencer} />
+          <Text style={[styles.certificationText, !isInfluencer && { color: '#999999' }]}>
+            Certified Influencer
+          </Text>
         </View>
       </View>
 
