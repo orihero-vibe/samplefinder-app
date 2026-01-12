@@ -1,29 +1,27 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { CompositeNavigationProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { Share, Alert, Linking } from 'react-native';
-import * as Calendar from 'expo-calendar';
-import * as Location from 'expo-location';
-import { parseEventDateTime, calculateDistance } from '@/utils/formatters';
-import { useFavoritesStore, FavoriteBrandData } from '@/stores/favoritesStore';
-import { 
-  fetchEventById, 
-  fetchClients, 
-  EventRow, 
-  ClientData,
+import { getCurrentUser } from '@/lib/auth';
+import {
   createCheckIn,
-  getUserCheckInForEvent,
   createReview,
-  getUserReviewForEvent,
+  EventRow,
+  fetchClients,
+  fetchEventById,
+  getUserCheckInForEvent,
   getUserProfile,
+  getUserReviewForEvent
 } from '@/lib/database';
-import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
+import { cancelEventReminders, scheduleEventReminders } from '@/lib/notifications/eventReminders';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
-import { scheduleEventReminders, cancelEventReminders } from '@/lib/notifications/eventReminders';
-import { getCurrentUser } from '@/lib/auth';
+import { FavoriteBrandData, useFavoritesStore } from '@/stores/favoritesStore';
+import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
+import { calculateDistance, parseEventDateTime } from '@/utils/formatters';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Calendar from 'expo-calendar';
+import * as Location from 'expo-location';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Linking, Share } from 'react-native';
 
 export interface BrandDetailsData {
   id: string;
