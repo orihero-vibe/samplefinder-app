@@ -27,4 +27,11 @@ export {
   setupNotificationHandlers,
   getLastNotificationResponse,
 } from './handlers';
+export {
+  scheduleEventReminders,
+  cancelEventReminders,
+  getEventReminders,
+  cancelAllEventReminders,
+  cleanupPastEventReminders,
+} from './eventReminders';
 

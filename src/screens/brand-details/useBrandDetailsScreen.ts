@@ -12,6 +12,7 @@ import { fetchEventById, fetchClients, EventRow, ClientData } from '@/lib/databa
 import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
+import { scheduleEventReminders, cancelEventReminders } from '@/lib/notifications';
 
 export interface BrandDetailsData {
   id: string;
@@ -198,8 +199,17 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   };
 
   const handleAddToCalendar = async () => {
-    // If already added, just toggle the state (could implement removal later)
+    // If already added, cancel reminders and toggle the state
     if (isAddedToCalendar) {
+      if (brand) {
+        const eventIdForReminders = brand.id;
+        try {
+          await cancelEventReminders(eventIdForReminders);
+          console.log('[BrandDetailsScreen] Event reminders canceled');
+        } catch (error) {
+          console.error('[BrandDetailsScreen] Error canceling reminders:', error);
+        }
+      }
       setIsAddedToCalendar(false);
       return;
     }
@@ -298,10 +308,33 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
         notes: brand.eventInfo || `Sample sale event for ${brand.brandName}`,
       };
 
-      const eventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
+      const calendarEventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
       
-      if (eventId) {
+      if (calendarEventId) {
         setIsAddedToCalendar(true);
+        
+        // Schedule push reminders for the event (24 hours and 1 hour before)
+        if (brand && eventDates.start) {
+          const eventTitle = `${brand.brandName} at ${brand.storeName}`;
+          const addressString = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;
+          
+          // Use the event ID from the database if available, otherwise use calendar event ID
+          const eventIdForReminders = brand.id || calendarEventId;
+          
+          try {
+            await scheduleEventReminders(
+              eventIdForReminders,
+              eventDates.start,
+              eventTitle,
+              addressString
+            );
+            console.log('[BrandDetailsScreen] Event reminders scheduled successfully');
+          } catch (reminderError) {
+            // Don't fail the calendar add if reminder scheduling fails
+            console.error('[BrandDetailsScreen] Error scheduling reminders:', reminderError);
+          }
+        }
+        
         Alert.alert(
           'Success',
           'Event added to your calendar!',

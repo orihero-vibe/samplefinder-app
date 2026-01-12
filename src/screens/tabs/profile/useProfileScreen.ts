@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { logout, getCurrentUser } from '@/lib/auth';
 import { getUserProfile, calculateTierStatus, UserProfileRow } from '@/lib/database';
@@ -160,9 +160,27 @@ export const useProfileScreen = () => {
     navigation.navigate('Notifications' as never);
   };
 
-  const handleApplyHerePress = () => {
-    // Handle brand ambassador application
-    console.log('Apply here pressed');
+  const handleApplyHerePress = async () => {
+    const url = 'https://app.popbookings.com/vip/polarisbrandpromotions';
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert(
+          'Unable to Open Link',
+          'Unable to open the application form. Please check your internet connection.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      console.error('Error opening brand ambassador form:', error);
+      Alert.alert(
+        'Error',
+        'Failed to open the application form. Please try again later.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   // Format date of birth for display
