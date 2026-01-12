@@ -22,7 +22,7 @@ import {
 import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
-import { scheduleEventReminders, cancelEventReminders } from '@/lib/notifications';
+import { scheduleEventReminders, cancelEventReminders } from '@/lib/notifications/eventReminders';
 import { getCurrentUser } from '@/lib/auth';
 
 export interface BrandDetailsData {
