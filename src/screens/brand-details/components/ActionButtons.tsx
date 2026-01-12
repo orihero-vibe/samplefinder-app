@@ -41,7 +41,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         <Monicon
           name={isFavorite ? 'mdi:heart' : 'mdi:heart-outline'}
           size={20}
-          color={Colors.blueColorMode}
+          color={isFavorite ? '#8B1538' : Colors.blueColorMode}
         />
         <Text style={styles.actionButtonText}>
           {isFavorite ? 'Favorite Brand' : 'Add Favorite Brand'}
@@ -54,9 +54,10 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    justifyContent: 'space-around',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 16,
     width: '100%',
     alignItems: 'center',
   },
@@ -64,13 +65,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    flex: 1,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   actionButtonText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontSize: 13,
+    fontFamily: 'Quicksand_500Medium',
     color: Colors.blueColorMode,
   },
 });

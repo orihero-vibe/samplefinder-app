@@ -23,6 +23,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     marginBottom: 24,
+    justifyContent: 'center',
   },
   text: {
     fontSize: 16,

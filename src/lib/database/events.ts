@@ -69,6 +69,7 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
         reviewPoints: row.reviewPoints || 0,
         eventInfo: row.eventInfo || '',
         discountImageURL: row.discountImageURL || null,
+        radius: row.radius || undefined,
         isArchived: row.isArchived || false,
         isHidder: row.isHidder || false,
         $createdAt: row.$createdAt,
@@ -110,18 +111,17 @@ export const fetchAllEvents = async (): Promise<EventRow[]> => {
 
     console.log('[database.fetchAllEvents] Querying events with filters:', {
       isArchived: false,
-      isHidden: false,
-    });
+    isHidden: false,
+  });
 
-    const result = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: EVENTS_TABLE_ID,
-      queries,
-      // Order by date ascending
-      orders: [Query.orderAsc('date')],
-    });
+  const result = await tablesDB.listRows({
+    databaseId: DATABASE_ID,
+    tableId: EVENTS_TABLE_ID,
+    // Order by date ascending
+    queries: [...queries, Query.orderAsc('date')],
+  });
 
-    console.log('[database.fetchAllEvents] Query result:', {
+  console.log('[database.fetchAllEvents] Query result:', {
       total: result.total,
       rowsCount: result.rows?.length || 0,
     });
@@ -148,6 +148,7 @@ export const fetchAllEvents = async (): Promise<EventRow[]> => {
       checkInPoints: row.checkInPoints || 0,
       reviewPoints: row.reviewPoints || 0,
       eventInfo: row.eventInfo || '',
+      radius: row.radius || undefined,
       isArchived: row.isArchived || false,
       isHidder: row.isHidder || false,
       $createdAt: row.$createdAt,
@@ -193,18 +194,17 @@ export const fetchAllUpcomingEvents = async (): Promise<EventRow[]> => {
     console.log('[database.fetchAllUpcomingEvents] Querying events with filters:', {
       isArchived: false,
       isHidden: false,
-      dateMin: todayISO,
-    });
+    dateMin: todayISO,
+  });
 
-    const result = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: EVENTS_TABLE_ID,
-      queries,
-      // Order by date ascending
-      orders: [Query.orderAsc('date')],
-    });
+  const result = await tablesDB.listRows({
+    databaseId: DATABASE_ID,
+    tableId: EVENTS_TABLE_ID,
+    // Order by date ascending
+    queries: [...queries, Query.orderAsc('date')],
+  });
 
-    console.log('[database.fetchAllUpcomingEvents] Query result:', {
+  console.log('[database.fetchAllUpcomingEvents] Query result:', {
       total: result.total,
       rowsCount: result.rows?.length || 0,
     });
@@ -231,6 +231,7 @@ export const fetchAllUpcomingEvents = async (): Promise<EventRow[]> => {
       checkInPoints: row.checkInPoints || 0,
       reviewPoints: row.reviewPoints || 0,
       eventInfo: row.eventInfo || '',
+      radius: row.radius || undefined,
       isArchived: row.isArchived || false,
       isHidder: row.isHidder || false,
       $createdAt: row.$createdAt,
@@ -281,6 +282,14 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       return null;
     }
 
+    // Fetch full client data if client is just an ID string
+    let clientData = result.client;
+    if (typeof result.client === 'string') {
+      console.log('[database.fetchEventById] Client is ID string, fetching full client data:', result.client);
+      const { fetchClientById } = await import('./clients');
+      clientData = await fetchClientById(result.client);
+    }
+
     const event: EventRow = {
       $id: result.$id,
       name: result.name || '',
@@ -292,12 +301,13 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       state: result.state || '',
       zipCode: result.zipCode || '',
       products: result.products || '',
-      client: result.client,
+      client: clientData,
       checkInCode: result.checkInCode || '',
       checkInPoints: result.checkInPoints || 0,
       reviewPoints: result.reviewPoints || 0,
       eventInfo: result.eventInfo || '',
       discountImageURL: result.discountImageURL || null,
+      radius: result.radius || undefined,
       isArchived: result.isArchived || false,
       isHidder: result.isHidder || false,
       $createdAt: result.$createdAt,
@@ -305,6 +315,7 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
     };
 
     console.log('[database.fetchEventById] Event fetched successfully:', event.$id);
+    console.log('[database.fetchEventById] Client data:', JSON.stringify(clientData, null, 2));
     return event;
   } catch (error: any) {
     console.error('[database.fetchEventById] Error fetching event:', error);

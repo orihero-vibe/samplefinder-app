@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 
@@ -10,6 +10,7 @@ export interface HistoryItemData {
   date: string; // Format: "Aug 1, 2025"
   points: number;
   review?: string;
+  brandPhotoURL?: string | null;
 }
 
 interface HistoryItemProps {
@@ -30,34 +31,51 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
         {/* Icon and Main Info */}
         <View style={styles.mainRow}>
           <View style={styles.iconContainer}>
-            <Monicon name="mdi:map-marker" size={24} color={Colors.pinDarkBlue} />
-            <View style={styles.magnifierOverlay}>
-              <Monicon name="mdi:magnify" size={12} color={Colors.pinDarkBlue} />
-            </View>
+            {item.brandPhotoURL ? (
+              <Image 
+                source={{ uri: item.brandPhotoURL }} 
+                style={styles.brandPhoto}
+                resizeMode="cover"
+              />
+            ) : (
+              <Image
+                source={require('@/assets/locationImage.png')}
+                style={styles.brandPhoto}
+                resizeMode="contain"
+              />
+            )}
           </View>
           <View style={styles.infoContainer}>
             <Text style={styles.brandProduct}>{item.brandProduct}</Text>
             <Text style={styles.storeName}>{item.storeName}</Text>
-            <Text style={styles.date}>{item.date}</Text>
-          </View>
-          <View style={styles.pointsContainer}>
-            <Text style={styles.points}>{item.points} Points</Text>
+            <View style={styles.datePointsRow}>
+              <Text style={styles.date}>{item.date}</Text>
+              {item.review ? (
+                <>
+                  <Text style={styles.separator}>|</Text>
+                  <Text style={styles.points}>{item.points} Points</Text>
+                  <Text style={styles.separator}>|</Text>
+                  <TouchableOpacity style={styles.reviewToggleInline} onPress={toggleExpand}>
+                    <Text style={styles.reviewToggleText}>
+                      {isExpanded ? 'Close review' : 'See review'}
+                    </Text>
+                    <Monicon
+                      name={isExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'}
+                      size={16}
+                      color={Colors.black}
+                    />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <View style={styles.bulletSeparator} />
+                  <Text style={styles.points}>{item.points} Points</Text>
+                  <View style={styles.bulletSeparator} />
+                </>
+              )}
+            </View>
           </View>
         </View>
-
-        {/* Review Toggle */}
-        {item.review && (
-          <TouchableOpacity style={styles.reviewToggle} onPress={toggleExpand}>
-            <Text style={styles.reviewToggleText}>
-              {isExpanded ? 'Close review' : 'See review'}
-            </Text>
-            <Monicon
-              name={isExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'}
-              size={20}
-              color={Colors.pinDarkBlue}
-            />
-          </TouchableOpacity>
-        )}
 
         {/* Expanded Review */}
         {isExpanded && item.review && (
@@ -72,7 +90,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   content: {
     backgroundColor: Colors.white,
@@ -92,62 +110,81 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
     position: 'relative',
   },
+  brandPhoto: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+  },
   magnifierOverlay: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
+    bottom: 0,
+    right: 0,
     backgroundColor: Colors.white,
-    borderRadius: 8,
-    padding: 2,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoContainer: {
     flex: 1,
   },
   brandProduct: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.black,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   storeName: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Quicksand_400Regular',
     color: Colors.black,
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  datePointsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   date: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Quicksand_400Regular',
     color: Colors.black,
   },
-  pointsContainer: {
-    alignItems: 'flex-end',
+  separator: {
+    fontSize: 13,
+    fontFamily: 'Quicksand_400Regular',
+    color: Colors.black,
+    marginHorizontal: 6,
+  },
+  bulletSeparator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.black,
+    marginHorizontal: 8,
   },
   points: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinDarkBlue,
   },
-  reviewToggle: {
+  reviewToggleInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
   },
   reviewToggleText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.pinDarkBlue,
-    marginRight: 8,
+    fontSize: 13,
+    fontFamily: 'Quicksand_400Regular',
+    color: Colors.black,
+    marginRight: 4,
   },
   reviewContainer: {
     marginTop: 12,

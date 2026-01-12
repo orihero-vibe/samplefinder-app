@@ -8,6 +8,12 @@ export type {
   EventsByLocationResponse,
   CategoryData,
   UserStatistics,
+  CheckInData,
+  CheckInRow,
+  ReviewData,
+  ReviewRow,
+  TierData,
+  TierRow,
 } from './types';
 
 // Re-export user functions
@@ -21,6 +27,7 @@ export {
 export {
   fetchClients,
   fetchClientsWithFilters,
+  fetchClientById,
 } from './clients';
 
 // Re-export event functions
@@ -37,11 +44,35 @@ export {
   fetchCategories,
 } from './categories';
 
+// Re-export check-in functions
+export {
+  createCheckIn,
+  getUserCheckIns,
+  getUserCheckInForEvent,
+  getUserCheckInsCount,
+} from './checkIns';
+
+// Re-export review functions
+export {
+  createReview,
+  getUserReviews,
+  getUserReviewForEvent,
+  getUserReviewsCount,
+  getEventReviews,
+} from './reviews';
+
 // Re-export statistics functions
 export {
   getUserStatistics,
   calculateTierStatus,
 } from './statistics';
+
+// Re-export tier functions
+export {
+  fetchTiers,
+  getUserCurrentTier,
+  getUserNextTier,
+} from './tiers';
 
 // Re-export trivia functions
 export {
@@ -62,6 +93,7 @@ import { getUserProfile } from './users';
 import { updateUserProfile } from './users';
 import { fetchClients } from './clients';
 import { fetchClientsWithFilters } from './clients';
+import { fetchClientById } from './clients';
 import { fetchEventsByClient } from './events';
 import { fetchAllEvents } from './events';
 import { fetchAllUpcomingEvents } from './events';
@@ -70,6 +102,7 @@ import { fetchEventsByLocation } from './events';
 import { fetchCategories } from './categories';
 import { getUserStatistics } from './statistics';
 import { calculateTierStatus } from './statistics';
+import { fetchTiers, getUserCurrentTier, getUserNextTier } from './tiers';
 import { getActiveTrivia, submitTriviaAnswer } from './trivia';
 
 export default {
@@ -78,6 +111,7 @@ export default {
   updateUserProfile,
   fetchClients,
   fetchClientsWithFilters,
+  fetchClientById,
   fetchEventsByClient,
   fetchAllEvents,
   fetchAllUpcomingEvents,
@@ -86,6 +120,9 @@ export default {
   fetchCategories,
   getUserStatistics,
   calculateTierStatus,
+  fetchTiers,
+  getUserCurrentTier,
+  getUserNextTier,
   getActiveTrivia,
   submitTriviaAnswer,
 };

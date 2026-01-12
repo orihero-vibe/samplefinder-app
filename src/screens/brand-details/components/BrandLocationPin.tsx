@@ -13,10 +13,10 @@ const BrandLocationPin: React.FC<BrandLocationPinProps> = ({ logoUrl }) => {
       {logoUrl ? (
         <Image source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="cover" />
       ) : (
-        <View style={styles.largePin}>
-          <Monicon name="mdi:map-marker" size={48} color={Colors.blueColorMode} />
+        <View style={styles.pinWrapper}>
+          <Monicon name="mdi:map-marker" size={80} color={Colors.blueColorMode} />
           <View style={styles.pinOverlay}>
-            <Monicon name="mdi:magnify" size={20} color={Colors.white} />
+            <Monicon name="mdi:magnify" size={18} color={Colors.white} />
           </View>
         </View>
       )}
@@ -27,36 +27,27 @@ const BrandLocationPin: React.FC<BrandLocationPinProps> = ({ logoUrl }) => {
 const styles = StyleSheet.create({
   pinContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 16,
+    marginBottom: 8,
   },
-  largePin: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.white,
-    borderWidth: 3,
-    borderColor: Colors.blueColorMode,
+  pinWrapper: {
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   pinOverlay: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.blueColorMode,
+    top: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.white,
   },
   logoImage: {
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
     borderRadius: 8,
   },
 });

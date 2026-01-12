@@ -299,3 +299,57 @@ export const calculateDistance = (
   return R * c;
 };
 
+/**
+ * Formats event distance for display
+ * Supports three modes:
+ * 1. Pass distanceKm to convert from kilometers (from database)
+ * 2. Pass distanceMeters to convert from meters (from database) 
+ * 3. Pass userLocation and eventCoordinates to calculate distance
+ * 
+ * @param options - Object containing either distanceKm, distanceMeters, OR both userLocation and eventCoordinates
+ * @returns Formatted distance string (e.g., "2.5 mi away", "450 ft away", "Distance unknown")
+ */
+export const formatEventDistance = (options: {
+  distanceKm?: number;
+  distanceMeters?: number;
+  userLocation?: { latitude: number; longitude: number };
+  eventCoordinates?: { latitude: number; longitude: number };
+}): string => {
+  const { distanceKm, distanceMeters, userLocation, eventCoordinates } = options;
+
+  let distanceInMeters: number;
+
+  // Calculate distance from coordinates if provided
+  if (userLocation && eventCoordinates) {
+    distanceInMeters = calculateDistance(
+      userLocation.latitude,
+      userLocation.longitude,
+      eventCoordinates.latitude,
+      eventCoordinates.longitude
+    );
+  } 
+  // Use meters if provided directly
+  else if (distanceMeters !== undefined && distanceMeters !== null) {
+    distanceInMeters = distanceMeters;
+  }
+  // Convert from kilometers if provided
+  else if (distanceKm !== undefined && distanceKm !== null) {
+    distanceInMeters = distanceKm * 1000;
+  } 
+  // No distance information available
+  else {
+    return 'Distance unknown';
+  }
+
+  // Convert meters to miles
+  const distanceMiles = distanceInMeters / 1609.34;
+
+  // Format as feet if less than 0.1 miles (528 feet)
+  if (distanceMiles < 0.1) {
+    return `${(distanceMiles * 5280).toFixed(0)} ft away`;
+  }
+
+  // Format as miles
+  return `${distanceMiles.toFixed(1)} mi away`;
+};
+

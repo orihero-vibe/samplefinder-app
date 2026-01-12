@@ -120,7 +120,6 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
               selectTextOnFocus
             />
           </View>
-          <View style={styles.underline} />
         </TouchableOpacity>
       ))}
     </View>
@@ -132,36 +131,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
-    marginVertical: 20,
+    gap: 10,
+    marginVertical: 16,
   },
   inputWrapper: {
     alignItems: 'center',
   },
   circle: {
-    width: 40,
-    height: 40,
-    borderRadius: 25,
-    backgroundColor: '#E5E5E5',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#D9D9D9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
   circleFilled: {
-    backgroundColor: '#D0D0D0',
+    backgroundColor: '#B8B8B8',
   },
   input: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Quicksand_600SemiBold',
     color: '#2D1B69',
     textAlign: 'center',
     width: '100%',
     height: '100%',
-  },
-  underline: {
-    width: 30,
-    height: 2,
-    backgroundColor: '#999',
   },
 });
 

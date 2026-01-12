@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_700Bold',
     color: Colors.brandPurpleDeep,
     marginRight: 8,
+    width: '40%',
   },
   infoValue: {
     fontSize: 14,

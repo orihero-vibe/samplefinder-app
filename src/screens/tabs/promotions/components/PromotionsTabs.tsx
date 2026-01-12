@@ -11,50 +11,57 @@ interface PromotionsTabsProps {
 
 const PromotionsTabs: React.FC<PromotionsTabsProps> = ({ activeTab, onTabChange }) => {
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'inProgress' && styles.activeTab]}
-        onPress={() => onTabChange('inProgress')}
-      >
-        <Text
-          style={[
-            styles.tabText,
-            activeTab === 'inProgress' && styles.activeTabText,
-          ]}
+    <View style={styles.wrapper}>
+      <View style={styles.container}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'inProgress' && styles.activeTab]}
+          onPress={() => onTabChange('inProgress')}
         >
-          In Progress
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'earned' && styles.activeTab]}
-        onPress={() => onTabChange('earned')}
-      >
-        <Text
-          style={[
-            styles.tabText,
-            activeTab === 'earned' && styles.activeTabText,
-          ]}
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'inProgress' ? styles.activeTabText : styles.inactiveTabText,
+            ]}
+          >
+            In Progress
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'earned' && styles.activeTab]}
+          onPress={() => onTabChange('earned')}
         >
-          Earned
-        </Text>
-      </TouchableOpacity>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'earned' ? styles.activeTabText : styles.inactiveTabText,
+            ]}
+          >
+            Earned
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
+  wrapper: {
     paddingHorizontal: 20,
     marginBottom: 20,
-    gap: 10,
+  },
+  container: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.pinDarkBlue,
+    overflow: 'hidden',
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 8,
     alignItems: 'center',
+    backgroundColor: Colors.white,
   },
   activeTab: {
     backgroundColor: Colors.pinDarkBlue,
@@ -62,10 +69,12 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 16,
     fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.white,
   },
   activeTabText: {
     color: Colors.white,
+  },
+  inactiveTabText: {
+    color: Colors.pinDarkBlue,
   },
 });
 
