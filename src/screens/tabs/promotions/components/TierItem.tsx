@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/Colors';
 import { Monicon } from '@monicon/native';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 export interface Tier {
   id: string;
@@ -9,6 +9,7 @@ export interface Tier {
   currentPoints: number;
   requiredPoints: number;
   badgeEarned: boolean;
+  imageURL?: string | null;
 }
 
 interface TierItemProps {
@@ -17,11 +18,21 @@ interface TierItemProps {
 
 const TierItem: React.FC<TierItemProps> = ({ tier }) => {
   const progress = Math.min((tier.currentPoints / tier.requiredPoints) * 100, 100);
+  const [imageError, setImageError] = React.useState(false);
 
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <Monicon name="ph:seal-fill" size={80} color={Colors.pinDarkBlue} />
+        {tier.imageURL && !imageError ? (
+          <Image 
+            source={{ uri: tier.imageURL }} 
+            style={styles.tierImage}
+            resizeMode="contain"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <Monicon name="ph:seal-fill" size={80} color={Colors.pinDarkBlue} />
+        )}
       </View>
       <View style={styles.info}>
         <Text style={styles.name}>{tier.name}</Text>
@@ -47,6 +58,10 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     paddingTop: 4,
+  },
+  tierImage: {
+    width: 80,
+    height: 80,
   },
   info: {
     flex: 1,

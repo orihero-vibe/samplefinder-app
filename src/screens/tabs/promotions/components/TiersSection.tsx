@@ -11,6 +11,7 @@ interface TiersSectionProps {
 const TiersSection: React.FC<TiersSectionProps> = ({ tiers }) => {
   return (
     <View style={styles.card}>
+      {/* Section Header */}
       <View style={styles.sectionHeader}>
         <View style={styles.sectionIconContainer}>
           <Monicon name="ph:seal-check-light" size={40} color={Colors.pinDarkBlue} />
@@ -21,6 +22,7 @@ const TiersSection: React.FC<TiersSectionProps> = ({ tiers }) => {
         </Text>
       </View>
 
+      {/* Tier Items */}
       {tiers.map((tier) => (
         <TierItem key={tier.id} tier={tier} />
       ))}

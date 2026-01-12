@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Share } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { logout, getCurrentUser } from '@/lib/auth';
 import { getUserProfile, calculateTierStatus, UserProfileRow } from '@/lib/database';
@@ -27,7 +27,6 @@ export const useProfileScreen = () => {
       setIsLoading(true);
       setError('');
       
-      // Get current authenticated user
       const user = await getCurrentUser();
       if (!user) {
         setError('Not authenticated. Please log in again.');
@@ -37,7 +36,6 @@ export const useProfileScreen = () => {
 
       setAuthUser({ email: user.email, name: user.name });
 
-      // Fetch user profile from database
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
       
@@ -60,7 +58,7 @@ export const useProfileScreen = () => {
         totalReviews: userProfile?.totalReviews,
       });
     } catch (err: any) {
-      console.error('[ProfileScreen] Error loading profile:', err);
+      console.error('Error loading profile:', err);
       setError(err?.message || 'Failed to load profile');
     } finally {
       setIsLoading(false);
@@ -75,13 +73,21 @@ export const useProfileScreen = () => {
   );
 
   const handleBackPress = () => {
-    // Handle back navigation
-    console.log('Back pressed');
+    // Navigate back to Home tab
+    navigation.goBack();
   };
 
-  const handleSharePress = () => {
-    // Handle share action
-    console.log('Share pressed');
+  const handleSharePress = async () => {
+    try {
+      const username = profile?.username || authUser?.name || 'User';
+      const tierStatus = calculateTierStatus(statistics.totalPoints);
+      
+      await Share.share({
+        message: `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus.tier} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`,
+      });
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+    }
   };
 
   const handleReferFriendPress = () => {
@@ -183,10 +189,7 @@ export const useProfileScreen = () => {
     }
   };
 
-  // Format date of birth for display
   const formattedDOB = profile?.dob ? formatDateForDisplay(profile.dob) : '';
-  
-  // Get referral code from profile or use default
   const referralCode = profile?.referalCode || 'N/A';
 
   return {

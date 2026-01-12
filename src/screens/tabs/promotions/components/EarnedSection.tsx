@@ -1,25 +1,34 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { SparkleIcon } from '@/icons';
+import { SparkleIcon, CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon } from '@/icons';
 import { Badge, Tier } from './index';
+import BadgeItem from './BadgeItem';
 
 interface EarnedSectionProps {
   eventBadges: Badge[];
   reviewBadges: Badge[];
   tiers: Tier[];
+  totalPoints: number;
   onTierPress?: (tier: Tier, points: number) => void;
   onPointsPress?: (points: number, tier?: Tier) => void;
+  isAmbassador?: boolean;
+  isInfluencer?: boolean;
 }
 
 const EarnedSection: React.FC<EarnedSectionProps> = ({
   eventBadges,
   reviewBadges,
   tiers,
+  totalPoints,
   onTierPress,
   onPointsPress,
+  isAmbassador = false,
+  isInfluencer = false,
 }) => {
+  const [imageError, setImageError] = useState(false);
+
   // Get earned badges
   const earnedEventBadges = eventBadges.filter((badge) => badge.achieved);
   const earnedReviewBadges = reviewBadges.filter((badge) => badge.achieved);
@@ -28,12 +37,7 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
   const earnedTiers = tiers.filter((tier) => tier.badgeEarned);
   const currentTier = earnedTiers.length > 0 
     ? earnedTiers[earnedTiers.length - 1] // Get the most recent earned tier
-    : null;
-
-  // Calculate total points earned
-  // For now, we'll use the tier's required points as a proxy for points earned
-  // In a real app, this would come from the backend
-  const totalPointsEarned = earnedTiers.reduce((sum, tier) => sum + tier.requiredPoints, 0);
+    : tiers[0]; // Default to first tier if none earned
 
   const handleViewHistory = () => {
     // Handle view history action
@@ -42,15 +46,35 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
 
   return (
     <View style={styles.card}>
+      {/* Header with Sparkle Icon */}
+      <View style={styles.headerContainer}>
+        <SparkleIcon size={32} color={Colors.brandPurpleBright} circleColor="transparent" />
+        <Text style={styles.headerTitle}>ACHIEVEMENTS</Text>
+      </View>
+
+      {/* Description Text */}
+      <Text style={styles.descriptionText}>
+        Keep Sampling, Keep Earning Badges & Points! Come Back To Track Your Progress.
+      </Text>
+
       {/* Current Achievement Badge */}
       {currentTier && (
         <TouchableOpacity
           style={styles.badgeContainer}
-          onPress={() => onTierPress?.(currentTier, totalPointsEarned)}
+          onPress={() => onTierPress?.(currentTier, totalPoints)}
           activeOpacity={0.7}
         >
           <View style={styles.badgeIconContainer}>
-            <Monicon name="ph:seal-fill" size={120} color={Colors.pinDarkBlue} />
+            {currentTier.imageURL && !imageError ? (
+              <Image
+                source={{ uri: currentTier.imageURL }}
+                style={styles.tierImage}
+                resizeMode="contain"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <Monicon name="ph:seal-fill" size={100} color={Colors.pinDarkBlue} />
+            )}
           </View>
           <Text style={styles.tierName}>{currentTier.name}</Text>
         </TouchableOpacity>
@@ -59,62 +83,38 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
       {/* Points Earned */}
       <TouchableOpacity
         style={styles.pointsContainer}
-        onPress={() => onPointsPress?.(totalPointsEarned, currentTier || undefined)}
+        onPress={() => onPointsPress?.(totalPoints, currentTier || undefined)}
         activeOpacity={0.7}
       >
-        <Text style={styles.pointsValue}>{totalPointsEarned.toLocaleString()}</Text>
+        <Text style={styles.pointsValue}>{totalPoints.toLocaleString()}</Text>
         <Text style={styles.pointsLabel}>Points Earned</Text>
       </TouchableOpacity>
 
       {/* Certifications */}
       <View style={styles.certificationsContainer}>
         <View style={styles.certificationRow}>
-          <View style={[styles.certificationIcon, { backgroundColor: Colors.orangeBA }]}>
-            <Monicon name="mdi:account" size={24} color={Colors.white} />
-            <View style={styles.certificationSparkle}>
-              <SparkleIcon size={12} color={Colors.white} circleColor="transparent" />
-            </View>
-          </View>
-          <Text style={styles.certificationText}>Certified Brand Ambassador</Text>
+          <CertifiedBrandAmbassadorIcon size={50} disabled={!isAmbassador} />
+          <Text style={[styles.certificationText, !isAmbassador && { color: '#999999' }]}>
+            Certified Brand Ambassador
+          </Text>
         </View>
         <View style={styles.certificationRow}>
-          <View style={[styles.certificationIcon, { backgroundColor: Colors.pinkInfluencer }]}>
-            <Monicon name="mdi:cellphone" size={24} color={Colors.white} />
-            <View style={styles.certificationSparkle}>
-              <SparkleIcon size={12} color={Colors.white} circleColor="transparent" />
-            </View>
-          </View>
-          <Text style={styles.certificationText}>Certified Influencer</Text>
+          <CertifiedInfluencerIcon size={50} disabled={!isInfluencer} />
+          <Text style={[styles.certificationText, !isInfluencer && { color: '#999999' }]}>
+            Certified Influencer
+          </Text>
         </View>
       </View>
 
       {/* Activity Badges */}
       <View style={styles.activityBadgesContainer}>
         {earnedEventBadges.map((badge) => (
-          <View key={badge.id} style={styles.activityBadgeItem}>
-            <View style={[styles.activityBadgeCircle, { backgroundColor: Colors.badgePurpleLight }]}>
-              <Text style={styles.activityBadgeNumber}>#{badge.count}</Text>
-              <View style={styles.activityBadgeSparkle}>
-                <SparkleIcon size={10} color={Colors.white} circleColor="transparent" />
-              </View>
-            </View>
-            <Text style={[styles.activityBadgeLabel, { color: Colors.badgePurpleLight }]}>
-              EVENTS
-            </Text>
-          </View>
+          <BadgeItem key={badge.id} badge={badge} />
         ))}
+      </View>
+      <View style={styles.activityBadgesContainer}>
         {earnedReviewBadges.map((badge) => (
-          <View key={badge.id} style={styles.activityBadgeItem}>
-            <View style={[styles.activityBadgeCircle, { backgroundColor: Colors.pinDarkBlue }]}>
-              <Text style={styles.activityBadgeNumber}>#{badge.count}</Text>
-              <View style={styles.activityBadgeSparkle}>
-                <SparkleIcon size={10} color={Colors.white} circleColor="transparent" />
-              </View>
-            </View>
-            <Text style={[styles.activityBadgeLabel, { color: Colors.pinDarkBlue }]}>
-              REVIEWS
-            </Text>
-          </View>
+          <BadgeItem key={badge.id} badge={badge} color={Colors.pinDarkBlue} />
         ))}
       </View>
 
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.white,
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     marginHorizontal: 20,
     marginBottom: 20,
     shadowColor: '#000',
@@ -145,15 +145,40 @@ const styles = StyleSheet.create({
     elevation: 3,
     alignItems: 'center',
   },
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Quicksand_700Bold',
+    color: Colors.pinDarkBlue,
+    textAlign: 'center',
+    marginTop: 8,
+    letterSpacing: 1,
+  },
+  descriptionText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.pinDarkBlue,
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 10,
+    lineHeight: 20,
+  },
   badgeContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   badgeIconContainer: {
     marginBottom: 12,
   },
+  tierImage: {
+    width: 100,
+    height: 100,
+  },
   tierName: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinDarkBlue,
     textAlign: 'center',
@@ -180,21 +205,8 @@ const styles = StyleSheet.create({
   certificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     marginBottom: 16,
-  },
-  certificationIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    position: 'relative',
-  },
-  certificationSparkle: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
   },
   certificationText: {
     fontSize: 14,
@@ -206,37 +218,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    marginBottom: 24,
-  },
-  activityBadgeItem: {
-    alignItems: 'center',
-    width: 60,
-    marginHorizontal: 8,
-    marginBottom: 12,
-  },
-  activityBadgeCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    position: 'relative',
-  },
-  activityBadgeNumber: {
-    fontSize: 18,
-    fontFamily: 'Quicksand_700Bold',
-    color: Colors.white,
-  },
-  activityBadgeSparkle: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-  },
-  activityBadgeLabel: {
-    fontSize: 10,
-    fontFamily: 'Quicksand_600SemiBold',
-    textAlign: 'center',
+    gap: 12,
+    marginBottom: 16,
   },
   viewHistoryButton: {
     flexDirection: 'row',

@@ -87,6 +87,10 @@ const ProfileScreen = () => {
         <ProfileOverview
           username={profile?.username || authUser?.name || 'User'}
           onEditProfilePress={handleEditProfilePress}
+          isAmbassador={profile?.isAmbassador || false}
+          isInfluencer={profile?.isInfluencer || false}
+          eventCheckIns={statistics.eventCheckIns}
+          samplingReviews={statistics.samplingReviews}
         />
         <PointsDisplay points={statistics.totalPoints} />
         <ActivityMetrics
@@ -106,7 +110,10 @@ const ProfileScreen = () => {
           }}
         />
         <NotificationsButton onPress={handleNotificationsPress} />
-        <BrandAmbassadorSection onApplyPress={handleApplyHerePress} />
+        <BrandAmbassadorSection 
+          onApplyHerePress={handleApplyHerePress}
+          isAmbassador={profile?.isAmbassador || false}
+        />
       </ScrollView>
 
       {/* Refer Friend Bottom Sheet */}

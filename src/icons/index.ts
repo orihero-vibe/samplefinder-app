@@ -4,4 +4,11 @@ export { default as HeartIcon } from './HeartIcon';
 export { default as CalendarIcon } from './CalendarIcon';
 export { default as SparkleIcon } from './SparkleIcon';
 export { default as LocationPinIcon } from './LocationPinIcon';
-
+export { default as CertifiedInfluencerIcon } from './CertifiedInfluencerIcon';
+export { default as CertifiedBrandAmbassadorIcon } from './CertifiedBrandAmbassadorIcon';
+export { default as BadgeCircleIcon } from './BadgeCircleIcon';
+export { default as PointsBadgeIcon } from './PointsBadgeIcon';
+export { default as MediumStarIcon } from './MediumStarIcon';
+export { default as SmallStarIcon } from './SmallStarIcon';
+export { default as SparklesIcon } from './SparklesIcon';
+export { default as FriendsIcon } from './FriendsIcon';

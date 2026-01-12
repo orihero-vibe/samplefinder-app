@@ -1,7 +1,7 @@
 import { EventRow, ClientData } from '@/lib/database';
 import { BrandDetailsData } from '@/screens/brand-details';
 import { CalendarEventDetail } from '@/screens/tabs/calendar/components';
-import { formatEventDate, formatEventTime, parseProducts, calculateDistance } from './formatters';
+import { formatEventDate, formatEventTime, parseProducts, formatEventDistance } from './formatters';
 import { Colors } from '@/constants/Colors';
 import { NewBrandData } from '@/screens/tabs/favorites/components';
 
@@ -67,24 +67,15 @@ export const convertEventToCalendarEventDetail = (
   const location = client?.name || client?.title || event.address || 'Location TBD';
   
   // Calculate distance if user location is provided
-  let distance = 'Distance unknown';
-  if (userLocation && client?.location) {
-    const distanceMeters = calculateDistance(
-      userLocation.latitude,
-      userLocation.longitude,
-      client.location[1], // latitude
-      client.location[0]  // longitude
-    );
-    const distanceMiles = distanceMeters / 1609.34;
-    if (distanceMiles < 0.1) {
-      distance = `${(distanceMiles * 5280).toFixed(0)} ft away`;
-    } else {
-      distance = `${distanceMiles.toFixed(2)} mi away`;
-    }
-  } else {
-    // Fallback: use a placeholder or calculate from zip code if available
-    distance = 'Distance unknown';
-  }
+  const distance = formatEventDistance({
+    userLocation,
+    eventCoordinates: client?.location 
+      ? { 
+          latitude: client.location[0],
+          longitude: client.location[1]
+        }
+      : undefined
+  });
   
   // Generate logo from brand name
   const brandName = event.name || 'Brand';

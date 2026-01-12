@@ -12,6 +12,8 @@ import {
   CheckInSuccess,
 } from './components';
 import BackShareHeader from '@/components/wrappers/BackShareHeader';
+import ReviewModal from '@/components/shared/ReviewModal';
+import PointsEarnedModal from '@/components/shared/PointsEarnedModal';
 import { useBrandDetailsScreen, BrandDetailsData } from './useBrandDetailsScreen';
 import styles from './styles';
 
@@ -32,12 +34,23 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     brandLogoUrl,
     isFavorite,
     isAddedToCalendar,
+    reviewModalVisible,
+    isSubmittingCheckIn,
+    pointsModalVisible,
+    pointsModalTitle,
+    pointsModalAmount,
+    hasReviewed,
+    checkInPoints,
+    totalEarnedPoints,
     handleBack,
     handleShare,
     handleAddToCalendar,
     handleAddFavorite,
     handleCodeSubmit,
     handleLeaveReview,
+    handleCloseReviewModal,
+    handleSubmitReview,
+    handleClosePointsModal,
   } = useBrandDetailsScreen({ route });
 
   // Show loading state
@@ -92,11 +105,16 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
           <CheckInCodeInput
             onCodeSubmit={handleCodeSubmit}
             showError={checkInStatus === 'incorrect'}
+            isSubmitting={isSubmittingCheckIn}
           />
         )}
 
         {checkInStatus === 'success' && (
-          <CheckInSuccess onLeaveReview={handleLeaveReview} />
+          <CheckInSuccess
+            onLeaveReview={handleLeaveReview}
+            pointsEarned={totalEarnedPoints}
+            showReviewButton={!hasReviewed}
+          />
         )}
 
         <ActionButtons
@@ -106,6 +124,22 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
           isAddedToCalendar={isAddedToCalendar}
         />
       </ScrollView>
+
+      <ReviewModal
+        visible={reviewModalVisible}
+        eventName={brand?.storeName}
+        brandName={brand?.brandName}
+        onClose={handleCloseReviewModal}
+        onSubmit={handleSubmitReview}
+      />
+
+      <PointsEarnedModal
+        visible={pointsModalVisible}
+        points={pointsModalAmount}
+        title={pointsModalTitle}
+        onClose={handleClosePointsModal}
+        onViewRewards={() => {}}
+      />
     </View>
   );
 };

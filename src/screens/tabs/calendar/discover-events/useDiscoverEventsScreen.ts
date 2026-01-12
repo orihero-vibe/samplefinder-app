@@ -6,8 +6,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
 import { fetchAllUpcomingEvents, EventRow, fetchClients, ClientData } from '@/lib/database';
 import { convertEventToCalendarEventDetail, extractClientFromEvent } from '@/utils/brandUtils';
-import { formatEventTime } from '@/utils/formatters';
-import { calculateDistance } from '@/utils/formatters';
+import { formatEventTime, formatEventDistance } from '@/utils/formatters';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
 import { UnifiedEvent } from '@/components';
@@ -36,13 +35,11 @@ export const useDiscoverEventsScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  // Get user's current location for distance calculation
   useEffect(() => {
     const getCurrentLocation = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          console.log('[DiscoverEventsScreen] Location permission denied');
           return;
         }
 
@@ -55,32 +52,27 @@ export const useDiscoverEventsScreen = () => {
           longitude: location.coords.longitude,
         });
       } catch (error) {
-        console.error('[DiscoverEventsScreen] Error getting location:', error);
+        console.error('Error getting location:', error);
       }
     };
 
     getCurrentLocation();
   }, []);
 
-  // Fetch all upcoming events from Appwrite
   useEffect(() => {
     const loadEvents = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Fetch all upcoming events from database
-        const eventRows = await fetchAllUpcomingEvents();
+        const [eventRows, allClients] = await Promise.all([
+          fetchAllUpcomingEvents(),
+          fetchClients(),
+        ]);
 
-        // Fetch all clients to get client data for events
-        const allClients = await fetchClients();
-
-        // Convert EventRow to EventWithClient format
         const eventsWithClient: EventWithClient[] = eventRows.map((event: EventRow) => {
-          // Extract client from event relationship
           let client: ClientData | null = extractClientFromEvent(event);
 
-          // If client not in relationship, try to find it from allClients
           if (!client && event.client) {
             const clientId = typeof event.client === 'string' ? event.client : event.client.$id;
             if (clientId) {
@@ -88,36 +80,18 @@ export const useDiscoverEventsScreen = () => {
             }
           }
 
-          // Get event name (title)
           const eventName = event.name || 'Event';
-          
-          // Get brand/client name (subtitle)
           const brandName = client?.name || client?.title || 'Brand';
-
-          // Get location name from client, fallback to event address
           const location = client?.name || client?.title || event.address || 'Location TBD';
 
-          // Calculate distance if user location is provided
-          let distance = 'Distance unknown';
-          if (userLocation && client?.location) {
-            const distanceMeters = calculateDistance(
-              userLocation.latitude,
-              userLocation.longitude,
-              client.location[1], // latitude
-              client.location[0]  // longitude
-            );
-            const distanceMiles = distanceMeters / 1609.34;
-            if (distanceMiles < 0.1) {
-              distance = `${(distanceMiles * 5280).toFixed(0)} ft away`;
-            } else {
-              distance = `${distanceMiles.toFixed(2)} mi away`;
-            }
-          }
+          const distance = formatEventDistance({
+            userLocation: userLocation || undefined,
+            eventCoordinates: client?.location 
+              ? { latitude: client.location[0], longitude: client.location[1] }
+              : undefined
+          });
 
-          // Format time from ISO to "3 - 5 pm"
           const time = formatEventTime(event.startTime, event.endTime);
-
-          // Get logo URL - prioritize discountImageURL over client.logoURL
           const logoURL = event.discountImageURL || client?.logoURL || null;
 
           return {
@@ -133,14 +107,13 @@ export const useDiscoverEventsScreen = () => {
           };
         });
 
-        // Sort events by date (ascending)
         eventsWithClient.sort((a, b) => {
           return a.date.getTime() - b.date.getTime();
         });
 
         setEvents(eventsWithClient);
       } catch (err: any) {
-        console.error('[DiscoverEventsScreen] Error loading events:', err);
+        console.error('Error loading events:', err);
         setError(err.message || 'Failed to load events');
       } finally {
         setIsLoading(false);
@@ -148,21 +121,18 @@ export const useDiscoverEventsScreen = () => {
     };
 
     loadEvents();
-  }, [userLocation]); // Reload when user location changes
+  }, [userLocation]);
 
   const handleEventPress = (eventId: string) => {
-    // Navigate to BrandDetailsScreen with eventId
     navigation.navigate('BrandDetails', { eventId });
   };
 
   const handleRetry = () => {
     setError(null);
     setIsLoading(true);
-    // Trigger reload by updating a dependency
     setUserLocation(userLocation);
   };
 
-  // Convert events to UnifiedEvent format for rendering
   const calendarEvents: UnifiedEvent[] = events.map((eventWithClient) => ({
     id: eventWithClient.event.$id,
     date: eventWithClient.date,

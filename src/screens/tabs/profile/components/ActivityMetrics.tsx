@@ -40,12 +40,14 @@ const ActivityMetrics: React.FC<ActivityMetricsProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     marginBottom: 24,
+    gap: 20,
   },
   metricColumn: {
     alignItems: 'center',
+    flex: 1,
   },
   metricValue: {
     fontSize: 32,
@@ -58,6 +60,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_400Regular',
     color: Colors.black,
     textAlign: 'center',
+    flexWrap: 'wrap',
   },
 });
 

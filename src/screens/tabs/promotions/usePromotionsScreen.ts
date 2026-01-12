@@ -1,25 +1,146 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Share } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
+import { getCurrentUser } from '@/lib/auth';
+import { 
+  getUserStatistics,
+  getUserCheckIns,
+  getUserReviews,
+  fetchEventById,
+  getUserProfile,
+  fetchTiers,
+  CheckInRow,
+  ReviewRow,
+  TierRow,
+} from '@/lib/database';
 
 export type TabType = 'inProgress' | 'earned';
 
 export const usePromotionsScreen = () => {
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('inProgress');
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
   const referFriendSuccessBottomSheetRef = useRef<BottomSheet>(null);
   const [achievementModalVisible, setAchievementModalVisible] = useState(false);
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
   const [selectedPoints, setSelectedPoints] = useState<number>(100);
+  
+  // State for live data
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [eventCheckInsCount, setEventCheckInsCount] = useState(0);
+  const [reviewsCount, setReviewsCount] = useState(0);
+  const [historyItems, setHistoryItems] = useState<HistoryItemData[]>([]);
+  const [tiersData, setTiersData] = useState<TierRow[]>([]);
+  const [isAmbassador, setIsAmbassador] = useState(false);
+  const [isInfluencer, setIsInfluencer] = useState(false);
+  
+  // Fetch user statistics and history on mount
+  useEffect(() => {
+    loadUserData();
+  }, []);
 
-  const handleBackPress = () => {
-    // Handle back navigation
-    console.log('Back pressed');
+  const loadUserData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch tiers first (doesn't require auth)
+      const tiers = await fetchTiers();
+      console.log('[usePromotionsScreen] Tiers fetched:', JSON.stringify(tiers, null, 2));
+      setTiersData(tiers);
+      
+      const authUser = await getCurrentUser();
+      
+      if (!authUser) {
+        setIsLoading(false);
+        return;
+      }
+
+      const userProfile = await getUserProfile(authUser.$id);
+      if (!userProfile) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Set ambassador and influencer status from profile
+      setIsAmbassador(userProfile.isAmbassador || false);
+      setIsInfluencer(userProfile.isInfluencer || false);
+
+      const stats = await getUserStatistics(authUser.$id);
+      setTotalPoints(stats.totalPoints);
+      setEventCheckInsCount(stats.eventCheckIns);
+      setReviewsCount(stats.samplingReviews);
+
+      const [checkIns, reviews] = await Promise.all([
+        getUserCheckIns(userProfile.$id),
+        getUserReviews(userProfile.$id),
+      ]);
+
+      const history = await buildHistoryItems(checkIns, reviews);
+      setHistoryItems(history);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSharePress = () => {
-    // Handle share action
-    console.log('Share pressed');
+  const buildHistoryItems = async (
+    checkIns: CheckInRow[],
+    reviews: ReviewRow[]
+  ): Promise<HistoryItemData[]> => {
+    const items: HistoryItemData[] = [];
+
+    for (const checkIn of checkIns) {
+      try {
+        const event = await fetchEventById(checkIn.eventID);
+        if (event) {
+          const reviewForEvent = reviews.find(r => r.event === checkIn.eventID);
+          
+          console.log('[buildHistoryItems] Event client data:', JSON.stringify(event.client, null, 2));
+          console.log('[buildHistoryItems] Brand photo URL:', event.client?.logoURL);
+          
+          items.push({
+            id: checkIn.$id,
+            brandProduct: event.name || 'Event',
+            storeName: event.address || 'Store',
+            date: new Date(checkIn.$createdAt).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }),
+            points: checkIn.pointsEarned + (reviewForEvent?.pointsEarned || 0),
+            review: reviewForEvent?.review,
+            brandPhotoURL: event.client?.logoURL || null,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching event:', error);
+      }
+    }
+
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return items;
+  };
+
+  const handleBackPress = () => {
+    // Navigate back to Home tab
+    navigation.goBack();
+  };
+
+  const handleSharePress = async () => {
+    try {
+      const earnedBadges = [...eventBadges, ...reviewBadges].filter(badge => badge.achieved).length;
+      const earnedTiers = tiers.filter(tier => tier.badgeEarned).length;
+      
+      await Share.share({
+        message: `I've earned ${totalPoints} points, ${earnedBadges} badges, and ${earnedTiers} tiers on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+      });
+    } catch (error) {
+      console.error('Error sharing achievements:', error);
+    }
   };
 
   const handleCloseReferFriend = () => {
@@ -56,80 +177,76 @@ export const usePromotionsScreen = () => {
     setSelectedTier(null);
   };
 
-  const handleShareAchievement = () => {
-    // Handle share action
-    console.log('Share achievement:', selectedTier?.name, selectedPoints);
-    // You can implement sharing logic here
+  const handleShareAchievement = async () => {
+    try {
+      if (selectedTier) {
+        await Share.share({
+          message: `I just earned the ${selectedTier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+        });
+      } else {
+        await Share.share({
+          message: `I just earned ${selectedPoints} points on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing achievement:', error);
+    }
   };
 
-  // Badge data
   const eventBadges: Badge[] = [
-    { id: '1', label: 'EVENTS', achieved: true, count: 10 },
-    { id: '2', label: 'EVENTS', achieved: false, count: 25 },
-    { id: '3', label: 'EVENTS', achieved: false, count: 50 },
-    { id: '4', label: 'EVENTS', achieved: false, count: 100 },
-    { id: '5', label: 'EVENTS', achieved: false, count: 250 },
+    { id: '1', label: 'EVENTS', achieved: eventCheckInsCount >= 10, count: 10 },
+    { id: '2', label: 'EVENTS', achieved: eventCheckInsCount >= 25, count: 25 },
+    { id: '3', label: 'EVENTS', achieved: eventCheckInsCount >= 50, count: 50 },
+    { id: '4', label: 'EVENTS', achieved: eventCheckInsCount >= 100, count: 100 },
+    { id: '5', label: 'EVENTS', achieved: eventCheckInsCount >= 250, count: 250 },
   ];
 
   const reviewBadges: Badge[] = [
-    { id: '1', label: "REVIEWS", achieved: true, count: 10 },
-    { id: '2', label: 'REVIEWS', achieved: false, count: 25 },
-    { id: '3', label: 'REVIEWS', achieved: false, count: 50 },
-    { id: '4', label: 'REVIEWS', achieved: false, count: 100 },
-    { id: '5', label: 'REVIEWS', achieved: false, count: 250 },
+    { id: '1', label: 'REVIEWS', achieved: reviewsCount >= 10, count: 10 },
+    { id: '2', label: 'REVIEWS', achieved: reviewsCount >= 25, count: 25 },
+    { id: '3', label: 'REVIEWS', achieved: reviewsCount >= 50, count: 50 },
+    { id: '4', label: 'REVIEWS', achieved: reviewsCount >= 100, count: 100 },
+    { id: '5', label: 'REVIEWS', achieved: reviewsCount >= 250, count: 250 },
   ];
 
-  const tiers: Tier[] = [
-    { id: '1', name: 'NewbieSampler', currentPoints: 1000, requiredPoints: 1000, badgeEarned: true },
-    { id: '2', name: 'SampleFan', currentPoints: 250, requiredPoints: 1000, badgeEarned: false },
-    { id: '3', name: 'SuperSampler', currentPoints: 250, requiredPoints: 5000, badgeEarned: false },
-    { id: '4', name: 'VIS (Very Important Sampler)', currentPoints: 7500, requiredPoints: 25000, badgeEarned: false },
-    { id: '5', name: 'SampleMaster', currentPoints: 250, requiredPoints: 100000, badgeEarned: false },
-  ];
-
-  const eventCheckIns = 20;
-  const reviews = 15;
-
-  // History data
-  const historyItems: HistoryItemData[] = [
-    {
-      id: '1',
-      brandProduct: 'Brand Product',
-      storeName: 'XYZ Supermarket',
-      date: 'Aug 1, 2025',
-      points: 60,
-      review: 'Vitae posuere dolor sodales quis. Praesent vitae odio lorem. Pellentesque nec lacus vehicula, aliquam mi nec, ornare turpis. Posuere dolor sodales quis.',
-    },
-    {
-      id: '2',
-      brandProduct: 'Brand Product',
-      storeName: 'XYZ Supermarket',
-      date: 'Aug 1, 2025',
-      points: 60,
-      review: 'Great product! Really enjoyed trying it out.',
-    },
-    {
-      id: '3',
-      brandProduct: 'Brand Product',
-      storeName: 'XYZ Supermarket',
-      date: 'Aug 1, 2025',
-      points: 10,
-    },
-  ];
+  // Map Appwrite tiers to UI Tier format
+  const tiers: Tier[] = tiersData.map((tier, index) => {
+    const prevTierPoints = index > 0 ? tiersData[index - 1].requiredPoints : 0;
+    const pointsInTier = Math.max(0, totalPoints - prevTierPoints);
+    const tierRange = tier.requiredPoints - prevTierPoints;
+    
+    // Remove mode=admin from URL to allow public access
+    const cleanImageURL = tier.imageURL?.replace('&mode=admin', '') ?? null;
+    
+    return {
+      id: tier.$id,
+      name: tier.name,
+      currentPoints: totalPoints >= tier.requiredPoints 
+        ? tierRange 
+        : Math.min(pointsInTier, tierRange),
+      requiredPoints: tierRange,
+      badgeEarned: totalPoints >= tier.requiredPoints,
+      imageURL: cleanImageURL,
+    };
+  });
 
   return {
     activeTab,
     eventBadges,
     reviewBadges,
     tiers,
-    eventCheckIns,
-    reviews,
+    eventCheckIns: eventCheckInsCount,
+    reviews: reviewsCount,
     historyItems,
     selectedTier,
     selectedPoints,
     achievementModalVisible,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
+    isLoading,
+    totalPoints,
+    isAmbassador,
+    isInfluencer,
     setActiveTab,
     handleBackPress,
     handleSharePress,

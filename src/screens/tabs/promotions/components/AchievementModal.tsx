@@ -56,12 +56,18 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     }
   }, [visible]);
 
-  const handleShare = () => {
-    if (onShare) {
-      onShare();
+  const handleShare = async () => {
+    try {
+      if (onShare) {
+        await onShare();
+      }
+      // Close modal after sharing
+      onClose();
+    } catch (error) {
+      console.error('Error in handleShare:', error);
+      // Still close modal even if share fails
+      onClose();
     }
-    // Close modal after sharing
-    onClose();
   };
 
   const defaultMessage = message || `You earned ${points} points with SampleFinder, just for signing up!`;

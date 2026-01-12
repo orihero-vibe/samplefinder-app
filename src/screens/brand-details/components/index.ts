@@ -6,4 +6,5 @@ export { default as DiscountMessage } from './DiscountMessage';
 export { default as ActionButtons } from './ActionButtons';
 export { default as CheckInCodeInput } from './CheckInCodeInput';
 export { default as CheckInSuccess } from './CheckInSuccess';
+export { default as PointsBadge } from './PointsBadge';
 

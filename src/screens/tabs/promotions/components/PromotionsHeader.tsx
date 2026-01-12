@@ -3,7 +3,11 @@ import { Monicon } from '@monicon/native';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-const PromotionsHeader = () => {
+interface PromotionsHeaderProps {
+  totalPoints?: number;
+}
+
+const PromotionsHeader: React.FC<PromotionsHeaderProps> = ({ totalPoints = 0 }) => {
   return (
     <View style={styles.container}>
       <View style={styles.starIconContainer}>
@@ -34,6 +38,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
+
   motivationalText: {
     fontSize: 14,
     fontFamily: 'Quicksand_400Regular',
