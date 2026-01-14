@@ -55,12 +55,13 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
 };
 
 /**
- * Get Expo push token
- * @param forceRefresh - If true, always get a fresh token from Expo (ignores cached token)
+ * Get native device push token (FCM for Android, APNs for iOS)
+ * This is what Appwrite Messaging API expects
+ * @param forceRefresh - If true, always get a fresh token (ignores cached token)
  */
-export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
+export const getDevicePushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
   try {
-    console.log('[notifications] Getting Expo push token...', { forceRefresh });
+    console.log('[notifications] Getting native device push token...', { forceRefresh });
     
     // Check if we already have a token stored (only if not forcing refresh)
     if (!forceRefresh) {
@@ -81,23 +82,48 @@ export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<s
       return null;
     }
     
+    // Get the NATIVE device token (FCM for Android, APNs for iOS)
+    // This is what Appwrite Messaging API requires
+    const tokenData = await Notifications.getDevicePushTokenAsync();
+    const token = tokenData.data;
+    
+    console.log('[notifications] Native device push token obtained:', token);
+    console.log('[notifications] Token type:', tokenData.type); // Should be 'android' or 'ios'
+    
+    // Store the token
+    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+    
+    return token;
+  } catch (error: any) {
+    console.error('[notifications] Error getting device push token:', error);
+    return null;
+  }
+};
+
+/**
+ * Get Expo push token (for Expo push service)
+ * Note: This is NOT used for Appwrite Messaging - we use native tokens instead
+ * @param forceRefresh - If true, always get a fresh token from Expo (ignores cached token)
+ */
+export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
+  try {
+    console.log('[notifications] Getting Expo push token...', { forceRefresh });
+    
+    // Request permissions first
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) {
+      console.warn('[notifications] Cannot get token without permissions');
+      return null;
+    }
+    
     // Get the token
     // Note: projectId is required in bare workflow or custom builds
-    // Try to get it from Constants first
     let projectId: string | undefined;
     
     try {
-      // Try to get projectId from Constants.expoConfig.extra.eas.projectId
-      // This should be set in app.json under "extra.eas.projectId"
       projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
-      
       if (projectId) {
         console.log('[notifications] Found projectId in Constants:', projectId);
-      } else {
-        console.warn('[notifications] Project ID not found in Constants.expoConfig.extra.eas.projectId');
-        console.warn('[notifications] To fix this, add your EAS project ID to app.json:');
-        console.warn('[notifications]   "extra": { "eas": { "projectId": "your-project-id" } }');
-        console.warn('[notifications] You can find your project ID by running: npx eas project:info');
       }
     } catch (error) {
       console.warn('[notifications] Error getting projectId from Constants:', error);
@@ -105,32 +131,16 @@ export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<s
     
     // Get the token with or without projectId
     let tokenData;
-    try {
-      if (projectId) {
-        console.log('[notifications] Getting Expo push token with projectId...');
-        tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-      } else {
-        // Try without projectId first (works in managed workflow, may fail in bare workflow)
-        console.log('[notifications] Getting Expo push token without projectId (may fail in bare workflow)...');
-        tokenData = await Notifications.getExpoPushTokenAsync();
-      }
-    } catch (error: any) {
-      // If it fails because projectId is missing, provide helpful error message
-      if (error?.message?.includes('projectId') || error?.message?.includes('No "projectId"')) {
-        console.error('[notifications] Error: projectId is required for Expo push tokens in bare workflow.');
-        console.error('[notifications] Please add your EAS project ID to app.json:');
-        console.error('[notifications]   "extra": { "eas": { "projectId": "your-project-id" } }');
-        console.error('[notifications] Find your project ID: npx eas project:info');
-        throw new Error('Expo push token requires projectId. Add it to app.json under extra.eas.projectId');
-      }
-      throw error;
+    if (projectId) {
+      console.log('[notifications] Getting Expo push token with projectId...');
+      tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    } else {
+      console.log('[notifications] Getting Expo push token without projectId...');
+      tokenData = await Notifications.getExpoPushTokenAsync();
     }
     
     const token = tokenData.data;
     console.log('[notifications] Expo push token obtained:', token);
-    
-    // Store the token
-    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
     
     return token;
   } catch (error: any) {
@@ -357,15 +367,16 @@ export const initializePushNotifications = async (): Promise<boolean> => {
       return false;
     }
     
-    // Always get a fresh push token on initialization to avoid expired token issues
-    // This ensures we're always registering with the latest valid token
-    const token = await getExpoPushToken(true); // Force refresh
+    // Get NATIVE device push token (FCM for Android, APNs for iOS)
+    // This is required for Appwrite Messaging API
+    // Always get a fresh token on initialization to avoid expired token issues
+    const token = await getDevicePushToken(true); // Force refresh
     if (!token) {
       console.warn('[notifications] Could not get push token');
       return false;
     }
     
-    // Register with Appwrite
+    // Register native token with Appwrite
     const result = await registerPushTarget(token);
     if (!result) {
       console.warn('[notifications] Could not register push target');
@@ -382,19 +393,21 @@ export const initializePushNotifications = async (): Promise<boolean> => {
 
 /**
  * Set up token refresh listener
+ * Listens for native device token changes and updates Appwrite
  */
 export const setupTokenRefreshListener = (): void => {
   console.log('[notifications] Setting up token refresh listener...');
   
-  // Listen for token changes
+  // Listen for NATIVE device token changes (FCM/APNs)
   Notifications.addPushTokenListener(async (tokenData) => {
-    console.log('[notifications] Push token refreshed:', tokenData.data);
+    console.log('[notifications] Native push token refreshed:', tokenData.data);
+    console.log('[notifications] Token type:', tokenData.type);
     const token = tokenData.data;
     
     // Update stored token
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
     
-    // Update Appwrite push target
+    // Update Appwrite push target with new native token
     await updatePushTarget(token);
   });
   
@@ -421,7 +434,7 @@ export const clearPushNotificationCache = async (): Promise<void> => {
 
 /**
  * Refresh push notifications completely
- * This clears all cached data and re-registers with a fresh token
+ * This clears all cached data and re-registers with a fresh native token
  * Use this when expired token errors are encountered
  */
 export const refreshPushNotifications = async (): Promise<boolean> => {
@@ -445,7 +458,7 @@ export const refreshPushNotifications = async (): Promise<boolean> => {
     // Clear cache again to ensure clean state
     await clearPushNotificationCache();
     
-    // Re-initialize with fresh token
+    // Re-initialize with fresh native device token
     return await initializePushNotifications();
   } catch (error: any) {
     console.error('[notifications] Error refreshing push notifications:', error);

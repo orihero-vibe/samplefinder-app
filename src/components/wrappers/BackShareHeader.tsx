@@ -1,14 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Platform } from 'react-native';
 import { Monicon } from '@monicon/native';
-import { Colors } from '@/constants/Colors';
+import { BellOutlineIcon } from '@/icons/BellOutlineIcon';
 
 interface BackShareHeaderProps {
   onBack?: () => void;
   onShare?: () => void;
+  onNotifications?: () => void;
 }
 
-const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare }) => {
+const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNotifications }) => {
   return (
     <ImageBackground
       source={require('@/assets/main-header-bg.png')}
@@ -22,6 +23,9 @@ const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare }) =>
           </TouchableOpacity>
           <TouchableOpacity onPress={onShare} style={styles.iconButton}>
             <Monicon name="mdi:share-variant" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onNotifications} style={styles.iconButton}>
+            <BellOutlineIcon/>
           </TouchableOpacity>
         </View>
         <View style={styles.rightSection}>

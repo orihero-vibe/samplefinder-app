@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { NotificationSetting } from './components';
+import { NotificationSetting, Notification } from './components';
 import { getCurrentUser } from '@/lib/auth';
 import { getUserProfile, getNotificationPreferences, updateNotificationPreferences } from '@/lib/database/users';
+import { getUserNotifications, getUnreadNotifications, markNotificationAsRead, type UserNotification } from '@/lib/database';
 
 export const useNotificationsScreen = () => {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Location settings
-  const [enableLocationAccess, setEnableLocationAccess] = useState(true);
-  const [shareLocationWithBrands, setShareLocationWithBrands] = useState(false);
-
   // Notification settings
   const [enablePushNotifications, setEnablePushNotifications] = useState(true);
+  
+  // Current notifications (unread)
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Previously seen notifications (read)
+  const [previousNotifications, setPreviousNotifications] = useState<Notification[]>([]);
+
   const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>([
     {
       id: 'eventReminders',
@@ -53,12 +57,12 @@ export const useNotificationsScreen = () => {
     },
   ]);
 
-  // Load preferences from database on mount
+  // Load preferences and notifications from database on mount
   useEffect(() => {
-    loadPreferences();
+    loadData();
   }, []);
 
-  const loadPreferences = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
       const user = await getCurrentUser();
@@ -68,6 +72,7 @@ export const useNotificationsScreen = () => {
         return;
       }
 
+      // Load preferences
       const preferences = await getNotificationPreferences(user.$id);
       if (preferences) {
         setEnablePushNotifications(preferences.enablePushNotifications);
@@ -78,11 +83,43 @@ export const useNotificationsScreen = () => {
           }))
         );
       }
+
+      // Load notifications
+      await loadNotifications(user.$id);
     } catch (error: any) {
-      console.error('[notifications] Error loading preferences:', error);
+      console.error('[notifications] Error loading data:', error);
       // Continue with default preferences on error
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadNotifications = async (userId: string) => {
+    try {
+      // Load unread notifications
+      const unreadNotifs = await getUnreadNotifications(userId, 10);
+      setNotifications(
+        unreadNotifs.map((notif) => ({
+          id: notif.id,
+          title: notif.title,
+          description: notif.message,
+          isRead: notif.isRead,
+        }))
+      );
+
+      // Load all notifications (for read ones)
+      const allNotifs = await getUserNotifications(userId, 20);
+      const readNotifs = allNotifs.filter((notif) => notif.isRead);
+      setPreviousNotifications(
+        readNotifs.map((notif) => ({
+          id: notif.id,
+          title: notif.title,
+          description: notif.message,
+          isRead: notif.isRead,
+        }))
+      );
+    } catch (error: any) {
+      console.error('[notifications] Error loading notifications:', error);
     }
   };
 
@@ -140,17 +177,35 @@ export const useNotificationsScreen = () => {
     }
   };
 
+  const handleNotificationPress = async (notificationId: string) => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        console.warn('[notifications] No user logged in, cannot mark notification as read');
+        return;
+      }
+
+      // Mark notification as read
+      await markNotificationAsRead(user.$id, notificationId);
+      console.log('[notifications] Notification marked as read:', notificationId);
+
+      // Reload notifications to update the UI
+      await loadNotifications(user.$id);
+    } catch (error: any) {
+      console.error('[notifications] Error marking notification as read:', error);
+    }
+  };
+
   return {
-    enableLocationAccess,
-    shareLocationWithBrands,
     enablePushNotifications,
+    notifications,
+    previousNotifications,
     notificationSettings,
     isLoading,
-    setEnableLocationAccess,
-    setShareLocationWithBrands,
     handleBackPress,
     handleNotificationToggle,
     handlePushNotificationsChange,
+    handleNotificationPress,
   };
 };
 
