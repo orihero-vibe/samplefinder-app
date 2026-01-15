@@ -13,18 +13,32 @@ import {
   fetchClients, 
   EventRow, 
   ClientData,
+import { getCurrentUser } from '@/lib/auth';
+import {
   createCheckIn,
-  getUserCheckInForEvent,
   createReview,
-  getUserReviewForEvent,
+  EventRow,
+  fetchClients,
+  fetchEventById,
+  getUserCheckInForEvent,
   getUserProfile,
   addFavoriteBrand,
   removeFavoriteBrand,
+  getUserReviewForEvent
 } from '@/lib/database';
-import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
+import { cancelEventReminders, scheduleEventReminders } from '@/lib/notifications/eventReminders';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
-import { getCurrentUser } from '@/lib/auth';
+import { FavoriteBrandData, useFavoritesStore } from '@/stores/favoritesStore';
+import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
+import { calculateDistance, parseEventDateTime } from '@/utils/formatters';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Calendar from 'expo-calendar';
+import * as Location from 'expo-location';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Linking, Share } from 'react-native';
 
 export interface BrandDetailsData {
   id: string; // Event ID
@@ -245,6 +259,17 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
 
     // If marked as added but no event ID (shouldn't happen), just reset state
     if (isAddedToCalendar && !calendarEventId) {
+    // If already added, cancel reminders and toggle the state
+    if (isAddedToCalendar) {
+      if (brand) {
+        const eventIdForReminders = brand.id;
+        try {
+          await cancelEventReminders(eventIdForReminders);
+          console.log('[BrandDetailsScreen] Event reminders canceled');
+        } catch (error) {
+          console.error('[BrandDetailsScreen] Error canceling reminders:', error);
+        }
+      }
       setIsAddedToCalendar(false);
       return;
     }
@@ -330,11 +355,35 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
         notes: brand.eventInfo || `Sample sale event for ${brand.brandName}`,
       };
 
-      const eventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
+      const calendarEventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
       
       if (eventId) {
         setCalendarEventId(eventId);
+      if (calendarEventId) {
         setIsAddedToCalendar(true);
+        
+        // Schedule push reminders for the event (24 hours and 1 hour before)
+        if (brand && eventDates.start) {
+          const eventTitle = `${brand.brandName} at ${brand.storeName}`;
+          const addressString = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;
+          
+          // Use the event ID from the database if available, otherwise use calendar event ID
+          const eventIdForReminders = brand.id || calendarEventId;
+          
+          try {
+            await scheduleEventReminders(
+              eventIdForReminders,
+              eventDates.start,
+              eventTitle,
+              addressString
+            );
+            console.log('[BrandDetailsScreen] Event reminders scheduled successfully');
+          } catch (reminderError) {
+            // Don't fail the calendar add if reminder scheduling fails
+            console.error('[BrandDetailsScreen] Error scheduling reminders:', reminderError);
+          }
+        }
+        
         Alert.alert(
           'Success',
           'Event added to your calendar!',
