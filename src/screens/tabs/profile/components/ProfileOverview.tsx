@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon } from '@/icons';
+import BadgeItem from '../../promotions/components/BadgeItem';
 
 interface ProfileOverviewProps {
   username?: string;
@@ -40,18 +41,17 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({
               <CertifiedInfluencerIcon size={34} />
             </View>
           )}
-          {eventCheckIns >= 30 && (
+          {/* {eventCheckIns >= 30 && (
             <View style={[styles.profileBadge, styles.eventsBadge]}>
               <Text style={styles.badgeNumber}>{Math.min(eventCheckIns, 99)}</Text>
               <Text style={styles.badgeLabel}>EVENTS</Text>
             </View>
           )}
           {samplingReviews >= 10 && (
-            <View style={[styles.profileBadge, styles.reviewsBadge]}>
-              <Text style={styles.badgeNumber}>{Math.min(samplingReviews, 99)}</Text>
-              <Text style={styles.badgeLabel}>REVIEWS</Text>
-            </View>
-          )}
+            <BadgeItem color={Colors.pinDarkBlue} key={samplingReviews} size={36} 
+            badge={{ count: samplingReviews, label: '', achieved: true, id: 'samplingReviews' }} 
+            style={{  marginTop: 8 }} />
+          )} */}
         </View>
       </View>
       <Text style={styles.username}>{username}</Text>

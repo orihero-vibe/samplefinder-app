@@ -144,15 +144,19 @@ export const parseEventDateTime = (
     throw new Error(`Invalid month abbreviation: ${monthAbbr}`);
   }
 
-  // Parse time string - supports two formats:
-  // 1. "3 - 5 pm" or "10 - 11 am" (period at the end)
-  // 2. "3 pm - 11 pm" or "10 am - 11 am" (period after each hour)
+  // Parse time string - supports four formats:
+  // 1. "3 - 5 pm" or "10 - 11 am" (period at the end, no minutes)
+  // 2. "3 pm - 11 pm" or "10 am - 11 am" (period after each hour, no minutes)
+  // 3. "7:06 - 2:06 pm" (period at the end, with minutes)
+  // 4. "7:06 am - 2:06 pm" (period after each hour, with minutes)
   let startHour: number;
   let endHour: number;
+  let startMinute: number = 0;
+  let endMinute: number = 0;
   let startPeriod: string;
   let endPeriod: string;
 
-  // Try format 1: "3 - 5 pm" (period at the end)
+  // Try format 1: "3 - 5 pm" (period at the end, no minutes)
   const timeMatch1 = timeString.trim().match(/^(\d+)\s*-\s*(\d+)\s*(am|pm)$/i);
   if (timeMatch1) {
     startHour = parseInt(timeMatch1[1], 10);
@@ -160,7 +164,7 @@ export const parseEventDateTime = (
     startPeriod = timeMatch1[3].toLowerCase();
     endPeriod = timeMatch1[3].toLowerCase();
   } else {
-    // Try format 2: "3 pm - 11 pm" (period after each hour)
+    // Try format 2: "3 pm - 11 pm" (period after each hour, no minutes)
     const timeMatch2 = timeString.trim().match(/^(\d+)\s*(am|pm)\s*-\s*(\d+)\s*(am|pm)$/i);
     if (timeMatch2) {
       startHour = parseInt(timeMatch2[1], 10);
@@ -168,7 +172,29 @@ export const parseEventDateTime = (
       startPeriod = timeMatch2[2].toLowerCase();
       endPeriod = timeMatch2[4].toLowerCase();
     } else {
-      throw new Error(`Invalid time format: ${timeString}`);
+      // Try format 3: "7:06 - 2:06 pm" (period at the end, with minutes)
+      const timeMatch3 = timeString.trim().match(/^(\d+):(\d+)\s*-\s*(\d+):(\d+)\s*(am|pm)$/i);
+      if (timeMatch3) {
+        startHour = parseInt(timeMatch3[1], 10);
+        startMinute = parseInt(timeMatch3[2], 10);
+        endHour = parseInt(timeMatch3[3], 10);
+        endMinute = parseInt(timeMatch3[4], 10);
+        startPeriod = timeMatch3[5].toLowerCase();
+        endPeriod = timeMatch3[5].toLowerCase();
+      } else {
+        // Try format 4: "7:06 am - 2:06 pm" (period after each hour, with minutes)
+        const timeMatch4 = timeString.trim().match(/^(\d+):(\d+)\s*(am|pm)\s*-\s*(\d+):(\d+)\s*(am|pm)$/i);
+        if (timeMatch4) {
+          startHour = parseInt(timeMatch4[1], 10);
+          startMinute = parseInt(timeMatch4[2], 10);
+          endHour = parseInt(timeMatch4[4], 10);
+          endMinute = parseInt(timeMatch4[5], 10);
+          startPeriod = timeMatch4[3].toLowerCase();
+          endPeriod = timeMatch4[6].toLowerCase();
+        } else {
+          throw new Error(`Invalid time format: ${timeString}`);
+        }
+      }
     }
   }
 
@@ -185,9 +211,9 @@ export const parseEventDateTime = (
     if (endHour === 12) endHour = 0;
   }
 
-  // Create start and end Date objects
-  const start = new Date(year, month, day, startHour, 0, 0, 0);
-  const end = new Date(year, month, day, endHour, 0, 0, 0);
+  // Create start and end Date objects with minutes
+  const start = new Date(year, month, day, startHour, startMinute, 0, 0);
+  const end = new Date(year, month, day, endHour, endMinute, 0, 0);
 
   // Validate dates
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {

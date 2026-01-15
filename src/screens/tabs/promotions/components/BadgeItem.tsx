@@ -1,32 +1,35 @@
 import { Colors } from '@/constants/Colors';
 import { BadgeCircleIcon } from '@/icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 export interface Badge {
   id: string;
-  label: string;
+  label?: string;
   achieved: boolean;
   count?: number;
 }
 
 interface BadgeItemProps {
-  badge: Badge;
+  badge?: Badge;
   size?: number;
   color?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
-const BadgeItem: React.FC<BadgeItemProps> = ({ badge, size = 50, color = Colors.badgePurpleLight }) => {
+const BadgeItem: React.FC<BadgeItemProps> = ({ badge, size = 50, color = Colors.badgePurpleLight, style }) => {
   return (
-    <View style={[styles.container, { width: size }]}>
-      <BadgeCircleIcon size={size} color={color} disabled={!badge.achieved} />
+    <View style={[styles.container, { width: size }, style]}>
+      <BadgeCircleIcon size={size} color={color} disabled={!badge?.achieved} />
       {/* Count text overlay */}
       <View style={[styles.countContainer, { width: size, height: size }]}>
-        {badge.count !== undefined && (
-          <Text style={[styles.countText, { color, fontSize: size * 0.36, opacity: badge.achieved ? 1 : 0.3 }]}>#{badge.count}</Text>
+        {badge?.count !== undefined && (
+          <Text style={[styles.countText, { color, fontSize: size * 0.36, opacity: badge?.achieved ? 1 : 0.3 }]}>{badge?.count}</Text>
         )}
       </View>
-      <Text style={[styles.label, { color, opacity: badge.achieved ? 1 : 0.3 }]}>{badge.label}</Text>
+      {badge?.label !== '' && (
+        <Text style={[styles.label, { color, opacity: badge?.achieved ? 1 : 0.3 }]}>{badge?.label}</Text>
+      )}
     </View>
   );
 };

@@ -1,30 +1,57 @@
 import { useMemo, useEffect, useState } from 'react';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { NewBrandData } from './components';
-import { fetchClients, fetchAllEvents } from '@/lib/database';
+import { fetchClients, fetchAllEvents, getUserProfile, addFavoriteBrand, removeFavoriteBrand } from '@/lib/database';
 import { convertClientsToBrands } from '@/utils/brandUtils';
 import { ClientData, EventRow } from '@/lib/database';
+import { formatEventDate, formatEventTime } from '@/utils/formatters';
+import type { EventData } from './components/BrandUpcomingEvents';
+import { getCurrentUser } from '@/lib/auth';
+
+export interface FavoriteBrandData {
+  id: string;
+  brandName: string;
+  description: string;
+  brandPhotoURL?: string;
+  events?: EventData[];
+}
 
 export const useFavoritesScreen = () => {
-  const favorites = useFavoritesStore((state) => state.favorites);
+  const favoriteIds = useFavoritesStore((state) => state.favoriteIds);
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
-  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
-  const removeFavorite = useFavoritesStore((state) => state.removeFavorite);
+  const addFavoriteToStore = useFavoritesStore((state) => state.addFavorite);
+  const removeFavoriteFromStore = useFavoritesStore((state) => state.removeFavorite);
+  const setFavorites = useFavoritesStore((state) => state.setFavorites);
   
   const [allBrands, setAllBrands] = useState<Omit<NewBrandData, 'isFavorited'>[]>([]);
+  const [allClients, setAllClients] = useState<ClientData[]>([]);
+  const [allEvents, setAllEvents] = useState<EventRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch all clients (brands) and their events to get product types
+  // Load user's favorite IDs from database and fetch all brands/events
   useEffect(() => {
-    const loadBrands = async () => {
+    const loadData = async () => {
       try {
         setIsLoading(true);
+        
+        // Get current user and their favorites from database
+        const authUser = await getCurrentUser();
+        if (authUser) {
+          const userProfile = await getUserProfile(authUser.$id);
+          if (userProfile && userProfile.favoriteIds) {
+            // Sync favorites from database to store
+            setFavorites(userProfile.favoriteIds);
+          }
+        }
         
         // Fetch clients and events in parallel
         const [clients, events] = await Promise.all([
           fetchClients(),
           fetchAllEvents(),
         ]);
+        
+        setAllClients(clients);
+        setAllEvents(events);
         
         // Convert clients to brand data with product types from events
         const brands = convertClientsToBrands(clients, events);
@@ -39,65 +66,137 @@ export const useFavoritesScreen = () => {
         
         setAllBrands(brandsWithDescription);
       } catch (error) {
-        console.error('[useFavoritesScreen] Error loading brands:', error);
+        console.error('[useFavoritesScreen] Error loading data:', error);
         setAllBrands([]);
+        setAllClients([]);
+        setAllEvents([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadBrands();
-  }, []);
+    loadData();
+  }, [setFavorites]);
 
-  // Check if a brand is favorited by ID or brand name
-  const isBrandFavorited = useMemo(() => {
-    return (brandId: string, brandName: string) => {
-      // Check by ID first
-      if (isFavorite(brandId)) return true;
-      // Also check by brand name to catch favorites added from brand details (which use event IDs)
-      return favorites.some((f) => f.brandName.toLowerCase() === brandName.toLowerCase());
-    };
-  }, [favorites, isFavorite]);
+  // Get favorite brands with their details and events
+  const favoriteBrands = useMemo<FavoriteBrandData[]>(() => {
+    const brands: FavoriteBrandData[] = [];
+    
+    for (const brandId of favoriteIds) {
+      // Find the client/brand by ID
+      const client = allClients.find((c) => c.$id === brandId);
+      if (!client) continue;
+      
+      const brandName = client.name || client.title || 'Brand';
+      
+      // Get brand data to find product types
+      const brandData = allBrands.find((b) => b.id === brandId);
+      
+      // Find all upcoming events for this brand
+      const brandEvents = allEvents
+        .filter((event) => {
+          const clientId = typeof event.client === 'string' 
+            ? event.client 
+            : event.client?.$id;
+          return clientId === brandId;
+        })
+        .filter((event) => new Date(event.date) >= new Date()) // Only upcoming events
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 3) // Limit to 3 upcoming events
+        .map((event): EventData => {
+          const eventClient = typeof event.client !== 'string' ? event.client : null;
+          const location = eventClient?.name || eventClient?.title || event.address || 'Location TBD';
+          
+          // Get city and state from event
+          const city = event.city || eventClient?.city || '';
+          const state = event.state || eventClient?.state || '';
+          
+          return {
+            id: event.$id,
+            name: event.name || brandName,
+            brandName: brandName,
+            location,
+            distance: city && state ? `${city}, ${state}` : (city || state || ''), // Use distance field for city, state
+            date: formatEventDate(event.date),
+            time: formatEventTime(event.startTime, event.endTime),
+            logoURL: event.discountImageURL || client.logoURL || null,
+          };
+        });
+      
+      brands.push({
+        id: brandId,
+        brandName,
+        description: brandData?.description || brandData?.productTypes?.join(', ') || 'No products listed',
+        brandPhotoURL: client.logoURL || undefined,
+        events: brandEvents.length > 0 ? brandEvents : undefined,
+      });
+    }
+    
+    return brands;
+  }, [favoriteIds, allClients, allBrands, allEvents]);
 
-  // Get new brands that aren't favorited yet, sorted by creation date
+  // Get new brands that aren't favorited yet
   const newBrands = useMemo<NewBrandData[]>(() => {
     return allBrands
-      .filter((brand) => !isBrandFavorited(brand.id, brand.brandName))
+      .filter((brand) => !isFavorite(brand.id))
       .map((brand) => ({
         ...brand,
-        isFavorited: isBrandFavorited(brand.id, brand.brandName),
+        isFavorited: isFavorite(brand.id),
       }));
-  }, [allBrands, isBrandFavorited]);
+  }, [allBrands, isFavorite]);
 
-  const handleToggleFavorite = (id: string) => {
-    removeFavorite(id);
+  const handleToggleFavorite = async (brandId: string) => {
+    try {
+      // Remove from local store immediately (optimistic update)
+      removeFavoriteFromStore(brandId);
+      
+      // Sync with database
+      const authUser = await getCurrentUser();
+      if (authUser) {
+        await removeFavoriteBrand(authUser.$id, brandId);
+      }
+    } catch (error) {
+      console.error('[useFavoritesScreen] Error removing favorite:', error);
+      // Revert optimistic update if database sync fails
+      addFavoriteToStore(brandId);
+    }
   };
 
-  const handleToggleNewFavorite = (id: string) => {
-    const brand = allBrands.find((b) => b.id === id);
-    if (!brand) return;
-
-    // Check if already favorited by brand name (in case it was favorited from brand details with event ID)
-    const existingFavorite = favorites.find(
-      (f) => f.brandName.toLowerCase() === brand.brandName.toLowerCase()
-    );
-
-    if (existingFavorite) {
-      // Remove existing favorite (might have different ID)
-      removeFavorite(existingFavorite.id);
-    } else {
-      // Add new favorite
-      const favoriteBrand = {
-        id: brand.id,
-        brandName: brand.brandName,
-        description: brand.description,
-      };
-      toggleFavorite(favoriteBrand);
+  const handleToggleNewFavorite = async (brandId: string) => {
+    try {
+      const isCurrentlyFavorite = isFavorite(brandId);
+      
+      if (isCurrentlyFavorite) {
+        // Remove favorite
+        removeFavoriteFromStore(brandId);
+        
+        const authUser = await getCurrentUser();
+        if (authUser) {
+          await removeFavoriteBrand(authUser.$id, brandId);
+        }
+      } else {
+        // Add favorite
+        addFavoriteToStore(brandId);
+        
+        const authUser = await getCurrentUser();
+        if (authUser) {
+          await addFavoriteBrand(authUser.$id, brandId);
+        }
+      }
+    } catch (error) {
+      console.error('[useFavoritesScreen] Error toggling favorite:', error);
+      // Revert optimistic update if database sync fails
+      const isCurrentlyFavorite = isFavorite(brandId);
+      if (isCurrentlyFavorite) {
+        removeFavoriteFromStore(brandId);
+      } else {
+        addFavoriteToStore(brandId);
+      }
     }
   };
 
   return {
-    favorites,
+    favorites: favoriteBrands,
     newBrands,
     isLoading,
     handleToggleFavorite,
