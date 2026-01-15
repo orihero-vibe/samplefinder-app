@@ -166,6 +166,7 @@ export const updateUserProfile = async (
     totalReviews?: number;
     totalPoints?: number;
     ageRestrictionAccepted?: boolean;
+    favoriteIds?: string[];
   }
 ): Promise<UserProfileRow> => {
   console.log('[database.updateUserProfile] Updating user profile:', {
@@ -214,6 +215,9 @@ export const updateUserProfile = async (
     if (updates.ageRestrictionAccepted !== undefined) {
       updateData.ageRestrictionAccepted = updates.ageRestrictionAccepted;
     }
+    if (updates.favoriteIds !== undefined) {
+      updateData.favoriteIds = updates.favoriteIds;
+    }
     if (updates.dob !== undefined) {
       // Convert date to ISO format if needed
       let dobISO = updates.dob;
@@ -260,12 +264,15 @@ export const updateUserProfile = async (
       $updatedAt: updatedProfile.$updatedAt,
       avatarURL: updatedProfile.avatarURL,
       zipCode: updatedProfile.zipCode,
-      referalCode: updatedProfile.referalCode,
+      referralCode: updatedProfile.referralCode,
       isBlocked: updatedProfile.isBlocked || false,
       totalEvents: updatedProfile.totalEvents || 0,
       totalReviews: updatedProfile.totalReviews || 0,
       totalPoints: updatedProfile.totalPoints || 0,
       ageRestrictionAccepted: updatedProfile.ageRestrictionAccepted || false,
+      favoriteIds: updatedProfile.favoriteIds || [],
+      notifications: updatedProfile.notifications || [],
+      notificationPreferences: updatedProfile.notificationPreferences,
     };
   } catch (error: any) {
     console.error('[database.updateUserProfile] Error updating user profile:', error);
@@ -393,7 +400,7 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       $updatedAt: profile.$updatedAt,
       avatarURL: profile.avatarURL,
       zipCode: profile.zipCode,
-      referalCode: profile.referalCode,
+      referralCode: profile.referralCode,
       isBlocked: profile.isBlocked || false,
       totalEvents: profile.totalEvents || 0,
       totalReviews: profile.totalReviews || 0,
@@ -401,6 +408,9 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       isAmbassador: profile.isAmbassador || false,
       isInfluencer: profile.isInfluencer || false,
       ageRestrictionAccepted: profile.ageRestrictionAccepted || false,
+      favoriteIds: profile.favoriteIds || [],
+      notifications: profile.notifications || [],
+      notificationPreferences: profile.notificationPreferences,
     };
   } catch (error: any) {
     console.error('[database.getUserProfile] Error fetching user profile:', error);
@@ -449,6 +459,62 @@ export const getNotificationPreferences = async (authID: string): Promise<Notifi
     console.error('[database.getNotificationPreferences] Error fetching preferences:', error);
     console.error('[database.getNotificationPreferences] Error message:', error?.message);
     throw new Error(error.message || 'Failed to fetch notification preferences');
+  }
+};
+
+/**
+ * Add a brand to user's favorites
+ */
+export const addFavoriteBrand = async (authID: string, brandId: string): Promise<void> => {
+  console.log('[database.addFavoriteBrand] Adding favorite brand:', { authID, brandId });
+
+  try {
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      throw new Error('User profile not found');
+    }
+
+    const currentFavorites = profile.favoriteIds || [];
+    
+    // Check if already favorited
+    if (currentFavorites.includes(brandId)) {
+      console.log('[database.addFavoriteBrand] Brand already in favorites');
+      return;
+    }
+
+    // Add new favorite
+    const updatedFavorites = [...currentFavorites, brandId];
+
+    await updateUserProfile(profile.$id, { favoriteIds: updatedFavorites });
+    console.log('[database.addFavoriteBrand] Brand added to favorites successfully');
+  } catch (error: any) {
+    console.error('[database.addFavoriteBrand] Error adding favorite brand:', error);
+    throw new Error(error.message || 'Failed to add favorite brand');
+  }
+};
+
+/**
+ * Remove a brand from user's favorites
+ */
+export const removeFavoriteBrand = async (authID: string, brandId: string): Promise<void> => {
+  console.log('[database.removeFavoriteBrand] Removing favorite brand:', { authID, brandId });
+
+  try {
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      throw new Error('User profile not found');
+    }
+
+    const currentFavorites = profile.favoriteIds || [];
+    
+    // Remove the favorite
+    const updatedFavorites = currentFavorites.filter((id) => id !== brandId);
+
+    await updateUserProfile(profile.$id, { favoriteIds: updatedFavorites });
+    console.log('[database.removeFavoriteBrand] Brand removed from favorites successfully');
+  } catch (error: any) {
+    console.error('[database.removeFavoriteBrand] Error removing favorite brand:', error);
+    throw new Error(error.message || 'Failed to remove favorite brand');
   }
 };
 

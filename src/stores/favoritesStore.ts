@@ -1,81 +1,54 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { EventData } from '@/screens/tabs/favorites/components/BrandUpcomingEvents';
-
-export interface FavoriteBrandData {
-  id: string;
-  brandName: string;
-  description: string;
-  events?: EventData[];
-  // Additional fields that might be needed
-  storeName?: string;
-  address?: {
-    street: string;
-    city: string;
-    state: string;
-    zip: string;
-  };
-  products?: string[];
-  imageUrl?: string;
-  // Date and time for event-based favorites
-  date?: string;
-  time?: string;
-  eventInfo?: string;
-  discountMessage?: string;
-}
 
 interface FavoritesState {
-  favorites: FavoriteBrandData[];
-  addFavorite: (brand: FavoriteBrandData) => void;
-  removeFavorite: (id: string) => void;
-  isFavorite: (id: string) => boolean;
-  toggleFavorite: (brand: FavoriteBrandData) => void;
-  updateFavorite: (id: string, updates: Partial<FavoriteBrandData>) => void;
+  favoriteIds: string[]; // Just store brand IDs
+  addFavorite: (brandId: string) => void;
+  removeFavorite: (brandId: string) => void;
+  isFavorite: (brandId: string) => boolean;
+  toggleFavorite: (brandId: string) => void;
+  setFavorites: (brandIds: string[]) => void; // Sync from database
 }
 
 export const useFavoritesStore = create<FavoritesState>()(
   persist(
     (set, get) => ({
-      favorites: [],
+      favoriteIds: [],
       
-      addFavorite: (brand) => {
+      addFavorite: (brandId) => {
         set((state) => {
           // Check if already exists
-          if (state.favorites.some((f) => f.id === brand.id)) {
+          if (state.favoriteIds.includes(brandId)) {
             return state;
           }
           return {
-            favorites: [...state.favorites, brand],
+            favoriteIds: [...state.favoriteIds, brandId],
           };
         });
       },
       
-      removeFavorite: (id) => {
+      removeFavorite: (brandId) => {
         set((state) => ({
-          favorites: state.favorites.filter((f) => f.id !== id),
+          favoriteIds: state.favoriteIds.filter((id) => id !== brandId),
         }));
       },
       
-      isFavorite: (id) => {
-        return get().favorites.some((f) => f.id === id);
+      isFavorite: (brandId) => {
+        return get().favoriteIds.includes(brandId);
       },
       
-      toggleFavorite: (brand) => {
-        const isCurrentlyFavorite = get().isFavorite(brand.id);
+      toggleFavorite: (brandId) => {
+        const isCurrentlyFavorite = get().isFavorite(brandId);
         if (isCurrentlyFavorite) {
-          get().removeFavorite(brand.id);
+          get().removeFavorite(brandId);
         } else {
-          get().addFavorite(brand);
+          get().addFavorite(brandId);
         }
       },
       
-      updateFavorite: (id, updates) => {
-        set((state) => ({
-          favorites: state.favorites.map((f) =>
-            f.id === id ? { ...f, ...updates } : f
-          ),
-        }));
+      setFavorites: (brandIds) => {
+        set({ favoriteIds: brandIds });
       },
     }),
     {

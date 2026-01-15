@@ -1,3 +1,18 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Share, Alert, Linking } from 'react-native';
+import * as Calendar from 'expo-calendar';
+import * as Location from 'expo-location';
+import { parseEventDateTime, calculateDistance } from '@/utils/formatters';
+import { useFavoritesStore } from '@/stores/favoritesStore';
+import { 
+  fetchEventById, 
+  fetchClients, 
+  EventRow, 
+  ClientData,
 import { getCurrentUser } from '@/lib/auth';
 import {
   createCheckIn,
@@ -7,6 +22,8 @@ import {
   fetchEventById,
   getUserCheckInForEvent,
   getUserProfile,
+  addFavoriteBrand,
+  removeFavoriteBrand,
   getUserReviewForEvent
 } from '@/lib/database';
 import { cancelEventReminders, scheduleEventReminders } from '@/lib/notifications/eventReminders';
@@ -24,7 +41,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Linking, Share } from 'react-native';
 
 export interface BrandDetailsData {
-  id: string;
+  id: string; // Event ID
+  clientId: string; // Brand/Client ID (for favorites)
   brandName: string;
   storeName: string;
   date: string; // e.g., "Aug 1, 2025"
@@ -77,11 +95,14 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   
-  // Zustand favorites store - get favorites array to properly subscribe to changes
-  const favorites = useFavoritesStore((state) => state.favorites);
-  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
+  // Zustand favorites store
+  const favoriteIds = useFavoritesStore((state) => state.favoriteIds);
+  const isFavoriteInStore = useFavoritesStore((state) => state.isFavorite);
+  const addFavoriteToStore = useFavoritesStore((state) => state.addFavorite);
+  const removeFavoriteFromStore = useFavoritesStore((state) => state.removeFavorite);
   
   const [isAddedToCalendar, setIsAddedToCalendar] = useState(false);
+  const [calendarEventId, setCalendarEventId] = useState<string | null>(null);
   const [checkInStatus, setCheckInStatus] = useState<CheckInStatus>('none');
   const [hasSubmittedCode, setHasSubmittedCode] = useState(false);
   const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false); // Prevent duplicate submissions
@@ -176,25 +197,10 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   }, [eventId]);
   
   const isFavorite = useMemo(() => {
-    if (!brand) return false;
-    return favorites.some((f) => f.id === brand.id);
-  }, [favorites, brand]);
-  
-  const favoriteBrandData: FavoriteBrandData | null = useMemo(() => {
-    if (!brand) return null;
-    return {
-      id: brand.id,
-      brandName: brand.brandName,
-      description: brand.eventInfo || `${brand.brandName} at ${brand.storeName}`,
-      storeName: brand.storeName,
-      address: brand.address,
-      products: brand.products,
-      date: brand.date,
-      time: brand.time,
-      eventInfo: brand.eventInfo,
-      discountMessage: brand.discountMessage,
-    };
-  }, [brand]);
+    if (!brand || !brand.clientId) return false;
+    // Check by clientId (brand ID), not event ID
+    return isFavoriteInStore(brand.clientId);
+  }, [favoriteIds, brand, isFavoriteInStore]);
 
   const handleTabPress = (tab: string) => {
     const tabMap: Record<string, keyof TabParamList> = {
@@ -229,6 +235,30 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   };
 
   const handleAddToCalendar = async () => {
+    // If already added, remove it from calendar
+    if (isAddedToCalendar && calendarEventId) {
+      try {
+        await Calendar.deleteEventAsync(calendarEventId);
+        setIsAddedToCalendar(false);
+        setCalendarEventId(null);
+        Alert.alert(
+          'Removed',
+          'Event removed from your calendar.',
+          [{ text: 'OK' }]
+        );
+      } catch (error) {
+        console.error('Error removing event from calendar:', error);
+        Alert.alert(
+          'Error',
+          'Failed to remove event from calendar. You may need to delete it manually.',
+          [{ text: 'OK' }]
+        );
+      }
+      return;
+    }
+
+    // If marked as added but no event ID (shouldn't happen), just reset state
+    if (isAddedToCalendar && !calendarEventId) {
     // If already added, cancel reminders and toggle the state
     if (isAddedToCalendar) {
       if (brand) {
@@ -327,6 +357,8 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
 
       const calendarEventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
       
+      if (eventId) {
+        setCalendarEventId(eventId);
       if (calendarEventId) {
         setIsAddedToCalendar(true);
         
@@ -368,9 +400,38 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     }
   };
 
-  const handleAddFavorite = () => {
-    if (favoriteBrandData) {
-      toggleFavorite(favoriteBrandData);
+  const handleAddFavorite = async () => {
+    if (!brand?.clientId) return;
+    
+    try {
+      const isCurrentlyFavorite = isFavorite;
+      
+      // Toggle in local store first (optimistic update for immediate UI feedback)
+      if (isCurrentlyFavorite) {
+        removeFavoriteFromStore(brand.clientId);
+      } else {
+        addFavoriteToStore(brand.clientId);
+      }
+      
+      // Sync with user profile in background
+      const authUser = await getCurrentUser();
+      if (authUser) {
+        if (isCurrentlyFavorite) {
+          // Remove from favorites
+          await removeFavoriteBrand(authUser.$id, brand.clientId);
+        } else {
+          // Add to favorites
+          await addFavoriteBrand(authUser.$id, brand.clientId);
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing favorite with user profile:', error);
+      // Revert optimistic update if database sync fails
+      if (isFavorite) {
+        addFavoriteToStore(brand.clientId);
+      } else {
+        removeFavoriteFromStore(brand.clientId);
+      }
     }
   };
 

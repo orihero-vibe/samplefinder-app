@@ -56,6 +56,19 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
   },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 200,
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    fontFamily: 'Quicksand_400Regular',
+    color: Colors.pinDarkBlue,
+    textAlign: 'center',
+  },
 });
 
 export default styles;

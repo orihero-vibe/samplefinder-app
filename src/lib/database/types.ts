@@ -17,7 +17,7 @@ export interface UserProfileRow extends UserProfileData {
   $updatedAt: string;
   avatarURL?: string | null;
   zipCode?: string | null;
-  referalCode?: string | null;
+  referralCode?: string | null;
   isBlocked?: boolean;
   totalEvents?: number;
   totalReviews?: number;
@@ -25,6 +25,31 @@ export interface UserProfileRow extends UserProfileData {
   isAmbassador?: boolean;
   isInfluencer?: boolean;
   ageRestrictionAccepted?: boolean;
+  favoriteIds?: string[]; // Array of favorite brand/client IDs
+  notifications?: UserNotification[]; // User notification history
+  notificationPreferences?: any; // User notification preferences (JSON object)
+}
+
+/**
+ * User Notification Types (stored in user profile as JSON)
+ */
+export type NotificationType = 
+  | 'checkIn' 
+  | 'review' 
+  | 'tierChanged' 
+  | 'badgeEarned' 
+  | 'eventAdded' 
+  | 'eventReminder'
+  | 'favoriteBrandUpdate';
+
+export interface UserNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string; // ISO datetime
+  data?: Record<string, any>; // Extra data (eventId, tierId, etc.)
 }
 
 /**

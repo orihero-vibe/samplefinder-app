@@ -22,6 +22,8 @@ export {
   createUserProfile,
   updateUserProfile,
   getUserProfile,
+  addFavoriteBrand,
+  removeFavoriteBrand,
 } from './users';
 
 // Re-export client functions
@@ -93,6 +95,26 @@ export type {
   SubmitAnswerResult,
   GetActiveTriviaResponse,
 } from './trivia';
+
+// Re-export user notifications functions
+export {
+  createUserNotification,
+  getUserNotifications,
+  getUnreadNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteUserNotification,
+  getUnreadNotificationCount,
+  clearAllNotifications,
+} from './userNotifications';
+
+// Re-export user notifications types
+export type {
+  NotificationType,
+  UserNotification,
+} from './types';
+
+export type { UserNotificationData } from './userNotifications';
 
 // Default export for backward compatibility
 import { createUserProfile } from './users';
