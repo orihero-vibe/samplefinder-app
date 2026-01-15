@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'rea
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { HeartIcon } from '@/icons';
+import SmallHeartIcon from '@/icons/SmallHeartIcon';
+import HeartOutlineIcon from '@/icons/HeartOutlineIcon';
 
 export interface NewBrandData {
   id: string;
@@ -39,12 +41,11 @@ const FindNewFavorites: React.FC<FindNewFavoritesProps> = ({ brands, onToggleFav
                   resizeMode="cover"
                 />
               ) : (
-                <View style={styles.logoPlaceholder}>
-                  <Monicon name="mdi:map-marker" size={20} color={Colors.pinDarkBlue} />
-                  <View style={styles.iconOverlay}>
-                    <Monicon name="mdi:magnify" size={12} color={Colors.white} />
-                  </View>
-                </View>
+                <Image
+                source={require('@/assets/locationImage.png')}
+                style={styles.brandPhoto}
+                resizeMode="contain"
+              />
               )}
             </View>
             <View style={styles.brandInfo}>
@@ -60,12 +61,7 @@ const FindNewFavorites: React.FC<FindNewFavoritesProps> = ({ brands, onToggleFav
             onPress={() => onToggleFavorite?.(brand.id)}
             style={styles.heartButton}
           >
-            <HeartIcon
-              size={24}
-              color={Colors.pinDarkBlue}
-              circleColor={brand.isFavorited ? Colors.pinDarkBlue : Colors.white}
-              filled={brand.isFavorited}
-            />
+            <HeartOutlineIcon size={24}/>
           </TouchableOpacity>
         </TouchableOpacity>
       ))}
@@ -100,19 +96,19 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 2,
-    borderColor: Colors.pinDarkBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-    position: 'relative',
-    overflow: 'hidden',
+
   },
   logoImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 20,
+  },
+  brandPhoto: {
+    width: 40,
+    height: 40,
   },
   logoPlaceholder: {
     width: '100%',

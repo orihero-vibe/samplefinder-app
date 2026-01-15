@@ -73,7 +73,7 @@ const ProfileScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} />
+      <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} onNotifications={handleNotificationsPress} />
 
       <ScrollView
         style={styles.scrollView}
@@ -109,7 +109,6 @@ const ProfileScreen = () => {
             email: authUser?.email || '',
           }}
         />
-        <NotificationsButton onPress={handleNotificationsPress} />
         <BrandAmbassadorSection 
           onApplyHerePress={handleApplyHerePress}
           isAmbassador={profile?.isAmbassador || false}

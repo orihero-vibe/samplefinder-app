@@ -4,6 +4,7 @@ import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import MainHeader from '@/components/wrappers/MainHeader';
+import ZipCodeModal from '@/components/shared/ZipCodeModal';
 import { Colors } from '@/constants/Colors';
 import {
   MapMarker,
@@ -31,6 +32,9 @@ const HomeScreen = () => {
     markers,
     isLoadingClients,
     hasLocationPermission,
+    showZipCodeModal,
+    isGeocodingZip,
+    zipCodeError,
     bottomSheetIndex,
     bottomSheetRef,
     mapRef,
@@ -50,6 +54,8 @@ const HomeScreen = () => {
     handleCloseModal,
     handleListPress,
     handleMapPress,
+    handleZipCodeSubmit,
+    handleZipCodeChange,
   } = useHomeScreen();
 
   const renderFilterModal = () => {
@@ -137,6 +143,14 @@ const HomeScreen = () => {
       </View>
 
       <StoreModal visible={isModalVisible} store={selectedStore} isLoadingEvents={isLoadingEvents} onClose={handleCloseModal} />
+
+      <ZipCodeModal
+        visible={showZipCodeModal}
+        onZipCodeSubmit={handleZipCodeSubmit}
+        onZipCodeChange={handleZipCodeChange}
+        isLoading={isGeocodingZip}
+        error={zipCodeError || undefined}
+      />
 
       {renderFilterModal()}
 

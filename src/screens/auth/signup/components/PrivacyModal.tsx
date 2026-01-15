@@ -1,16 +1,45 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { getSetting } from '@/lib/database/settings';
 
 interface PrivacyModalProps {
   visible: boolean;
   onClose: () => void;
+  onAccept: () => void;
 }
 
 export const PrivacyModal: React.FC<PrivacyModalProps> = ({
   visible,
   onClose,
+  onAccept,
 }) => {
+  const [content, setContent] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPrivacyContent = async () => {
+      if (visible) {
+        setIsLoading(true);
+        try {
+          const setting = await getSetting('privacy_policy');
+          if (setting) {
+            setContent(setting.value);
+          } else {
+            setContent('Privacy Policy content not available.');
+          }
+        } catch (error) {
+          console.error('Error fetching privacy policy:', error);
+          setContent('Error loading privacy policy. Please try again later.');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchPrivacyContent();
+  }, [visible]);
+
   return (
     <Modal
       visible={visible}
@@ -27,30 +56,16 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <Text style={styles.termsModalText}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-              enim ad minim veniam, quis nostrud exercitation ullamco laboris
-              nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor
-              in reprehenderit in voluptate velit esse cillum dolore eu fugiat
-              nulla pariatur. Excepteur sint occaecat cupidatat non proident,
-              sunt in culpa qui officia deserunt mollit anim id est laborum.
-              {'\n\n'}
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem
-              accusantium doloremque laudantium, totam rem aperiam, eaque ipsa
-              quae ab illo inventore veritatis et quasi architecto beatae vitae
-              dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas
-              sit aspernatur aut odit aut fugit, sed quia consequuntur magni
-              dolores eos qui ratione voluptatem sequi nesciunt.
-              {'\n\n'}
-              Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet,
-              consectetur, adipisci velit, sed quia non numquam eius modi
-              tempora incidunt ut labore et dolore magnam aliquam quaerat
-              voluptatem.
-            </Text>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#2D1B69" />
+              </View>
+            ) : (
+              <Text style={styles.termsModalText}>{content}</Text>
+            )}
           </ScrollView>
           <View style={styles.modalFooter}>
-            <TouchableOpacity onPress={onClose} style={styles.acceptButtonTerms}>
+            <TouchableOpacity onPress={onAccept} style={styles.acceptButtonTerms}>
               <Text style={styles.acceptButtonTextTerms}>Accept</Text>
             </TouchableOpacity>
           </View>
@@ -124,6 +139,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Quicksand_600SemiBold',
     color: '#2D1B69',
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

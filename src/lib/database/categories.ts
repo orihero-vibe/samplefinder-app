@@ -3,9 +3,12 @@ import type { CategoryData } from './types';
 
 /**
  * Fetch all categories from the database
+ * @param ageRestrictionAccepted - If false, filters out categories with isAdult=true. If true or undefined, includes all categories.
  */
-export const fetchCategories = async (): Promise<CategoryData[]> => {
-  console.log('[database.fetchCategories] Fetching categories from database');
+export const fetchCategories = async (ageRestrictionAccepted?: boolean): Promise<CategoryData[]> => {
+  console.log('[database.fetchCategories] Fetching categories from database', {
+    ageRestrictionAccepted,
+  });
 
   console.log('[database.fetchCategories] DATABASE_ID:', DATABASE_ID);
   console.log('[database.fetchCategories] CATEGORIES_TABLE_ID:', CATEGORIES_TABLE_ID);
@@ -37,7 +40,7 @@ export const fetchCategories = async (): Promise<CategoryData[]> => {
     }
 
     // Map the rows to CategoryData format
-    const categories: CategoryData[] = result.rows
+    let categories: CategoryData[] = result.rows
       .map((row: any) => ({
         $id: row.$id,
         name: row.name || row.title || '',
@@ -45,11 +48,22 @@ export const fetchCategories = async (): Promise<CategoryData[]> => {
         description: row.description || '',
         icon: row.icon || '',
         isActive: row.isActive !== false, // Default to true if not specified
+        isAdult: row.isAdult || false,
         $createdAt: row.$createdAt,
         $updatedAt: row.$updatedAt,
         ...row, // Include all other fields
       }))
       .filter((cat: CategoryData) => cat.isActive !== false); // Filter out inactive categories
+
+    // Filter out adult categories if user hasn't accepted age restrictions
+    if (ageRestrictionAccepted === false) {
+      const beforeFilter = categories.length;
+      categories = categories.filter((cat: CategoryData) => !cat.isAdult);
+      console.log('[database.fetchCategories] Filtered out adult categories:', {
+        before: beforeFilter,
+        after: categories.length,
+      });
+    }
 
     console.log('[database.fetchCategories] Categories fetched successfully:', categories.length);
     return categories;

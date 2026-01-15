@@ -8,8 +8,9 @@ import ProfileStack from '@/navigation/ProfileStack';
 import FavoritesScreen from '@/screens/tabs/favorites/FavoritesScreen';
 import CalendarStack from '@/navigation/CalendarStack';
 import { PromotionsScreen } from '@/screens/tabs/promotions';
-import { HomeIcon, ProfileIcon, HeartIcon, CalendarIcon, SparkleIcon } from '@/icons';
+import { HomeIcon, ProfileIcon, CalendarIcon, SparkleIcon } from '@/icons';
 import { Colors } from '@/constants/Colors';
+import HeartOutlineIcon from '@/icons/HeartOutlineIcon';
 
 export type TabParamList = {
   Home: undefined;
@@ -39,7 +40,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         icon = <ProfileIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
         break;
       case 'Favorites':
-        icon = <HeartIcon size={iconSize} color={iconColor} circleColor={circleColor} filled={isFocused} />;
+        icon = <HeartOutlineIcon size={iconSize - 6} color={iconColor} />;
         break;
       case 'Calendar':
         icon = <CalendarIcon size={iconSize} color={iconColor} circleColor={circleColor} />;

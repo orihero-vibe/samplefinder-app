@@ -35,9 +35,13 @@ export const convertEventToBrandDetails = (
   // Get brand name from event name
   const brandName = event.name || 'Brand';
   
+  // Get client ID for favorites
+  const clientId = client?.$id || '';
+  
   // Create BrandDetailsData
   const brandDetails: BrandDetailsData = {
     id: event.$id,
+    clientId, // Brand/Client ID for favorites
     brandName,
     storeName,
     date: formattedDate,

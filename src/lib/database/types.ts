@@ -17,13 +17,39 @@ export interface UserProfileRow extends UserProfileData {
   $updatedAt: string;
   avatarURL?: string | null;
   zipCode?: string | null;
-  referalCode?: string | null;
+  referralCode?: string | null;
   isBlocked?: boolean;
   totalEvents?: number;
   totalReviews?: number;
   totalPoints?: number;
   isAmbassador?: boolean;
   isInfluencer?: boolean;
+  ageRestrictionAccepted?: boolean;
+  favoriteIds?: string[]; // Array of favorite brand/client IDs
+  notifications?: UserNotification[]; // User notification history
+  notificationPreferences?: any; // User notification preferences (JSON object)
+}
+
+/**
+ * User Notification Types (stored in user profile as JSON)
+ */
+export type NotificationType = 
+  | 'checkIn' 
+  | 'review' 
+  | 'tierChanged' 
+  | 'badgeEarned' 
+  | 'eventAdded' 
+  | 'eventReminder'
+  | 'favoriteBrandUpdate';
+
+export interface UserNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string; // ISO datetime
+  data?: Record<string, any>; // Extra data (eventId, tierId, etc.)
 }
 
 /**
@@ -128,6 +154,7 @@ export interface CategoryData {
   description?: string;
   icon?: string;
   isActive?: boolean;
+  isAdult?: boolean;
   $createdAt?: string;
   $updatedAt?: string;
   [key: string]: any; // Allow for additional fields
@@ -196,3 +223,14 @@ export interface TierRow extends TierData {
   $updatedAt: string;
 }
 
+/**
+ * Settings Types
+ */
+export interface SettingRow {
+  $id: string;
+  key: string;
+  value: string;
+  description?: string | null;
+  $createdAt: string;
+  $updatedAt: string;
+}

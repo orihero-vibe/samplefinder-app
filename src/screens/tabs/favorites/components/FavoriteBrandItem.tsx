@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { HeartIcon } from '@/icons';
 import BrandUpcomingEvents from './BrandUpcomingEvents';
 import type { EventData } from './BrandUpcomingEvents';
+import SmallHeartIcon from '@/icons/SmallHeartIcon';
 
 export interface FavoriteBrandData {
   id: string;
   brandName: string;
   description: string;
+  brandPhotoURL?: string;
   events?: EventData[];
 }
 
@@ -30,10 +32,19 @@ const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFa
       <View style={styles.header}>
         <View style={styles.leftSection}>
           <View style={styles.iconContainer}>
-            <Monicon name="mdi:map-marker" size={20} color={Colors.pinDarkBlue} />
-            <View style={styles.iconOverlay}>
-              <Monicon name="mdi:magnify" size={12} color={Colors.white} />
-            </View>
+            {brand.brandPhotoURL ? (
+              <Image 
+                source={{ uri: brand.brandPhotoURL }} 
+                style={styles.brandPhoto}
+                resizeMode="cover"
+              />
+            ) : (
+              <Image
+                source={require('@/assets/locationImage.png')}
+                style={styles.brandPhoto}
+                resizeMode="contain"
+              />
+            )}
           </View>
           <View style={styles.brandInfo}>
             <Text style={styles.brandName}>{brand.brandName}</Text>
@@ -53,7 +64,7 @@ const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFa
           onPress={() => onToggleFavorite?.(brand.id)}
           style={styles.heartButton}
         >
-          <HeartIcon size={24} color={Colors.pinDarkBlue} circleColor={Colors.white} filled={true} />
+          <SmallHeartIcon size={24} />
         </TouchableOpacity>
       </View>
 
@@ -98,24 +109,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    overflow: 'hidden',
     backgroundColor: Colors.white,
-    borderWidth: 2,
-    borderColor: Colors.pinDarkBlue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-    position: 'relative',
   },
-  iconOverlay: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Colors.pinDarkBlue,
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandPhoto: {
+    width: 40,
+    height: 40,
   },
   brandInfo: {
     flex: 1,

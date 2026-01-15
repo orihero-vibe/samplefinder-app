@@ -1,6 +1,8 @@
 import { ID, Query } from 'react-native-appwrite';
 import { tablesDB, DATABASE_ID, USER_PROFILES_TABLE_ID } from './config';
 import type { ReviewData, ReviewRow } from './types';
+import { createUserNotification } from './userNotifications';
+import { fetchTiers, getUserCurrentTier } from './tiers';
 
 export const REVIEWS_TABLE_ID = process.env.APPWRITE_REVIEWS_TABLE_ID || 'reviews';
 
@@ -26,12 +28,22 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
     }
     
     const profile = userProfile as any;
+    const oldTotalPoints = profile.totalPoints || 0;
     const newTotalReviews = (profile.totalReviews || 0) + 1;
-    const newTotalPoints = (profile.totalPoints || 0) + (reviewData.pointsEarned || 0);
+    const newTotalPoints = oldTotalPoints + (reviewData.pointsEarned || 0);
 
     const authUserID = profile.authID;
     if (!authUserID) {
       throw new Error('User authentication ID not found in profile');
+    }
+
+    // Get current tier before updating points
+    let oldTier = null;
+    try {
+      const tiers = await fetchTiers();
+      oldTier = getUserCurrentTier(tiers, oldTotalPoints);
+    } catch (error) {
+      console.error('[reviews] Failed to fetch tiers:', error);
     }
 
     const rowId = ID.unique();
@@ -56,6 +68,47 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
         totalPoints: newTotalPoints,
       },
     });
+
+    // Create review confirmation notification
+    try {
+      await createUserNotification({
+        userId: authUserID,
+        type: 'review',
+        title: 'Thank You for Your Review! ⭐',
+        message: `You earned ${reviewData.pointsEarned || 0} points! Your feedback helps others discover great products.`,
+        data: {
+          eventId: reviewData.event,
+          pointsEarned: reviewData.pointsEarned || 0,
+          rating: reviewData.rating,
+        },
+      });
+    } catch (notificationError) {
+      console.error('[reviews] Failed to create review notification:', notificationError);
+      // Don't fail the review if notification creation fails
+    }
+
+    // Check if tier changed and create notification
+    try {
+      const tiers = await fetchTiers();
+      const newTier = getUserCurrentTier(tiers, newTotalPoints);
+      if (newTier && oldTier && newTier.$id !== oldTier.$id) {
+        await createUserNotification({
+          userId: authUserID,
+          type: 'tierChanged',
+          title: `Congratulations! You're now ${newTier.name}! 🎊`,
+          message: `You've unlocked new rewards and benefits. Keep sampling to reach the next tier!`,
+          data: {
+            oldTierId: oldTier.$id,
+            newTierId: newTier.$id,
+            oldTierName: oldTier.name,
+            newTierName: newTier.name,
+          },
+        });
+      }
+    } catch (tierError) {
+      console.error('[reviews] Failed to check tier or create tier notification:', tierError);
+      // Don't fail the review if tier notification fails
+    }
     
     return {
       $id: result.$id,

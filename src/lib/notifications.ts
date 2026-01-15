@@ -3,10 +3,46 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { Account, ID } from 'react-native-appwrite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getMessaging, getToken, onTokenRefresh, requestPermission, AuthorizationStatus } from '@react-native-firebase/messaging';
+import { getApp } from '@react-native-firebase/app';
 import appwriteClient from './appwrite';
 import type { PushTargetInfo } from './notifications/types';
 
 const account = new Account(appwriteClient);
+
+// Lazy initialization of Firebase instances
+let firebaseApp: ReturnType<typeof getApp> | null = null;
+let firebaseMessaging: ReturnType<typeof getMessaging> | null = null;
+
+/**
+ * Get or initialize Firebase app instance
+ */
+const getFirebaseApp = () => {
+  if (!firebaseApp) {
+    try {
+      firebaseApp = getApp();
+    } catch (error) {
+      console.error('[notifications] Failed to get Firebase app:', error);
+      throw new Error('Firebase app not initialized. Make sure Firebase is properly configured.');
+    }
+  }
+  return firebaseApp;
+};
+
+/**
+ * Get or initialize Firebase messaging instance
+ */
+const getFirebaseMessaging = () => {
+  if (!firebaseMessaging) {
+    try {
+      firebaseMessaging = getMessaging(getFirebaseApp());
+    } catch (error) {
+      console.error('[notifications] Failed to get Firebase messaging:', error);
+      throw error;
+    }
+  }
+  return firebaseMessaging;
+};
 
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -55,18 +91,20 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
 };
 
 /**
- * Get Expo push token
- * @param forceRefresh - If true, always get a fresh token from Expo (ignores cached token)
+ * Get FCM token using React Native Firebase
+ * This provides a proper FCM token that works with Appwrite Messaging API
+ * Works for both Android and iOS (if Firebase is configured with APNs in Firebase Console)
+ * @param forceRefresh - If true, always get a fresh token (ignores cached token)
  */
-export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
+export const getDevicePushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
   try {
-    console.log('[notifications] Getting Expo push token...', { forceRefresh });
+    console.log('[notifications] Getting FCM token from Firebase...', { forceRefresh, platform: Platform.OS });
     
     // Check if we already have a token stored (only if not forcing refresh)
     if (!forceRefresh) {
       const storedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
       if (storedToken) {
-        console.log('[notifications] Using stored push token');
+        console.log('[notifications] Using stored FCM token');
         return storedToken;
       }
     } else {
@@ -81,23 +119,75 @@ export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<s
       return null;
     }
     
+    // Request Firebase messaging permission (iOS)
+    if (Platform.OS === 'ios') {
+      const authStatus = await requestPermission(getFirebaseMessaging());
+      const enabled =
+        authStatus === AuthorizationStatus.AUTHORIZED ||
+        authStatus === AuthorizationStatus.PROVISIONAL;
+
+      if (!enabled) {
+        console.warn('[notifications] Firebase messaging permission not granted on iOS');
+        return null;
+      }
+      
+      console.log('[notifications] Firebase messaging permission granted on iOS');
+    }
+    
+    // Get FCM token from React Native Firebase
+    const token = await getToken(getFirebaseMessaging());
+    
+    console.log('[notifications] FCM token obtained:', token);
+    console.log('[notifications] Token length:', token.length);
+    console.log('[notifications] Platform:', Platform.OS);
+    
+    // Validate token format
+    if (!token || token.length < 20) {
+      console.error('[notifications] Invalid FCM token received');
+      return null;
+    }
+    
+    // IMPORTANT: iOS Simulator may not work for push notifications
+    if (Platform.OS === 'ios') {
+      console.log('ℹ️  [notifications] iOS device detected');
+      console.log('ℹ️  [notifications] Make sure APNs is configured in Firebase Console for iOS push');
+    }
+    
+    // Store the token
+    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+    
+    return token;
+  } catch (error: any) {
+    console.error('[notifications] Error getting FCM token:', error);
+    console.error('[notifications] Make sure Firebase is properly configured in your app');
+    return null;
+  }
+};
+
+/**
+ * Get Expo push token (for Expo push service)
+ * Note: This is NOT used for Appwrite Messaging - we use native tokens instead
+ * @param forceRefresh - If true, always get a fresh token from Expo (ignores cached token)
+ */
+export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
+  try {
+    console.log('[notifications] Getting Expo push token...', { forceRefresh });
+    
+    // Request permissions first
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) {
+      console.warn('[notifications] Cannot get token without permissions');
+      return null;
+    }
+    
     // Get the token
     // Note: projectId is required in bare workflow or custom builds
-    // Try to get it from Constants first
     let projectId: string | undefined;
     
     try {
-      // Try to get projectId from Constants.expoConfig.extra.eas.projectId
-      // This should be set in app.json under "extra.eas.projectId"
       projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
-      
       if (projectId) {
         console.log('[notifications] Found projectId in Constants:', projectId);
-      } else {
-        console.warn('[notifications] Project ID not found in Constants.expoConfig.extra.eas.projectId');
-        console.warn('[notifications] To fix this, add your EAS project ID to app.json:');
-        console.warn('[notifications]   "extra": { "eas": { "projectId": "your-project-id" } }');
-        console.warn('[notifications] You can find your project ID by running: npx eas project:info');
       }
     } catch (error) {
       console.warn('[notifications] Error getting projectId from Constants:', error);
@@ -105,32 +195,16 @@ export const getExpoPushToken = async (forceRefresh: boolean = false): Promise<s
     
     // Get the token with or without projectId
     let tokenData;
-    try {
-      if (projectId) {
-        console.log('[notifications] Getting Expo push token with projectId...');
-        tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-      } else {
-        // Try without projectId first (works in managed workflow, may fail in bare workflow)
-        console.log('[notifications] Getting Expo push token without projectId (may fail in bare workflow)...');
-        tokenData = await Notifications.getExpoPushTokenAsync();
-      }
-    } catch (error: any) {
-      // If it fails because projectId is missing, provide helpful error message
-      if (error?.message?.includes('projectId') || error?.message?.includes('No "projectId"')) {
-        console.error('[notifications] Error: projectId is required for Expo push tokens in bare workflow.');
-        console.error('[notifications] Please add your EAS project ID to app.json:');
-        console.error('[notifications]   "extra": { "eas": { "projectId": "your-project-id" } }');
-        console.error('[notifications] Find your project ID: npx eas project:info');
-        throw new Error('Expo push token requires projectId. Add it to app.json under extra.eas.projectId');
-      }
-      throw error;
+    if (projectId) {
+      console.log('[notifications] Getting Expo push token with projectId...');
+      tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    } else {
+      console.log('[notifications] Getting Expo push token without projectId...');
+      tokenData = await Notifications.getExpoPushTokenAsync();
     }
     
     const token = tokenData.data;
     console.log('[notifications] Expo push token obtained:', token);
-    
-    // Store the token
-    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
     
     return token;
   } catch (error: any) {
@@ -166,6 +240,7 @@ export const registerPushTarget = async (identifier: string, providerId?: string
   
   try {
     console.log('[notifications] Registering push target with Appwrite...');
+    console.log('[notifications] Token to register:', identifier);
     
     // Check if user is logged in
     let currentUser;
@@ -179,39 +254,32 @@ export const registerPushTarget = async (identifier: string, providerId?: string
     // Use deterministic target ID based on user ID
     const targetId = generateTargetId(currentUser.$id);
     console.log('[notifications] Using deterministic target ID:', targetId);
+    console.log('[notifications] Provider ID:', providerId || 'not provided');
     
-    // First, try to update the existing target (most common case)
+    // Try to delete existing target first (to avoid conflicts)
     try {
-      console.log('[notifications] Attempting to update existing push target...');
-      await account.updatePushTarget({
-        targetId: targetId,
-        identifier: identifier,
-      });
-      console.log('[notifications] Push target updated successfully');
+      console.log('[notifications] Attempting to delete existing push target...');
+      await account.deletePushTarget({ targetId });
+      console.log('[notifications] Old push target deleted');
       
-      // Store the target ID
-      await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, targetId);
-      
-      return {
-        targetId: targetId,
-        identifier: identifier,
-      };
-    } catch (updateError: any) {
-      // If update fails (target doesn't exist yet), try to create it
-      if (updateError?.code === 404 || updateError?.message?.includes('not found')) {
-        console.log('[notifications] Target not found, creating new one...');
+      // Small delay to ensure deletion is processed
+      await new Promise(resolve => setTimeout(resolve, 200));
+    } catch (deleteError: any) {
+      // Target doesn't exist, which is fine
+      if (deleteError?.code === 404 || deleteError?.message?.includes('not found')) {
+        console.log('[notifications] No existing target to delete');
       } else {
-        console.warn('[notifications] Update failed:', updateError?.message);
+        console.warn('[notifications] Could not delete existing target:', deleteError?.message);
       }
     }
     
-    // Try to create new push target
+    // Now create new push target with correct provider ID
     try {
-      console.log('[notifications] Creating new push target:', targetId);
+      console.log('[notifications] Creating new push target...');
       const result = await account.createPushTarget({
         targetId: targetId,
         identifier: identifier,
-        providerId: providerId,
+        providerId: providerId || '6936f46d003100bd238e', // Use FCM provider ID
       });
       
       console.log('[notifications] Push target created successfully:', result);
@@ -224,56 +292,29 @@ export const registerPushTarget = async (identifier: string, providerId?: string
         identifier: identifier,
       };
     } catch (createError: any) {
-      // If target already exists (409), delete it and recreate
-      if (createError?.code === 409 || createError?.message?.includes('already exists')) {
-        console.warn('[notifications] Push target already exists with different owner, deleting and recreating...');
+      // If creation fails, log and retry with update
+      console.error('[notifications] Failed to create push target:', createError?.message);
+      
+      // Try to update instead (target might exist despite deletion attempt)
+      try {
+        console.log('[notifications] Attempting to update existing push target...');
+        await account.updatePushTarget({
+          targetId: targetId,
+          identifier: identifier,
+        });
+        console.log('[notifications] Push target updated successfully');
         
-        try {
-          // Delete the existing target
-          await account.deletePushTarget({ targetId: targetId });
-          console.log('[notifications] Deleted existing push target');
-          
-          // Small delay to ensure deletion is processed
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Create new push target
-          const result = await account.createPushTarget({
-            targetId: targetId,
-            identifier: identifier,
-            providerId: providerId,
-          });
-          
-          console.log('[notifications] Push target recreated successfully:', result);
-          
-          // Store the target ID
-          await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, targetId);
-          
-          return {
-            targetId: targetId,
-            identifier: identifier,
-          };
-        } catch (retryError: any) {
-          console.error('[notifications] Failed to recreate push target:', retryError?.message);
-          // As last resort, try with a unique ID
-          const fallbackId = ID.unique();
-          console.log('[notifications] Trying with fallback unique ID:', fallbackId);
-          
-          const result = await account.createPushTarget({
-            targetId: fallbackId,
-            identifier: identifier,
-            providerId: providerId,
-          });
-          
-          console.log('[notifications] Push target created with fallback ID:', result);
-          await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, fallbackId);
-          
-          return {
-            targetId: fallbackId,
-            identifier: identifier,
-          };
-        }
+        // Store the target ID
+        await AsyncStorage.setItem(PUSH_TARGET_ID_KEY, targetId);
+        
+        return {
+          targetId: targetId,
+          identifier: identifier,
+        };
+      } catch (updateError: any) {
+        console.error('[notifications] Update also failed:', updateError?.message);
+        throw updateError;
       }
-      throw createError;
     }
   } catch (error: any) {
     console.error('[notifications] Error registering push target:', error);
@@ -289,6 +330,12 @@ export const registerPushTarget = async (identifier: string, providerId?: string
  */
 export const updatePushTarget = async (identifier: string): Promise<boolean> => {
   try {
+    // Skip if registration is in progress to avoid race conditions
+    if (isRegistering) {
+      console.log('[notifications] Registration in progress, skipping update...');
+      return true;
+    }
+    
     console.log('[notifications] Updating push target...');
     
     const targetId = await AsyncStorage.getItem(PUSH_TARGET_ID_KEY);
@@ -357,16 +404,19 @@ export const initializePushNotifications = async (): Promise<boolean> => {
       return false;
     }
     
-    // Always get a fresh push token on initialization to avoid expired token issues
-    // This ensures we're always registering with the latest valid token
-    const token = await getExpoPushToken(true); // Force refresh
+    // Get NATIVE device push token (FCM for Android, APNs for iOS)
+    // This is required for Appwrite Messaging API
+    // Always get a fresh token on initialization to avoid expired token issues
+    const token = await getDevicePushToken(true); // Force refresh
     if (!token) {
       console.warn('[notifications] Could not get push token');
       return false;
     }
     
-    // Register with Appwrite
-    const result = await registerPushTarget(token);
+    // Register native token with Appwrite
+    // Use the FCM provider ID from Appwrite (6936f46d003100bd238e)
+    const fcmProviderId = '6936f46d003100bd238e'; // Your Firebase provider ID from Appwrite
+    const result = await registerPushTarget(token, fcmProviderId);
     if (!result) {
       console.warn('[notifications] Could not register push target');
       return false;
@@ -380,25 +430,38 @@ export const initializePushNotifications = async (): Promise<boolean> => {
   }
 };
 
+// Debounce token refresh to avoid race conditions
+let tokenRefreshTimeout: NodeJS.Timeout | null = null;
+
 /**
  * Set up token refresh listener
+ * Listens for Firebase FCM token changes and updates Appwrite
  */
 export const setupTokenRefreshListener = (): void => {
-  console.log('[notifications] Setting up token refresh listener...');
+  console.log('[notifications] Setting up Firebase token refresh listener...');
   
-  // Listen for token changes
-  Notifications.addPushTokenListener(async (tokenData) => {
-    console.log('[notifications] Push token refreshed:', tokenData.data);
-    const token = tokenData.data;
+  // Listen for Firebase FCM token refresh
+  // This happens when the token changes (app reinstall, token expiration, etc.)
+  onTokenRefresh(getFirebaseMessaging(), async (token) => {
+    console.log('[notifications] FCM token refreshed:', token);
+    console.log('[notifications] Platform:', Platform.OS);
     
     // Update stored token
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
     
-    // Update Appwrite push target
-    await updatePushTarget(token);
+    // Debounce the update to avoid multiple concurrent registrations
+    if (tokenRefreshTimeout) {
+      clearTimeout(tokenRefreshTimeout);
+    }
+    
+    tokenRefreshTimeout = setTimeout(async () => {
+      // Update Appwrite push target with new FCM token
+      await updatePushTarget(token);
+      tokenRefreshTimeout = null;
+    }, 1000); // Wait 1 second before updating
   });
   
-  console.log('[notifications] Token refresh listener set up');
+  console.log('[notifications] Firebase token refresh listener set up');
 };
 
 /**
@@ -421,7 +484,7 @@ export const clearPushNotificationCache = async (): Promise<void> => {
 
 /**
  * Refresh push notifications completely
- * This clears all cached data and re-registers with a fresh token
+ * This clears all cached data and re-registers with a fresh native token
  * Use this when expired token errors are encountered
  */
 export const refreshPushNotifications = async (): Promise<boolean> => {
@@ -445,7 +508,7 @@ export const refreshPushNotifications = async (): Promise<boolean> => {
     // Clear cache again to ensure clean state
     await clearPushNotificationCache();
     
-    // Re-initialize with fresh token
+    // Re-initialize with fresh native device token
     return await initializePushNotifications();
   } catch (error: any) {
     console.error('[notifications] Error refreshing push notifications:', error);
