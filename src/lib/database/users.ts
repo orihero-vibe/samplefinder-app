@@ -6,7 +6,7 @@ import type { NotificationPreferences } from '../notifications/types';
 /**
  * Create a user profile in the database
  */
-export const createUserProfile = async (profileData: UserProfileData): Promise<void> => {
+export const createUserProfile = async (profileData: UserProfileData & { ageRestrictionAccepted?: boolean }): Promise<void> => {
   console.log('[database.createUserProfile] Starting user profile creation');
   console.log('[database.createUserProfile] Profile data:', {
     authID: profileData.authID,
@@ -15,6 +15,7 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
     phoneNumber: profileData.phoneNumber,
     username: profileData.username,
     role: profileData.role || 'user',
+    ageRestrictionAccepted: (profileData as any).ageRestrictionAccepted,
   });
 
   // Validate environment variables
@@ -59,7 +60,7 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
     
     console.log('[database.createUserProfile] Converted DOB to ISO:', dobISO);
 
-    const rowData = {
+    const rowData: any = {
       authID: profileData.authID,
       firstname: profileData.firstname,
       lastname: profileData.lastname,
@@ -68,6 +69,11 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
       username: profileData.username,
       role: profileData.role || 'user',
     };
+
+    // Add ageRestrictionAccepted if provided
+    if ((profileData as any).ageRestrictionAccepted !== undefined) {
+      rowData.ageRestrictionAccepted = (profileData as any).ageRestrictionAccepted;
+    }
 
     console.log('[database.createUserProfile] Creating row with data:', {
       ...rowData,
@@ -159,6 +165,7 @@ export const updateUserProfile = async (
     totalEvents?: number;
     totalReviews?: number;
     totalPoints?: number;
+    ageRestrictionAccepted?: boolean;
   }
 ): Promise<UserProfileRow> => {
   console.log('[database.updateUserProfile] Updating user profile:', {
@@ -203,6 +210,9 @@ export const updateUserProfile = async (
     }
     if (updates.totalPoints !== undefined) {
       updateData.totalPoints = updates.totalPoints;
+    }
+    if (updates.ageRestrictionAccepted !== undefined) {
+      updateData.ageRestrictionAccepted = updates.ageRestrictionAccepted;
     }
     if (updates.dob !== undefined) {
       // Convert date to ISO format if needed
@@ -255,12 +265,80 @@ export const updateUserProfile = async (
       totalEvents: updatedProfile.totalEvents || 0,
       totalReviews: updatedProfile.totalReviews || 0,
       totalPoints: updatedProfile.totalPoints || 0,
+      ageRestrictionAccepted: updatedProfile.ageRestrictionAccepted || false,
     };
   } catch (error: any) {
     console.error('[database.updateUserProfile] Error updating user profile:', error);
     console.error('[database.updateUserProfile] Error message:', error?.message);
     console.error('[database.updateUserProfile] Error code:', error?.code);
     throw new Error(error.message || 'Failed to update user profile');
+  }
+};
+
+/**
+ * Check if username already exists (case-insensitive)
+ */
+export const checkUsernameExists = async (username: string): Promise<boolean> => {
+  console.log('[database.checkUsernameExists] Checking if username exists:', username);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.checkUsernameExists]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  if (!username || !username.trim()) {
+    return false;
+  }
+
+  const trimmedUsername = username.trim();
+  const lowerUsername = trimmedUsername.toLowerCase();
+
+  try {
+    // Query for profiles - we'll check both exact match and case-insensitive
+    // First try exact match (most common case)
+    const exactResult = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      queries: [Query.equal('username', trimmedUsername)],
+    });
+
+    if (exactResult.rows && exactResult.rows.length > 0) {
+      console.log('[database.checkUsernameExists] Username exists (exact match)');
+      return true;
+    }
+
+    // If exact match not found, check case-insensitive by querying a range
+    // and filtering in JavaScript (for case-insensitive comparison)
+    // Note: This is a fallback - ideally usernames should be stored in lowercase
+    const allResults = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      queries: [
+        // Get usernames that might match (we'll filter in code)
+        // Since we can't do case-insensitive query directly, we'll check a sample
+        Query.limit(1000), // Reasonable limit for username checking
+      ],
+    });
+
+    // Do case-insensitive comparison
+    if (allResults.rows && allResults.rows.length > 0) {
+      const exists = allResults.rows.some((row: any) => 
+        row.username && row.username.toLowerCase() === lowerUsername
+      );
+      console.log('[database.checkUsernameExists] Username exists (case-insensitive):', exists);
+      return exists;
+    }
+
+    console.log('[database.checkUsernameExists] Username does not exist');
+    return false;
+  } catch (error: any) {
+    console.error('[database.checkUsernameExists] Error checking username:', error);
+    console.error('[database.checkUsernameExists] Error message:', error?.message);
+    // If there's an error, return false to avoid blocking signup
+    // The actual signup will fail if username is truly duplicate
+    return false;
   }
 };
 
@@ -322,6 +400,7 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       totalPoints: profile.totalPoints || 0,
       isAmbassador: profile.isAmbassador || false,
       isInfluencer: profile.isInfluencer || false,
+      ageRestrictionAccepted: profile.ageRestrictionAccepted || false,
     };
   } catch (error: any) {
     console.error('[database.getUserProfile] Error fetching user profile:', error);

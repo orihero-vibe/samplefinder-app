@@ -83,11 +83,6 @@ export const useConfirmAccountScreen = () => {
   }, [navigation]);
 
   const handleVerify = async () => {
-    if (code.length !== 6) {
-      setError('Please enter the complete 6-digit code');
-      return;
-    }
-
     if (!userId) {
       setError('User information not available. Please try again.');
       return;
@@ -154,10 +149,7 @@ export const useConfirmAccountScreen = () => {
 
   const handleCodeComplete = (completedCode: string) => {
     console.log('Code completed:', completedCode);
-    // Auto-submit when code is complete
-    if (completedCode.length === 6 && !isLoading) {
-      handleVerify();
-    }
+    // Code completion is handled - user can now click verify button
   };
 
   return {

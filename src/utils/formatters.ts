@@ -53,22 +53,40 @@ export const isValidPhoneNumber = (phone: string): boolean => {
 };
 
 /**
- * Validates date format (MM/DD/YYYY)
+ * Validates date format (MM/DD/YYYY) and ensures it's not a future date
  */
 export const isValidDate = (date: string): boolean => {
   const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
   if (!dateRegex.test(date)) return false;
   
   const [month, day, year] = date.split('/').map(Number);
+  
+  // Validate month range
+  if (month < 1 || month > 12) return false;
+  
+  // Validate year (must be reasonable, not 0000)
+  if (year < 1900 || year > new Date().getFullYear()) return false;
+  
+  // Create date object
   const dateObj = new Date(year, month - 1, day);
   
-  return (
-    dateObj.getFullYear() === year &&
-    dateObj.getMonth() === month - 1 &&
-    dateObj.getDate() === day &&
-    month >= 1 && month <= 12 &&
-    day >= 1 && day <= 31
-  );
+  // Check if date is valid (handles invalid days like Feb 30)
+  if (
+    dateObj.getFullYear() !== year ||
+    dateObj.getMonth() !== month - 1 ||
+    dateObj.getDate() !== day
+  ) {
+    return false;
+  }
+  
+  // Check if date is in the future
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dateObj.setHours(0, 0, 0, 0);
+  
+  if (dateObj > today) return false;
+  
+  return true;
 };
 
 /**

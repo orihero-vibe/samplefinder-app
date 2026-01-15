@@ -83,7 +83,7 @@ export const useProfileScreen = () => {
       const tierStatus = calculateTierStatus(statistics.totalPoints);
       
       await Share.share({
-        message: `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus.tier} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`,
+        message: `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`,
       });
     } catch (error) {
       console.error('Error sharing profile:', error);

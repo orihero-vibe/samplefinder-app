@@ -24,6 +24,7 @@ export interface UserProfileRow extends UserProfileData {
   totalPoints?: number;
   isAmbassador?: boolean;
   isInfluencer?: boolean;
+  ageRestrictionAccepted?: boolean;
 }
 
 /**
@@ -128,6 +129,7 @@ export interface CategoryData {
   description?: string;
   icon?: string;
   isActive?: boolean;
+  isAdult?: boolean;
   $createdAt?: string;
   $updatedAt?: string;
   [key: string]: any; // Allow for additional fields
@@ -196,3 +198,14 @@ export interface TierRow extends TierData {
   $updatedAt: string;
 }
 
+/**
+ * Settings Types
+ */
+export interface SettingRow {
+  $id: string;
+  key: string;
+  value: string;
+  description?: string | null;
+  $createdAt: string;
+  $updatedAt: string;
+}

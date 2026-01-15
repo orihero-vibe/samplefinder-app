@@ -14,6 +14,7 @@ export type {
   ReviewRow,
   TierData,
   TierRow,
+  SettingRow,
 } from './types';
 
 // Re-export user functions
@@ -43,6 +44,12 @@ export {
 export {
   fetchCategories,
 } from './categories';
+
+// Re-export settings functions
+export {
+  getSetting,
+  getAllSettings,
+} from './settings';
 
 // Re-export check-in functions
 export {

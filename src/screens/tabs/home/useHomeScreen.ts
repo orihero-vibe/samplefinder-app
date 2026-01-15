@@ -3,9 +3,11 @@ import { Platform, Alert } from 'react-native';
 import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import * as Location from 'expo-location';
-import { fetchClients, fetchClientsWithFilters, ClientData, fetchEventsByClient, EventRow, fetchCategories, CategoryData, fetchEventsByLocation } from '@/lib/database';
+import { fetchClients, fetchClientsWithFilters, ClientData, fetchEventsByClient, EventRow, fetchCategories, CategoryData, fetchEventsByLocation, getUserProfile } from '@/lib/database';
+import { getCurrentUser } from '@/lib/auth';
 import { MapMarkerData, FilterType, EventData, StoreData } from './components';
 import { formatEventDistance } from '@/utils/formatters';
+import { geocodeZipCode, isValidZipCode } from '@/utils/geocoding';
 
 export const useHomeScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null);
@@ -24,6 +26,9 @@ export const useHomeScreen = () => {
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [showZipCodeModal, setShowZipCodeModal] = useState(false);
+  const [isGeocodingZip, setIsGeocodingZip] = useState(false);
+  const [zipCodeError, setZipCodeError] = useState<string | null>(null);
   const [bottomSheetIndex, setBottomSheetIndex] = useState(0);
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   const bottomSheetRef = useRef<any>(null);
@@ -72,11 +77,8 @@ export const useHomeScreen = () => {
 
         if (status !== 'granted') {
           setHasLocationPermission(false);
-          Alert.alert(
-            'Location Permission Required',
-            'This app needs location access to show nearby events and your current position on the map. Please enable location permissions in your device settings.',
-            [{ text: 'OK' }]
-          );
+          // Show ZIP code modal instead of just an alert
+          setShowZipCodeModal(true);
           return;
         }
 
@@ -110,17 +112,62 @@ export const useHomeScreen = () => {
       } catch (error) {
         console.error('Error getting location:', error);
         setHasLocationPermission(false);
-        
-        Alert.alert(
-          'Location Error',
-          'Unable to get your current location. Please make sure location services are enabled on your device.',
-          [{ text: 'OK' }]
-        );
+        // Show ZIP code modal on error as well
+        setShowZipCodeModal(true);
       }
     };
 
     getCurrentLocation();
   }, []);
+
+  const handleZipCodeChange = () => {
+    // Clear error when user starts typing
+    if (zipCodeError) {
+      setZipCodeError(null);
+    }
+  };
+
+  const handleZipCodeSubmit = async (zipCode: string) => {
+    if (!isValidZipCode(zipCode)) {
+      setZipCodeError('Please enter a valid ZIP code (5 digits)');
+      return;
+    }
+
+    setIsGeocodingZip(true);
+    setZipCodeError(null);
+
+    try {
+      const result = await geocodeZipCode(zipCode);
+      
+      const userCoords = {
+        latitude: result.latitude,
+        longitude: result.longitude,
+      };
+
+      setUserLocation(userCoords);
+      setHasLocationPermission(false); // Still false since we don't have actual permission
+      setShowZipCodeModal(false);
+
+      // Animate map to the ZIP code location
+      setTimeout(() => {
+        if (mapRef.current && userCoords) {
+          (mapRef.current as any).animateToRegion(
+            {
+              ...userCoords,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            },
+            1000
+          );
+        }
+      }, 500);
+    } catch (error: any) {
+      console.error('Error geocoding ZIP code:', error);
+      setZipCodeError(error.message || 'Failed to find location. Please try again.');
+    } finally {
+      setIsGeocodingZip(false);
+    }
+  };
 
   useEffect(() => {
     const loadClients = async () => {
@@ -219,7 +266,23 @@ export const useHomeScreen = () => {
     const loadCategories = async () => {
       try {
         setIsLoadingCategories(true);
-        const fetchedCategories = await fetchCategories();
+        // Get user's age restriction acceptance status
+        let ageRestrictionAccepted: boolean | undefined = undefined;
+        try {
+          const currentUser = await getCurrentUser();
+          if (currentUser) {
+            const userProfile = await getUserProfile(currentUser.$id);
+            if (userProfile) {
+              ageRestrictionAccepted = userProfile.ageRestrictionAccepted || false;
+            }
+          }
+        } catch (error) {
+          console.log('Could not get user profile for category filtering:', error);
+          // If user is not logged in or profile not found, default to false (no adult categories)
+          ageRestrictionAccepted = false;
+        }
+        
+        const fetchedCategories = await fetchCategories(ageRestrictionAccepted);
         setCategories(fetchedCategories);
       } catch (error) {
         console.error('Error loading categories:', error);
@@ -467,6 +530,9 @@ export const useHomeScreen = () => {
     isLoadingClients,
     userLocation,
     hasLocationPermission,
+    showZipCodeModal,
+    isGeocodingZip,
+    zipCodeError,
     bottomSheetIndex,
     bottomSheetRef,
     mapRef,
@@ -487,6 +553,8 @@ export const useHomeScreen = () => {
     handleCloseModal,
     handleListPress,
     handleMapPress,
+    handleZipCodeSubmit,
+    handleZipCodeChange,
   };
 };
 

@@ -10,7 +10,7 @@ import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { useSignUpScreen } from './useSignUpScreen';
-import { AgeVerificationModal, TermsModal, PrivacyModal } from './signup/components';
+import { AgeVerificationModal, TermsModal, PrivacyModal, PushNotificationModal } from './signup/components';
 import styles from './signup/styles';
 
 const SignUpScreen = () => {
@@ -22,7 +22,10 @@ const SignUpScreen = () => {
     username,
     email,
     password,
+    fieldErrors,
+    isCheckingUsername,
     showError,
+    showPushNotificationModal,
     showAgeVerificationModal,
     showTermsModal,
     showPrivacyModal,
@@ -36,12 +39,17 @@ const SignUpScreen = () => {
     setUsername,
     setEmail,
     setPassword,
+    setShowPushNotificationModal,
     setShowAgeVerificationModal,
     setShowTermsModal,
     setShowPrivacyModal,
     handleSignIn,
+    handlePushNotificationEnable,
+    handlePushNotificationNotNow,
     handleAgeVerificationAccept,
+    handleAgeVerificationDismiss,
     handleTermsAccept,
+    handlePrivacyAccept,
     handleTermsLinkPress,
     handlePrivacyLinkPress,
     handleSignUp,
@@ -62,7 +70,8 @@ const SignUpScreen = () => {
           onChangeText={setFirstName}
           type="text"
           labelColor="#000"
-          error={showError && !firstName.trim()}
+          error={!!fieldErrors.firstName}
+          errorMessage={fieldErrors.firstName}
         />
 
         <CustomInput
@@ -71,7 +80,8 @@ const SignUpScreen = () => {
           onChangeText={setLastName}
           type="text"
           labelColor="#000"
-          error={showError && !lastName.trim()}
+          error={!!fieldErrors.lastName}
+          errorMessage={fieldErrors.lastName}
         />
 
         <CustomInput
@@ -80,7 +90,8 @@ const SignUpScreen = () => {
           onChangeText={setPhoneNumber}
           type="phone"
           labelColor="#000"
-          error={showError && !phoneNumber.trim()}
+          error={!!fieldErrors.phoneNumber}
+          errorMessage={fieldErrors.phoneNumber}
         />
 
         <CustomInput
@@ -90,7 +101,8 @@ const SignUpScreen = () => {
           type="date"
           labelColor="#000"
           helpIcon={true}
-          error={showError && !dateOfBirth.trim()}
+          error={!!fieldErrors.dateOfBirth}
+          errorMessage={fieldErrors.dateOfBirth}
         />
 
         <CustomInput
@@ -99,7 +111,8 @@ const SignUpScreen = () => {
           onChangeText={setUsername}
           type="text"
           labelColor="#000"
-          error={showError && !username.trim()}
+          error={!!fieldErrors.username}
+          errorMessage={fieldErrors.username || (isCheckingUsername ? 'Checking availability...' : undefined)}
         />
 
         <CustomInput
@@ -108,7 +121,8 @@ const SignUpScreen = () => {
           onChangeText={setEmail}
           type="email"
           labelColor="#000"
-          error={showError && !email.trim()}
+          error={!!fieldErrors.email}
+          errorMessage={fieldErrors.email}
         />
 
         <CustomInput
@@ -117,7 +131,8 @@ const SignUpScreen = () => {
           onChangeText={setPassword}
           type="password"
           labelColor="#000"
-          error={showError && !password.trim()}
+          error={!!fieldErrors.password}
+          errorMessage={fieldErrors.password}
         />
 
         {showError && (
@@ -176,9 +191,20 @@ const SignUpScreen = () => {
         </View>
       </View>
 
+      <PushNotificationModal
+        visible={showPushNotificationModal}
+        onClose={() => {
+          setShowPushNotificationModal(false);
+          // Show age verification modal after push notification modal is closed
+          setShowAgeVerificationModal(true);
+        }}
+        onEnable={handlePushNotificationEnable}
+        onNotNow={handlePushNotificationNotNow}
+      />
+
       <AgeVerificationModal
         visible={showAgeVerificationModal}
-        onClose={() => setShowAgeVerificationModal(false)}
+        onClose={handleAgeVerificationDismiss}
         onAccept={handleAgeVerificationAccept}
       />
 
@@ -191,6 +217,7 @@ const SignUpScreen = () => {
       <PrivacyModal
         visible={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
+        onAccept={handlePrivacyAccept}
       />
     </ScreenWrapper>
   );

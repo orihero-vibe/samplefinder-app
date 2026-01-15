@@ -11,6 +11,7 @@ interface CodeInputProps {
   onCodeComplete?: (code: string) => void;
   value?: string;
   onChangeText?: (code: string) => void;
+  editable?: boolean;
 }
 
 export interface CodeInputRef {
@@ -22,6 +23,7 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
   onCodeComplete,
   value: controlledValue,
   onChangeText,
+  editable = true,
 }, ref) => {
   const [code, setCode] = useState<string[]>(Array(length).fill(''));
   const inputRefs = useRef<(TextInput | null)[]>([]);
@@ -118,6 +120,7 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
               keyboardType="number-pad"
               maxLength={1}
               selectTextOnFocus
+              editable={editable}
             />
           </View>
         </TouchableOpacity>
@@ -138,9 +141,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   circle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 42,
+    height: 42,
+    borderRadius: 30,
     backgroundColor: '#D9D9D9',
     alignItems: 'center',
     justifyContent: 'center',

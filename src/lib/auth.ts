@@ -19,6 +19,7 @@ export interface SignUpCredentials {
   phoneNumber: string;
   dateOfBirth: string;
   username: string;
+  ageRestrictionAccepted?: boolean;
 }
 
 export interface User {
@@ -134,6 +135,7 @@ export const signup = async (credentials: SignUpCredentials): Promise<User> => {
         dob: credentials.dateOfBirth.trim(),
         username: credentials.username.trim(),
         role: 'user',
+        ageRestrictionAccepted: credentials.ageRestrictionAccepted || false,
       });
       console.log('[auth.signup] User profile created successfully');
     } catch (profileError: any) {
