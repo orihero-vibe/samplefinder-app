@@ -1,32 +1,40 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+
+// Responsive sizing based on screen height
+const isSmallDevice = screenHeight < 700;
+const isMediumDevice = screenHeight >= 700 && screenHeight < 800;
 
 const styles = StyleSheet.create({
   title: {
-    fontSize: 28,
+    fontSize: isSmallDevice ? 22 : isMediumDevice ? 26 : 28,
     fontFamily: 'Quicksand_700Bold',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: isSmallDevice ? 8 : 12,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: isSmallDevice ? 14 : 16,
     fontFamily: 'Quicksand_400Regular',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 24,
+    marginBottom: isSmallDevice ? 16 : isMediumDevice ? 24 : 30,
+    lineHeight: isSmallDevice ? 20 : 24,
+    paddingHorizontal: isSmallDevice ? 10 : 0,
   },
   formContainer: {
     width: '100%',
+    gap: 16,
   },
   errorContainer: {
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: isSmallDevice ? 8 : 12,
+    marginBottom: isSmallDevice ? 4 : 8,
     paddingHorizontal: 4,
   },
   errorText: {
     color: '#FF6B6B',
-    fontSize: 14,
+    fontSize: isSmallDevice ? 12 : 14,
     fontFamily: 'Quicksand_500Medium',
     textAlign: 'center',
   },
@@ -34,16 +42,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
+    marginTop: isSmallDevice ? 4 : 8,
+    marginBottom: isSmallDevice ? 12 : 20,
   },
   rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   checkbox: {
-    width: 24,
-    height: 24,
+    width: isSmallDevice ? 20 : 24,
+    height: isSmallDevice ? 20 : 24,
     borderRadius: 4,
     borderWidth: 2,
     borderColor: '#fff',
@@ -54,7 +62,7 @@ const styles = StyleSheet.create({
   },
   rememberMeText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: isSmallDevice ? 13 : 14,
     fontFamily: 'Quicksand_500Medium',
   },
   forgotPasswordContainer: {
@@ -63,21 +71,21 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: isSmallDevice ? 13 : 14,
     fontFamily: 'Quicksand_500Medium',
     marginLeft: 4,
   },
   buttonContainer: {
-    marginBottom: 20,
+    marginBottom: isSmallDevice ? 12 : 20,
   },
   signUpContainer: {
     alignItems: 'center',
   },
   signUpPrompt: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: isSmallDevice ? 14 : 16,
     fontFamily: 'Quicksand_500Medium',
-    marginBottom: 12,
+    marginBottom: isSmallDevice ? 8 : 12,
   },
 });
 

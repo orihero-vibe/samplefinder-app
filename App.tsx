@@ -18,6 +18,7 @@ import { getActiveTrivia, submitTriviaAnswer } from '@/lib/database';
 import { getUserProfile } from '@/lib/database';
 import { setupTokenRefreshListener, initializePushNotifications } from '@/lib/notifications';
 import { getCurrentUser } from '@/lib/auth';
+import { CustomSplashScreen } from '@/components';
 import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
@@ -49,7 +50,6 @@ export default function App() {
         try {
           const user = await getCurrentUser();
           if (user) {
-            console.log('[App] User logged in, initializing push notifications...');
             initializePushNotifications().catch((error) => {
               console.warn('[App] Failed to initialize push notifications:', error);
             });
@@ -59,14 +59,13 @@ export default function App() {
               const profile = await getUserProfile(user.$id);
               if (profile) {
                 setUserProfileId(profile.$id);
-                console.log('[App] User profile ID set:', profile.$id);
               }
             } catch (profileError) {
               console.warn('[App] Failed to get user profile:', profileError);
             }
           }
         } catch (error) {
-          console.log('[App] No user logged in, skipping push notification initialization');
+          // User not logged in
         }
 
         // Keep splash screen visible for at least 2 seconds
@@ -86,7 +85,6 @@ export default function App() {
     if (appIsReady && userProfileId && !triviaShownRef.current) {
       const timer = setTimeout(async () => {
         try {
-          console.log('[App] Fetching active trivia for user:', userProfileId);
           const triviaQuestions = await getActiveTrivia(userProfileId);
           
           if (triviaQuestions.length > 0) {
@@ -94,9 +92,6 @@ export default function App() {
             setTriviaQuestion(triviaQuestions[0]);
             setShowTrivia(true);
             triviaShownRef.current = true;
-            console.log('[App] Showing trivia question:', triviaQuestions[0].$id);
-          } else {
-            console.log('[App] No active trivia questions available');
           }
         } catch (error) {
           console.error('[App] Failed to fetch trivia:', error);
@@ -114,7 +109,7 @@ export default function App() {
   }, [appIsReady]);
 
   if (!appIsReady) {
-    return null;
+    return <CustomSplashScreen />;
   }
 
   const handleTriviaClose = () => {
@@ -129,17 +124,10 @@ export default function App() {
       };
     }
 
-    console.log('[App] Submitting trivia answer:', {
-      userId: userProfileId,
-      triviaId: triviaQuestion.$id,
-      answerIndex,
-    });
-
     return submitTriviaAnswer(userProfileId, triviaQuestion.$id, answerIndex);
   };
 
   const handleAnswerResult = (isCorrect: boolean, pointsAwarded: number) => {
-    console.log(`[App] Trivia answer result: ${isCorrect ? 'Correct' : 'Incorrect'}, Points earned: ${pointsAwarded}`);
     // You can add logic here to update user points in UI, show notifications, etc.
   };
 

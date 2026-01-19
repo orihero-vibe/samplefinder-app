@@ -24,7 +24,7 @@ const FavoritesScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <MainHeader />
+      <MainHeader showLeftIcons={false} />
 
       <ScrollView
         style={styles.scrollView}

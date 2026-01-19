@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AuthHeader from '@/components/wrappers/AuthHeader';
 import Footer from '@/components/wrappers/Footer';
 
@@ -18,6 +19,10 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   contentContainerStyle,
   contentBackgroundColor,
 }) => {
+  const { bottom } = useSafeAreaInsets();
+  const footerHeight = isSmallDevice ? 60 : isMediumDevice ? 70 : 80;
+  const totalFooterHeight = footerHeight + bottom;
+  
   const contentStyle = [
     styles.content,
     contentBackgroundColor && { backgroundColor: contentBackgroundColor },
@@ -40,7 +45,7 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           style={styles.keyboardView}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: totalFooterHeight + 16 }]}
             showsVerticalScrollIndicator={false}
           >
             {content}
@@ -55,7 +60,7 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
     return (
       <View style={styles.container}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: totalFooterHeight + 16 }]}
           showsVerticalScrollIndicator={false}
         >
           {content}
@@ -73,6 +78,10 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   );
 };
 
+const { height: screenHeight } = Dimensions.get('window');
+const isSmallDevice = screenHeight < 700;
+const isMediumDevice = screenHeight >= 700 && screenHeight < 800;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -86,9 +95,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-    paddingBottom: 30,
+    paddingHorizontal: isSmallDevice ? 20 : 30,
+    paddingVertical: isSmallDevice ? 12 : isMediumDevice ? 16 : 20,
+    paddingBottom: isSmallDevice ? 16 : 30,
   },
 });
 

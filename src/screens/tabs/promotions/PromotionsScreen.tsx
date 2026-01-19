@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ScrollView, View, ActivityIndicator, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +19,9 @@ import { usePromotionsScreen } from './usePromotionsScreen';
 import styles from './styles';
 
 const PromotionsScreen = () => {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const historyRef = useRef<View>(null);
+  
   const {
     activeTab,
     eventBadges,
@@ -49,6 +52,23 @@ const PromotionsScreen = () => {
     handleShareAchievement,
   } = usePromotionsScreen();
 
+  const handleViewHistory = () => {
+    // Scroll to the history section
+    historyRef.current?.measureLayout(
+      scrollViewRef.current as any,
+      (x, y) => {
+        scrollViewRef.current?.scrollTo({
+          y: y - 20, // Add some offset for better UX
+          animated: true,
+        });
+      },
+      () => {
+        // Fallback: scroll to end if measurement fails
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -67,6 +87,7 @@ const PromotionsScreen = () => {
           </View>
         ) : (
           <ScrollView
+            ref={scrollViewRef}
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -97,10 +118,13 @@ const PromotionsScreen = () => {
                   totalPoints={totalPoints}
                   onTierPress={handleTierPress}
                   onPointsPress={handlePointsPress}
+                  onViewHistory={handleViewHistory}
                   isAmbassador={isAmbassador}
                   isInfluencer={isInfluencer}
                 />
-                <HistorySection historyItems={historyItems} />
+                <View ref={historyRef} collapsable={false}>
+                  <HistorySection historyItems={historyItems} />
+                </View>
               </>
             )}
           </ScrollView>

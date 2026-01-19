@@ -26,8 +26,8 @@ const BrandAmbassadorSection: React.FC<BrandAmbassadorSectionProps> = ({
       <CustomButton
         title="Apply Here!"
         onPress={onApplyHerePress || (() => {})}
-        variant="primary"
-        size="medium"
+        variant="outline"
+        size="small"
         style={styles.applyButton}
         textStyle={styles.applyButtonText}
       />
@@ -41,17 +41,22 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   text: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_400Regular',
-    color: Colors.black,
+    fontSize: 16,
+    textAlign: 'center',
+    fontFamily: 'Quicksand_700Bold',
+    color: Colors.pinBlueBlack,
     marginBottom: 16,
     lineHeight: 20,
   },
   applyButton: {
-    backgroundColor: Colors.orangeBA,
+    width: 200,
+    backgroundColor: 'transparent',
+    borderColor: Colors.orangeBA,
+    borderWidth: 2,
+    alignSelf: 'center',
   },
   applyButtonText: {
-    color: Colors.white,
+    color: Colors.orangeBA,
   },
 });
 

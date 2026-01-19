@@ -16,7 +16,7 @@ const BrandInfo: React.FC<BrandInfoProps> = ({ brand }) => {
   return (
     <View style={styles.container}>
       {/* Brand Name */}
-      <Text style={styles.brandName}>{brand.brandName}</Text>
+      <Text style={styles.brandName}>{brand.storeName}</Text>
 
       {/* Date and Store Details */}
       <View style={styles.detailsContainer}>
@@ -25,7 +25,7 @@ const BrandInfo: React.FC<BrandInfoProps> = ({ brand }) => {
           <Text style={styles.dayText}>{day}</Text>
         </View>
         <View style={styles.storeDetails}>
-          <Text style={styles.storeName}>{brand.storeName}</Text>
+          <Text style={styles.storeName}>{brand.brandName}</Text>
           <Text style={styles.storeInfo}>{brand.time}</Text>
           <Text style={styles.storeInfo}>{brand.address.street}</Text>
           <Text style={styles.storeInfo}>
@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 22,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.blueColorMode,
+    color: '#050A24',
     textAlign: 'center',
     marginBottom: 20,
     paddingHorizontal: 20,
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   detailsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   dateContainer: {
     alignItems: 'center',
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   storeName: {
     fontSize: 20,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.black,
+    color: '#050A24',
     marginBottom: 2,
   },
   storeInfo: {

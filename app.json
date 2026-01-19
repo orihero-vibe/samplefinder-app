@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "samplefinder-app",
+    "name": "SampleFinder",
     "slug": "samplefinder-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -31,6 +31,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "splash": {
+        "image": "./src/assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#1a1a2e"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

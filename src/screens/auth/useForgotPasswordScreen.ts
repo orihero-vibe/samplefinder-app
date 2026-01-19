@@ -20,10 +20,45 @@ export const useForgotPasswordScreen = () => {
   useEffect(() => {
     const emailFromParams = route?.params?.email;
     if (emailFromParams && emailFromParams.trim()) {
-      console.log('[ForgotPassword] Pre-filling email from route params:', emailFromParams);
       setEmail(emailFromParams.trim());
     }
   }, [route?.params?.email]);
+
+  const getUserFriendlyErrorMessage = (error: any): string => {
+    const errorMessage = error?.message || '';
+    
+    // Check for email validation errors
+    if (errorMessage.toLowerCase().includes('email') && 
+        (errorMessage.toLowerCase().includes('valid') || errorMessage.toLowerCase().includes('invalid'))) {
+      return errorMessage.includes('email') && errorMessage.length < 100 
+        ? errorMessage 
+        : 'Please enter a valid email address.';
+    }
+    
+    // Check for user not found errors
+    if (errorMessage.toLowerCase().includes('user') && 
+        (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist'))) {
+      return 'No account found with this email address.';
+    }
+    
+    // Check for rate limiting
+    if (errorMessage.toLowerCase().includes('rate limit') || 
+        errorMessage.toLowerCase().includes('too many')) {
+      return errorMessage.length < 100 ? errorMessage : 'Too many attempts. Please try again later.';
+    }
+    
+    // Network or server errors
+    if (errorMessage.toLowerCase().includes('network') || 
+        errorMessage.toLowerCase().includes('fetch') || 
+        errorMessage.toLowerCase().includes('timeout')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    
+    // Default - return actual error message if available and reasonable length
+    return errorMessage && errorMessage.length < 100 
+      ? errorMessage 
+      : 'Failed to send recovery email. Please try again.';
+  };
 
   const handleSubmit = async () => {
     if (!email.trim()) {
@@ -42,9 +77,7 @@ export const useForgotPasswordScreen = () => {
     setError('');
 
     try {
-      console.log('[ForgotPassword] Sending password recovery email to:', email);
       const userId = await createPasswordRecovery(email.trim());
-      console.log('[ForgotPassword] Password recovery email sent successfully');
       
       // Navigate to password reset screen with email and userId (if available)
       navigation.navigate('PasswordReset', { 
@@ -53,7 +86,7 @@ export const useForgotPasswordScreen = () => {
       });
     } catch (error: any) {
       console.error('[ForgotPassword] Error sending recovery email:', error);
-      const errorMsg = error?.message || 'Failed to send recovery email. Please try again.';
+      const errorMsg = getUserFriendlyErrorMessage(error);
       setError(errorMsg);
     } finally {
       setIsLoading(false);

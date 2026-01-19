@@ -24,9 +24,11 @@ const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNo
           <TouchableOpacity onPress={onShare} style={styles.iconButton}>
             <Monicon name="mdi:share-variant" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onNotifications} style={styles.iconButton}>
-            <BellOutlineIcon/>
-          </TouchableOpacity>
+          {onNotifications && (
+            <TouchableOpacity onPress={onNotifications} style={styles.iconButton}>
+              <BellOutlineIcon/>
+            </TouchableOpacity>
+          )}
         </View>
         <View style={styles.rightSection}>
           <Monicon name="mdi:map-marker" size={20} color="#FFFFFF" />

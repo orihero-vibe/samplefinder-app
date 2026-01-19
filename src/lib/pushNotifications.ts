@@ -25,12 +25,6 @@ export const sendPushNotification = async (
   notificationData: PushNotificationData
 ): Promise<boolean> => {
   try {
-    console.log('[pushNotifications] Attempting to send push notification:', {
-      userId: notificationData.userId,
-      type: notificationData.type,
-      title: notificationData.title,
-    });
-
     // Initialize Functions service
     const functions = new Functions(client);
 
@@ -69,7 +63,6 @@ export const sendPushNotification = async (
     }
 
     if (result.responseStatusCode === 200 && responseData.success) {
-      console.log('[pushNotifications] Push notification sent successfully');
       return true;
     } else {
       console.error('[pushNotifications] Function returned error:', {
@@ -103,12 +96,6 @@ export const sendPushNotificationToMultipleUsers = async (
   data?: Record<string, string>
 ): Promise<boolean> => {
   try {
-    console.log('[pushNotifications] Sending push to multiple users:', {
-      userCount: userIds.length,
-      type,
-      title,
-    });
-
     const functions = new Functions(client);
 
     const customData: Record<string, string> = {
@@ -143,7 +130,6 @@ export const sendPushNotificationToMultipleUsers = async (
     }
 
     if (result.responseStatusCode === 200 && responseData.success) {
-      console.log('[pushNotifications] Batch push notification sent successfully');
       return true;
     } else {
       console.error('[pushNotifications] Function returned error:', {
@@ -179,7 +165,6 @@ export const checkPushNotificationSetup = async (): Promise<boolean> => {
     );
 
     if (result.responseStatusCode === 200) {
-      console.log('[pushNotifications] Push notification service is configured');
       return true;
     } else {
       console.warn('[pushNotifications] Function responded with error:', result.responseStatusCode);

@@ -65,8 +65,6 @@ export const scheduleEventReminders = async (
   eventLocation?: string
 ): Promise<{ reminder24h?: string; reminder1h?: string } | null> => {
   try {
-    console.log('[eventReminders] Scheduling reminders for event:', eventId, eventStartDate);
-
     // Request notification permissions if not already granted
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') {
@@ -108,7 +106,6 @@ export const scheduleEventReminders = async (
         });
 
         scheduledIds.reminder24h = notificationId;
-        console.log('[eventReminders] Scheduled 24h reminder:', notificationId, 'for', reminder24hDate);
       }
     }
 
@@ -137,19 +134,11 @@ export const scheduleEventReminders = async (
         });
 
         scheduledIds.reminder1h = notificationId;
-        console.log('[eventReminders] Scheduled 1h reminder:', notificationId, 'for', reminder1hDate);
       }
     }
 
     // If no reminders were scheduled (event too soon or in the past)
     if (Object.keys(scheduledIds).length === 0) {
-      if (hoursUntilEvent <= 0) {
-        console.log('[eventReminders] Event is in the past, no reminders scheduled');
-      } else if (hoursUntilEvent <= 1) {
-        console.log('[eventReminders] Event is less than 1 hour away, no reminders scheduled');
-      } else if (hoursUntilEvent <= 24) {
-        console.log('[eventReminders] Event is less than 24 hours away, only 1h reminder scheduled');
-      }
       return scheduledIds;
     }
 
@@ -158,7 +147,6 @@ export const scheduleEventReminders = async (
     storedReminders[eventId] = scheduledIds;
     await saveReminders(storedReminders);
 
-    console.log('[eventReminders] Successfully scheduled reminders for event:', eventId);
     return scheduledIds;
   } catch (error: any) {
     console.error('[eventReminders] Error scheduling reminders:', error);
@@ -172,32 +160,25 @@ export const scheduleEventReminders = async (
  */
 export const cancelEventReminders = async (eventId: string): Promise<void> => {
   try {
-    console.log('[eventReminders] Canceling reminders for event:', eventId);
-
     const storedReminders = await getStoredReminders();
     const reminders = storedReminders[eventId];
 
     if (!reminders) {
-      console.log('[eventReminders] No reminders found for event:', eventId);
       return;
     }
 
     // Cancel both reminders if they exist
     if (reminders.reminder24h) {
       await Notifications.cancelScheduledNotificationAsync(reminders.reminder24h);
-      console.log('[eventReminders] Canceled 24h reminder:', reminders.reminder24h);
     }
 
     if (reminders.reminder1h) {
       await Notifications.cancelScheduledNotificationAsync(reminders.reminder1h);
-      console.log('[eventReminders] Canceled 1h reminder:', reminders.reminder1h);
     }
 
     // Remove from storage
     delete storedReminders[eventId];
     await saveReminders(storedReminders);
-
-    console.log('[eventReminders] Successfully canceled reminders for event:', eventId);
   } catch (error: any) {
     console.error('[eventReminders] Error canceling reminders:', error);
   }
@@ -226,8 +207,6 @@ export const getEventReminders = async (
  */
 export const cancelAllEventReminders = async (): Promise<void> => {
   try {
-    console.log('[eventReminders] Canceling all event reminders');
-
     const storedReminders = await getStoredReminders();
     const eventIds = Object.keys(storedReminders);
 
@@ -238,8 +217,6 @@ export const cancelAllEventReminders = async (): Promise<void> => {
 
     // Clear storage
     await AsyncStorage.removeItem(EVENT_REMINDERS_STORAGE_KEY);
-
-    console.log('[eventReminders] Successfully canceled all reminders');
   } catch (error: any) {
     console.error('[eventReminders] Error canceling all reminders:', error);
   }
@@ -251,8 +228,6 @@ export const cancelAllEventReminders = async (): Promise<void> => {
  */
 export const cleanupPastEventReminders = async (): Promise<void> => {
   try {
-    console.log('[eventReminders] Cleaning up past event reminders');
-
     const storedReminders = await getStoredReminders();
     const eventIds = Object.keys(storedReminders);
     let cleanedCount = 0;
@@ -286,9 +261,6 @@ export const cleanupPastEventReminders = async (): Promise<void> => {
 
     if (cleanedCount > 0) {
       await saveReminders(storedReminders);
-      console.log('[eventReminders] Cleaned up', cleanedCount, 'past event reminders');
-    } else {
-      console.log('[eventReminders] No past event reminders to clean up');
     }
   } catch (error: any) {
     console.error('[eventReminders] Error cleaning up past reminders:', error);

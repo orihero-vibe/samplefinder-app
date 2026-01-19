@@ -4,28 +4,20 @@ import { Colors } from '@/constants/Colors';
 
 const locationPin = require('@/assets/locationImage.png');
 
-/**
- * Unified event interface that can represent events from different sources
- */
-export interface UnifiedEvent {
+export interface StoreEventData {
   id: string;
-  name?: string; // For CalendarEventDetail
-  product?: string; // For EventData (home screen)
-  brandName?: string;
-  location: string;
-  distance: string;
+  name: string;
+  date: Date | string;
   time: string;
-  date: Date | string; // Can be Date object or formatted string
   logoURL?: string | null;
 }
 
-interface EventCardProps {
-  event: UnifiedEvent;
-  onPress: (event: UnifiedEvent) => void;
-  showDate?: boolean; // Whether to show the date in the right column
+interface StoreEventCardProps {
+  event: StoreEventData;
+  onPress: (event: StoreEventData) => void;
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }) => {
+const StoreEventCard: React.FC<StoreEventCardProps> = ({ event, onPress }) => {
   // Format date - handle both Date objects and strings
   let formattedDate: string;
   if (event.date instanceof Date) {
@@ -38,9 +30,6 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
     // If it's already a formatted string, use it as is
     formattedDate = event.date;
   }
-  
-  // Use brandName for display, fallback to eventName if no brand
-  const displayBrandName = event.brandName || 'Brand';
 
   return (
     <TouchableOpacity
@@ -65,22 +54,11 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
             )}
           </View>
           <View style={styles.eventDetails}>
-            <Text style={styles.brandName}>{displayBrandName}</Text>
-            <Text style={styles.locationText}>{event.location}</Text>
-            <Text style={styles.distanceText}>{event.distance}</Text>
-          </View>
-        </View>
-        {showDate && (
-          <View style={styles.eventRight}>
+            <Text style={styles.eventName}>{event.name}</Text>
             <Text style={styles.dateText}>{formattedDate}</Text>
             <Text style={styles.timeText}>{event.time}</Text>
           </View>
-        )}
-        {!showDate && (
-          <View style={styles.eventRight}>
-            <Text style={styles.timeText}>{event.time}</Text>
-          </View>
-        )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -91,16 +69,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 16,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.brandBlueBright + '20', // 20 is alpha for 12% opacity
   },
   eventLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    minHeight: 80,
   },
   logoContainer: {
     width: 80,
@@ -112,7 +85,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainerWithBg: {
-    backgroundColor: Colors.orangeBA,
+    backgroundColor: Colors.brandPurpleDeep,
   },
   logoImage: {
     width: '100%',
@@ -125,47 +98,25 @@ const styles = StyleSheet.create({
   eventDetails: {
     flex: 1,
     justifyContent: 'center',
-    gap: 4,
-    paddingRight: 8,
+    paddingVertical: 4,
   },
   eventName: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_500Medium',
-    color: Colors.brandBlueBright,
-  },
-  brandName: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.brandBlueBright,
-  },
-  locationText: {
-    fontSize: 15,
-    fontFamily: 'Quicksand_500Medium',
-    color: Colors.brandBlueBright,
-  },
-  distanceText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_400Regular',
-    color: Colors.brandBlueBright,
-  },
-  eventRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginLeft: 12,
-    flexShrink: 0,
-    gap: 4,
+    color: Colors.brandPurpleDeep,
+    marginBottom: 4,
   },
   dateText: {
-    fontSize: 15,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.brandBlueBright,
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.brandPurpleDeep,
+    marginBottom: 2,
   },
   timeText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Quicksand_500Medium',
-    color: Colors.brandBlueBright,
+    color: Colors.brandPurpleDeep,
   },
 });
 
-export default EventCard;
-
+export default StoreEventCard;

@@ -6,8 +6,6 @@ import type { ClientData, FetchClientsFilters } from './types';
  * Fetch all clients from the database
  */
 export const fetchClients = async (): Promise<ClientData[]> => {
-  console.log('[database.fetchClients] Fetching clients from database');
-
   // Validate environment variables
   if (!DATABASE_ID || !CLIENTS_TABLE_ID) {
     const errorMsg = 'Database ID or Clients Table ID not configured. Please check your .env file.';
@@ -21,13 +19,7 @@ export const fetchClients = async (): Promise<ClientData[]> => {
       tableId: CLIENTS_TABLE_ID,
     });
 
-    console.log('[database.fetchClients] Query result:', {
-      total: result.total,
-      rowsCount: result.rows?.length || 0,
-    });
-
     if (!result.rows || result.rows.length === 0) {
-      console.log('[database.fetchClients] No clients found');
       return [];
     }
 
@@ -60,12 +52,9 @@ export const fetchClients = async (): Promise<ClientData[]> => {
       };
     });
 
-    console.log('[database.fetchClients] Clients fetched successfully:', clients.length);
     return clients;
   } catch (error: any) {
     console.error('[database.fetchClients] Error fetching clients:', error);
-    console.error('[database.fetchClients] Error message:', error?.message);
-    console.error('[database.fetchClients] Error code:', error?.code);
     throw new Error(error.message || 'Failed to fetch clients');
   }
 };
@@ -74,8 +63,6 @@ export const fetchClients = async (): Promise<ClientData[]> => {
  * Fetch a single client by ID
  */
 export const fetchClientById = async (clientId: string): Promise<ClientData | null> => {
-  console.log('[database.fetchClientById] Fetching client:', clientId);
-
   // Validate environment variables
   if (!DATABASE_ID || !CLIENTS_TABLE_ID) {
     const errorMsg = 'Database ID or Clients Table ID not configured. Please check your .env file.';
@@ -91,7 +78,6 @@ export const fetchClientById = async (clientId: string): Promise<ClientData | nu
     });
 
     if (!result) {
-      console.log('[database.fetchClientById] Client not found:', clientId);
       return null;
     }
 
@@ -119,13 +105,9 @@ export const fetchClientById = async (clientId: string): Promise<ClientData | nu
       zip: result.zip || result.zipCode || result.address?.zip || '',
     };
 
-    console.log('[database.fetchClientById] Client fetched successfully:', client.$id);
-    console.log('[database.fetchClientById] Client logoURL:', client.logoURL);
     return client;
   } catch (error: any) {
     console.error('[database.fetchClientById] Error fetching client:', error);
-    console.error('[database.fetchClientById] Error message:', error?.message);
-    console.error('[database.fetchClientById] Error code:', error?.code);
     return null; // Return null instead of throwing to avoid breaking the flow
   }
 };
@@ -135,8 +117,6 @@ export const fetchClientById = async (clientId: string): Promise<ClientData | nu
  * Filters events first, then returns clients that have matching events
  */
 export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Promise<ClientData[]> => {
-  console.log('[database.fetchClientsWithFilters] Fetching clients with filters:', filters);
-
   // Validate environment variables
   if (!DATABASE_ID || !CLIENTS_TABLE_ID || !EVENTS_TABLE_ID) {
     const errorMsg = 'Database ID or Table IDs not configured. Please check your .env file.';
@@ -156,47 +136,46 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
     if (filters.dateRange) {
       eventQueries.push(Query.greaterThanEqual('date', filters.dateRange.start));
       eventQueries.push(Query.lessThanEqual('date', filters.dateRange.end));
-      console.log('[database.fetchClientsWithFilters] Date filter:', filters.dateRange);
     }
 
-    // Category filter - use OR logic for multiple categories
+    let filteredEvents: any[] = [];
+
+    // Category filter - fetch events for each category and combine
     if (filters.categoryIds && filters.categoryIds.length > 0) {
-      // For each category, add a query (Appwrite will handle OR for same field)
-      // Note: We'll need to handle this differently - fetch all and filter, or use multiple queries
-      // Since Appwrite may not support OR directly, we'll fetch events matching any category
-      // and combine results
-      const categoryQueries = filters.categoryIds.map((categoryId) =>
-        Query.equal('categories', categoryId)
-      );
-      // For now, we'll fetch with first category and filter client-side for others
-      // This is a limitation - ideally Appwrite would support OR queries
-      if (categoryQueries.length > 0) {
-        eventQueries.push(categoryQueries[0]);
+      // Fetch events for each category separately and combine results
+      const allCategoryEvents: any[] = [];
+      const seenEventIds = new Set<string>();
+      
+      for (const categoryId of filters.categoryIds) {
+        const categoryEventQueries = [...eventQueries, Query.equal('categories', categoryId)];
+        
+        const categoryEventsResult = await tablesDB.listRows({
+          databaseId: DATABASE_ID,
+          tableId: EVENTS_TABLE_ID,
+          queries: categoryEventQueries,
+        });
+        
+        // Add unique events to the combined list
+        if (categoryEventsResult.rows) {
+          for (const event of categoryEventsResult.rows) {
+            if (!seenEventIds.has(event.$id)) {
+              seenEventIds.add(event.$id);
+              allCategoryEvents.push(event);
+            }
+          }
+        }
       }
-      console.log('[database.fetchClientsWithFilters] Category filter:', filters.categoryIds);
-    }
-
-    // Fetch filtered events (date and category filters applied server-side)
-    console.log('[database.fetchClientsWithFilters] Querying events with', eventQueries.length, 'queries');
-    const eventsResult = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: EVENTS_TABLE_ID,
-      queries: eventQueries,
-    });
-
-    console.log('[database.fetchClientsWithFilters] Events query result:', {
-      total: eventsResult.total,
-      rowsCount: eventsResult.rows?.length || 0,
-    });
-
-    // Additional client-side filtering for categories if multiple categories selected
-    // (This is needed because Appwrite doesn't support OR queries for the same field)
-    let filteredEvents = eventsResult.rows || [];
-    if (filters.categoryIds && filters.categoryIds.length > 1) {
-      filteredEvents = (eventsResult.rows || []).filter((event: any) => {
-        const eventCategoryId = event.categories?.$id || event.categories;
-        return eventCategoryId && filters.categoryIds!.includes(String(eventCategoryId));
+      
+      filteredEvents = allCategoryEvents;
+    } else {
+      // No category filter - fetch all events with other filters
+      const eventsResult = await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: EVENTS_TABLE_ID,
+        queries: eventQueries,
       });
+
+      filteredEvents = eventsResult.rows || [];
     }
 
     // Extract unique client IDs from filtered events
@@ -209,8 +188,6 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
       }
     });
 
-    console.log('[database.fetchClientsWithFilters] Client IDs from events:', clientIdsFromEvents.size);
-
     // Step 2: Filter clients by radius (if specified) and by client IDs from events
     const clientQueries: any[] = [];
 
@@ -219,35 +196,22 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
       const radiusMeters = filters.radiusMiles * 1609.34; // Convert miles to meters
       const centerPoint: [number, number] = [filters.userLocation.longitude, filters.userLocation.latitude];
       clientQueries.push(Query.distanceLessThan('location', centerPoint, radiusMeters));
-      console.log('[database.fetchClientsWithFilters] Radius filter on clients:', {
-        miles: filters.radiusMiles,
-        meters: radiusMeters,
-        center: centerPoint,
-      });
     }
 
     // Fetch clients (radius filter applied server-side if specified)
-    console.log('[database.fetchClientsWithFilters] Querying clients with', clientQueries.length, 'queries');
     const clientsResult = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: CLIENTS_TABLE_ID,
       queries: clientQueries.length > 0 ? clientQueries : undefined,
     });
 
-    console.log('[database.fetchClientsWithFilters] Clients query result:', {
-      total: clientsResult.total,
-      rowsCount: clientsResult.rows?.length || 0,
-    });
-
     if (!clientsResult.rows || clientsResult.rows.length === 0) {
-      console.log('[database.fetchClientsWithFilters] No clients found matching filters');
       return [];
     }
 
     // Step 3: Filter clients to only include those that have matching events
     // If no events matched, return empty array
     if (clientIdsFromEvents.size === 0 && (filters.dateRange || (filters.categoryIds && filters.categoryIds.length > 0))) {
-      console.log('[database.fetchClientsWithFilters] No events matched date/category filters');
       return [];
     }
 
@@ -259,10 +223,7 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
       });
     }
 
-    console.log('[database.fetchClientsWithFilters] Filtered clients count:', filteredClients.length);
-
     if (filteredClients.length === 0) {
-      console.log('[database.fetchClientsWithFilters] No clients found matching all filters');
       return [];
     }
 
@@ -295,12 +256,9 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
         };
       });
 
-    console.log('[database.fetchClientsWithFilters] Clients fetched successfully:', clients.length);
     return clients;
   } catch (error: any) {
     console.error('[database.fetchClientsWithFilters] Error fetching clients with filters:', error);
-    console.error('[database.fetchClientsWithFilters] Error message:', error?.message);
-    console.error('[database.fetchClientsWithFilters] Error code:', error?.code);
     throw new Error(error.message || 'Failed to fetch clients with filters');
   }
 };

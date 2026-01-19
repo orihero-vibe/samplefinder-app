@@ -67,7 +67,6 @@ let isRegistering = false;
  */
 export const requestNotificationPermissions = async (): Promise<boolean> => {
   try {
-    console.log('[notifications] Requesting notification permissions...');
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     
     let finalStatus = existingStatus;
@@ -82,7 +81,6 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
       return false;
     }
     
-    console.log('[notifications] Notification permissions granted');
     return true;
   } catch (error: any) {
     console.error('[notifications] Error requesting permissions:', error);
@@ -98,17 +96,13 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
  */
 export const getDevicePushToken = async (forceRefresh: boolean = false): Promise<string | null> => {
   try {
-    console.log('[notifications] Getting FCM token from Firebase...', { forceRefresh, platform: Platform.OS });
-    
     // Check if we already have a token stored (only if not forcing refresh)
     if (!forceRefresh) {
       const storedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
       if (storedToken) {
-        console.log('[notifications] Using stored FCM token');
         return storedToken;
       }
     } else {
-      console.log('[notifications] Force refresh requested, clearing cached token');
       await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
     }
     
@@ -130,16 +124,10 @@ export const getDevicePushToken = async (forceRefresh: boolean = false): Promise
         console.warn('[notifications] Firebase messaging permission not granted on iOS');
         return null;
       }
-      
-      console.log('[notifications] Firebase messaging permission granted on iOS');
     }
     
     // Get FCM token from React Native Firebase
     const token = await getToken(getFirebaseMessaging());
-    
-    console.log('[notifications] FCM token obtained:', token);
-    console.log('[notifications] Token length:', token.length);
-    console.log('[notifications] Platform:', Platform.OS);
     
     // Validate token format
     if (!token || token.length < 20) {

@@ -18,9 +18,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   handleIndicator: {
-    backgroundColor: '#D0D0D0',
-    width: 40,
-    height: 4,
+    backgroundColor: '#A0A0A0',
+    width: 50,
+    height: 5,
+    borderRadius: 3,
   },
   bottomSheetContent: {
     flex: 1,

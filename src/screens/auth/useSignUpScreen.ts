@@ -358,6 +358,59 @@ export const useSignUpScreen = () => {
     setShowPrivacyModal(true);
   };
 
+  const getUserFriendlyErrorMessage = (error: any): string => {
+    const errorMessage = error?.message || '';
+    
+    // Check for email validation errors
+    if (errorMessage.toLowerCase().includes('email') && 
+        (errorMessage.toLowerCase().includes('valid') || errorMessage.toLowerCase().includes('invalid'))) {
+      // Return the actual backend message if it's clear, otherwise use custom message
+      return errorMessage.includes('email') && errorMessage.length < 100 
+        ? errorMessage 
+        : 'Please enter a valid email address.';
+    }
+    
+    // Check for duplicate email/username
+    if (errorMessage.toLowerCase().includes('already exists') || 
+        errorMessage.toLowerCase().includes('duplicate') ||
+        errorMessage.toLowerCase().includes('already registered')) {
+      if (errorMessage.toLowerCase().includes('email')) {
+        return 'This email is already registered. Please use a different email or sign in.';
+      }
+      if (errorMessage.toLowerCase().includes('username')) {
+        return 'This username is already taken. Please choose a different username.';
+      }
+      return 'An account with these details already exists.';
+    }
+    
+    // Check for password errors
+    if (errorMessage.toLowerCase().includes('password')) {
+      // Return the actual backend message if it's clear, otherwise use custom message
+      return errorMessage.includes('password') && errorMessage.length < 100 
+        ? errorMessage 
+        : 'Password does not meet requirements. Please check and try again.';
+    }
+    
+    // Check for phone number errors
+    if (errorMessage.toLowerCase().includes('phone')) {
+      return errorMessage.includes('phone') && errorMessage.length < 100 
+        ? errorMessage 
+        : 'Please enter a valid phone number.';
+    }
+    
+    // Network or server errors
+    if (errorMessage.toLowerCase().includes('network') || 
+        errorMessage.toLowerCase().includes('fetch') || 
+        errorMessage.toLowerCase().includes('timeout')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    
+    // Default - return actual error message if available and reasonable length
+    return errorMessage && errorMessage.length < 100 
+      ? errorMessage 
+      : 'Sign up failed. Please try again.';
+  };
+
   const handleSignUp = async () => {
     if (!ageVerified) {
       setShowAgeVerificationModal(true);
@@ -397,8 +450,6 @@ export const useSignUpScreen = () => {
     setIsLoading(true);
 
     try {
-      console.log('Starting sign up process...');
-      
       await signup({
         email: email.trim(),
         password: password,
@@ -410,11 +461,10 @@ export const useSignUpScreen = () => {
         ageRestrictionAccepted: ageRestrictionAccepted,
       });
 
-      console.log('Sign up successful!');
       navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
     } catch (error: any) {
       console.error('Sign up error:', error);
-      const errorMsg = error?.message || 'Sign up failed. Please try again.';
+      const errorMsg = getUserFriendlyErrorMessage(error);
       setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);

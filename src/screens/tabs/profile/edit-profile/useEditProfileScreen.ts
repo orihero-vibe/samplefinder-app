@@ -332,8 +332,6 @@ export const useEditProfileScreen = () => {
       
       // Reload profile to get updated data
       await loadProfile();
-
-      Alert.alert('Success', 'Profile picture updated successfully!');
     } catch (err: any) {
       console.error('[EditProfileScreen] Error uploading avatar:', err);
       const errorMessage = err?.message || 'Failed to upload profile picture. Please try again.';
@@ -375,8 +373,6 @@ export const useEditProfileScreen = () => {
 
               // Reload profile
               await loadProfile();
-
-              Alert.alert('Success', 'Profile picture removed successfully!');
             } catch (err: any) {
               console.error('[EditProfileScreen] Error removing avatar:', err);
               Alert.alert('Error', 'Failed to remove profile picture. Please try again.');

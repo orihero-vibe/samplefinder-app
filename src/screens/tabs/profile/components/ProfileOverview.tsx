@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import { getLastAchievedBadge } from '@/constants';
 import { CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon } from '@/icons';
 import BadgeItem from '../../promotions/components/BadgeItem';
 
 interface ProfileOverviewProps {
   username?: string;
+  avatarUri?: string | null;
   onEditProfilePress?: () => void;
   isAmbassador?: boolean;
   isInfluencer?: boolean;
@@ -15,20 +17,34 @@ interface ProfileOverviewProps {
 
 const ProfileOverview: React.FC<ProfileOverviewProps> = ({
   username = 'Username',
+  avatarUri,
   onEditProfilePress,
   isAmbassador = false,
   isInfluencer = false,
   eventCheckIns = 0,
   samplingReviews = 0,
 }) => {
+  // Calculate last achieved badges
+  const lastEventBadge = getLastAchievedBadge(eventCheckIns);
+  const lastReviewBadge = getLastAchievedBadge(samplingReviews);
   return (
     <View style={styles.container}>
       <View style={styles.profilePictureContainer}>
-        <Image
-          source={require('@/assets/locationImage.png')}
-          style={styles.profileImage}
-          resizeMode="contain"
-        />
+        <View style={styles.avatarBorder}>
+          {avatarUri ? (
+            <Image
+              source={{ uri: avatarUri }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image
+              source={require('@/assets/locationImage.png')}
+              style={styles.profileImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
         {/* Badge indicators on profile picture */}
         <View style={styles.profileBadgesContainer}>
           {isAmbassador && (
@@ -41,17 +57,25 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({
               <CertifiedInfluencerIcon size={34} />
             </View>
           )}
-          {/* {eventCheckIns >= 30 && (
-            <View style={[styles.profileBadge, styles.eventsBadge]}>
-              <Text style={styles.badgeNumber}>{Math.min(eventCheckIns, 99)}</Text>
-              <Text style={styles.badgeLabel}>EVENTS</Text>
-            </View>
+          {lastEventBadge && (
+            <BadgeItem 
+              color={Colors.brandPurpleBright} 
+              key={`event-${lastEventBadge}`} 
+              size={32} 
+              badge={{ count: lastEventBadge, label: '', achieved: true, id: 'eventCheckIns' }} 
+              style={{ paddingTop: 6 }}
+              isEventsBadge={true}
+            />
           )}
-          {samplingReviews >= 10 && (
-            <BadgeItem color={Colors.pinDarkBlue} key={samplingReviews} size={36} 
-            badge={{ count: samplingReviews, label: '', achieved: true, id: 'samplingReviews' }} 
-            style={{  marginTop: 8 }} />
-          )} */}
+          {lastReviewBadge && (
+            <BadgeItem 
+              color={Colors.pinDarkBlue} 
+              key={`review-${lastReviewBadge}`} 
+              size={32} 
+              badge={{ count: lastReviewBadge, label: '', achieved: true, id: 'samplingReviews' }} 
+              style={{ paddingTop: 6 }} 
+            />
+          )}
         </View>
       </View>
       <Text style={styles.username}>{username}</Text>
@@ -72,6 +96,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
   },
+  avatarBorder: {
+    width: 100,
+    height: 100,
+    borderRadius: 4,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
   profileImage: {
     width: 100,
     height: 100,
@@ -82,9 +118,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     top: 70,
-    right: -40,
+    left: 60,
     flexWrap: 'wrap',
-    maxWidth: 150,
+    width: '45%',
+    overflow: 'scroll',
   },
   profileBadge: {
     borderRadius: 25,
@@ -99,51 +136,17 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  eventsBadge: {
-    backgroundColor: Colors.brandPurpleBright,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    minWidth: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reviewsBadge: {
-    backgroundColor: Colors.pinDarkBlue,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    minWidth: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeNumber: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_700Bold',
-    color: Colors.white,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  badgeLabel: {
-    fontSize: 7,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.white,
-    textAlign: 'center',
-    lineHeight: 9,
-  },
   username: {
-    fontSize: 32,
+    fontSize: 40,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.brandPurpleDeep,
+    color: Colors.pinBlueBlack,
     marginBottom: 8,
     textAlign: 'center',
   },
   editProfileText: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Quicksand_400Regular',
-    color: Colors.brandPurpleBright,
+    color: Colors.grayText,
   },
 });
 

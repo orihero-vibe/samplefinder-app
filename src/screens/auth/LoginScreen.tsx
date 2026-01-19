@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -12,13 +13,17 @@ import CustomButton from '@/components/shared/CustomButton';
 import { useLoginScreen } from './useLoginScreen';
 import styles from './login/styles';
 
+const { height: screenHeight } = Dimensions.get('window');
+const isSmallDevice = screenHeight < 700;
+
 const LoginScreen = () => {
   const {
     email,
     password,
     rememberMe,
     isLoading,
-    error,
+    emailError,
+    passwordError,
     handleEmailChange,
     handlePasswordChange,
     handleRememberMeToggle,
@@ -47,6 +52,8 @@ const LoginScreen = () => {
           autoCorrect={false}
           labelColor='white'
           editable={!isLoading}
+          error={!!emailError}
+          errorMessage={emailError}
         />
 
         <CustomInput
@@ -59,13 +66,9 @@ const LoginScreen = () => {
           autoCorrect={false}
           labelColor='white'
           editable={!isLoading}
+          error={!!passwordError}
+          errorMessage={passwordError}
         />
-
-        {error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
 
         <View style={styles.optionsContainer}>
           <TouchableOpacity
@@ -76,7 +79,7 @@ const LoginScreen = () => {
           >
             <View style={styles.checkbox}>
               {rememberMe && (
-                <MaterialIcons name="check" size={18} color="#fff" />
+                <MaterialIcons name="check" size={isSmallDevice ? 16 : 18} color="#fff" />
               )}
             </View>
             <Text style={styles.rememberMeText}>Remember Me</Text>
@@ -87,7 +90,7 @@ const LoginScreen = () => {
             disabled={isLoading}
           >
             <View style={styles.forgotPasswordContainer}>
-              <MaterialIcons name="help-outline" size={20} color="#fff" />
+              <MaterialIcons name="help-outline" size={isSmallDevice ? 18 : 20} color="#fff" />
               <Text style={styles.forgotPasswordText}>
                 Forgot Password?
               </Text>

@@ -33,10 +33,10 @@ export const ProfilePictureSection: React.FC<ProfilePictureSectionProps> = ({
               <Monicon name="mdi:account" size={60} color={Colors.blueColorMode} />
             </View>
           )}
-          <View style={styles.cameraIconContainer}>
-            <View style={styles.cameraIconBackground}>
-              <Monicon name="mdi:camera" size={24} color={Colors.white} />
-            </View>
+        </View>
+        <View style={styles.cameraIconContainer}>
+          <View style={styles.cameraIconBackground}>
+            <Monicon name="mdi:camera" size={24} color={Colors.white} />
           </View>
         </View>
       </TouchableOpacity>
@@ -57,6 +57,9 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginBottom: 16,
+    position: 'relative',
+    width: 120,
+    height: 120,
   },
   avatarBorder: {
     width: 120,
@@ -66,7 +69,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.blueColorMode,
     overflow: 'hidden',
     backgroundColor: Colors.white,
-    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarImage: {
     width: '100%',

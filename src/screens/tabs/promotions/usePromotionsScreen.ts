@@ -5,7 +5,6 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
 import { getCurrentUser } from '@/lib/auth';
 import { 
-  getUserStatistics,
   getUserCheckIns,
   getUserReviews,
   fetchEventById,
@@ -46,11 +45,6 @@ export const usePromotionsScreen = () => {
     try {
       setIsLoading(true);
       
-      // Fetch tiers first (doesn't require auth)
-      const tiers = await fetchTiers();
-      console.log('[usePromotionsScreen] Tiers fetched:', JSON.stringify(tiers, null, 2));
-      setTiersData(tiers);
-      
       const authUser = await getCurrentUser();
       
       if (!authUser) {
@@ -64,20 +58,22 @@ export const usePromotionsScreen = () => {
         return;
       }
 
-      // Set ambassador and influencer status from profile
-      setIsAmbassador(userProfile.isAmbassador || false);
-      setIsInfluencer(userProfile.isInfluencer || false);
-
-      const stats = await getUserStatistics(authUser.$id);
-      setTotalPoints(stats.totalPoints);
-      setEventCheckInsCount(stats.eventCheckIns);
-      setReviewsCount(stats.samplingReviews);
-
-      const [checkIns, reviews] = await Promise.all([
+      // Fetch tiers, check-ins, and reviews in parallel for better performance
+      const [tiers, checkIns, reviews] = await Promise.all([
+        fetchTiers(),
         getUserCheckIns(userProfile.$id),
         getUserReviews(userProfile.$id),
       ]);
 
+      // Set data from profile and fetched arrays (avoid redundant API calls)
+      setTiersData(tiers);
+      setIsAmbassador(userProfile.isAmbassador || false);
+      setIsInfluencer(userProfile.isInfluencer || false);
+      setTotalPoints(userProfile.totalPoints || 0);
+      setEventCheckInsCount(checkIns.length);
+      setReviewsCount(reviews.length);
+
+      // Build history items (now optimized with parallel event fetching)
       const history = await buildHistoryItems(checkIns, reviews);
       setHistoryItems(history);
     } catch (error) {
@@ -91,18 +87,43 @@ export const usePromotionsScreen = () => {
     checkIns: CheckInRow[],
     reviews: ReviewRow[]
   ): Promise<HistoryItemData[]> => {
-    const items: HistoryItemData[] = [];
+    // Early return if no check-ins
+    if (checkIns.length === 0) {
+      return [];
+    }
 
+    // Extract unique event IDs
+    const uniqueEventIds = [...new Set(checkIns.map(checkIn => checkIn.eventID))];
+
+    // Fetch all events in parallel instead of sequentially
+    const eventPromises = uniqueEventIds.map(eventId => 
+      fetchEventById(eventId).catch(error => {
+        console.error(`Error fetching event ${eventId}:`, error);
+        return null;
+      })
+    );
+
+    const events = await Promise.all(eventPromises);
+
+    // Create a map for quick event lookup
+    const eventMap = new Map(
+      events
+        .filter(event => event !== null)
+        .map(event => [event!.$id, event!])
+    );
+
+    // Build history items using the event map
+    const items: { item: HistoryItemData; timestamp: number }[] = [];
+    
     for (const checkIn of checkIns) {
-      try {
-        const event = await fetchEventById(checkIn.eventID);
-        if (event) {
-          const reviewForEvent = reviews.find(r => r.event === checkIn.eventID);
-          
-          console.log('[buildHistoryItems] Event client data:', JSON.stringify(event.client, null, 2));
-          console.log('[buildHistoryItems] Brand photo URL:', event.client?.logoURL);
-          
-          items.push({
+      const event = eventMap.get(checkIn.eventID);
+      
+      if (event) {
+        const reviewForEvent = reviews.find(r => r.event === checkIn.eventID);
+        const timestamp = new Date(checkIn.$createdAt).getTime();
+        
+        items.push({
+          item: {
             id: checkIn.$id,
             brandProduct: event.name || 'Event',
             storeName: event.address || 'Store',
@@ -114,15 +135,15 @@ export const usePromotionsScreen = () => {
             points: checkIn.pointsEarned + (reviewForEvent?.pointsEarned || 0),
             review: reviewForEvent?.review,
             brandPhotoURL: event.client?.logoURL || null,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching event:', error);
+          },
+          timestamp,
+        });
       }
     }
 
-    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return items;
+    // Sort by timestamp (newest first) then extract just the items
+    items.sort((a, b) => b.timestamp - a.timestamp);
+    return items.map(({ item }) => item);
   };
 
   const handleBackPress = () => {

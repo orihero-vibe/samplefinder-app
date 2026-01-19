@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   logOutText: {
     fontSize: 16,
     fontFamily: 'Quicksand_500Medium',
-    color: Colors.black,
+    color: Colors.grayText,
   },
 });
 

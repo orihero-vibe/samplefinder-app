@@ -26,73 +26,78 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onToggle,
   onClose,
 }) => {
+  if (!visible) return null;
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
-              <Monicon name="mdi:close" size={24} color={Colors.blueColorMode} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView 
-            style={styles.optionsContainer}
-            contentContainerStyle={styles.optionsContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {options.map((option) => {
-              const isSelected = selectedValues.includes(option.value);
-              return (
-                <TouchableOpacity
-                  key={option.id}
-                  style={styles.optionRow}
-                  onPress={() => onToggle(option.value)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                    {isSelected && (
-                      <Monicon name="mdi:check" size={18} color={Colors.white} />
-                    )}
-                  </View>
-                  <Text style={[styles.optionText, !isSelected && styles.optionTextDisabled]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+    <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backdrop}
+        activeOpacity={1} 
+        onPress={onClose}
+      />
+      <View style={styles.dropdownContainer}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{title}</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
+            <Monicon name="mdi:close" size={24} color={Colors.blueColorMode} />
+          </TouchableOpacity>
         </View>
+        <ScrollView 
+          style={styles.optionsContainer}
+          contentContainerStyle={styles.optionsContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {options.map((option) => {
+            const isSelected = selectedValues.includes(option.value);
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={styles.optionRow}
+                onPress={() => onToggle(option.value)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                  {isSelected && (
+                    <Monicon name="mdi:check" size={18} color={Colors.white} />
+                  )}
+                </View>
+                <Text style={[styles.optionText, !isSelected && styles.optionTextDisabled]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
-    </Modal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
   },
-  modalContainer: {
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    bottom: 100, // Position above the bottom tab bar
+    left: 20,
+    right: 20,
     backgroundColor: Colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-    minHeight: '50%',
+    borderRadius: 20,
+    maxHeight: '60%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: -2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
@@ -112,7 +117,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   optionsContainer: {
-    flex: 1,
+    maxHeight: 400,
   },
   optionsContent: {
     paddingHorizontal: 20,

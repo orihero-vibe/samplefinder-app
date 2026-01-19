@@ -76,10 +76,15 @@ export const useNotificationsScreen = () => {
       const preferences = await getNotificationPreferences(user.$id);
       if (preferences) {
         setEnablePushNotifications(preferences.enablePushNotifications);
+        
+        // If push notifications are off, all individual settings should be disabled
+        // If push notifications are on, use the saved individual preferences
         setNotificationSettings((prev) =>
           prev.map((setting) => ({
             ...setting,
-            enabled: preferences[setting.id as keyof typeof preferences] ?? setting.enabled,
+            enabled: preferences.enablePushNotifications 
+              ? (preferences[setting.id as keyof typeof preferences] ?? setting.enabled)
+              : false,
           }))
         );
       }
@@ -128,6 +133,12 @@ export const useNotificationsScreen = () => {
   };
 
   const handleNotificationToggle = async (id: string) => {
+    // Don't allow toggling individual settings when push notifications are off
+    if (!enablePushNotifications) {
+      console.log('[notifications] Cannot toggle individual settings when push notifications are disabled');
+      return;
+    }
+
     const updatedSettings = notificationSettings.map((setting) =>
       setting.id === id ? { ...setting, enabled: !setting.enabled } : setting
     );
@@ -146,7 +157,6 @@ export const useNotificationsScreen = () => {
         await updateNotificationPreferences(user.$id, {
           [id]: setting.enabled,
         });
-        console.log('[notifications] Preference updated:', id, setting.enabled);
       }
     } catch (error: any) {
       console.error('[notifications] Error saving preference:', error);
@@ -158,6 +168,13 @@ export const useNotificationsScreen = () => {
   const handlePushNotificationsChange = async (value: boolean) => {
     setEnablePushNotifications(value);
 
+    // Update all individual notification settings to match the main toggle
+    const updatedSettings = notificationSettings.map((setting) => ({
+      ...setting,
+      enabled: value,
+    }));
+    setNotificationSettings(updatedSettings);
+
     // Save to database
     try {
       const user = await getCurrentUser();
@@ -166,14 +183,22 @@ export const useNotificationsScreen = () => {
         return;
       }
 
-      await updateNotificationPreferences(user.$id, {
+      // Build preferences object with all settings
+      const allPreferences: any = {
         enablePushNotifications: value,
+      };
+      
+      // Set all individual notification preferences to the same value
+      updatedSettings.forEach((setting) => {
+        allPreferences[setting.id] = value;
       });
-      console.log('[notifications] Push notifications preference updated:', value);
+
+      await updateNotificationPreferences(user.$id, allPreferences);
     } catch (error: any) {
       console.error('[notifications] Error saving push notifications preference:', error);
       // Revert on error
       setEnablePushNotifications(!value);
+      setNotificationSettings(notificationSettings);
     }
   };
 
@@ -187,7 +212,6 @@ export const useNotificationsScreen = () => {
 
       // Mark notification as read
       await markNotificationAsRead(user.$id, notificationId);
-      console.log('[notifications] Notification marked as read:', notificationId);
 
       // Reload notifications to update the UI
       await loadNotifications(user.$id);

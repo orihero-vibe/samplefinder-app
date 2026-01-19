@@ -54,16 +54,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.brandPurpleDeep,
+    color: Colors.blueColorMode,
     marginRight: 8,
     width: '40%',
   },
   infoValue: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_400Regular',
-    color: Colors.black,
+    fontSize: 16,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.pinBlueBlack,
     flex: 1,
   },
 });

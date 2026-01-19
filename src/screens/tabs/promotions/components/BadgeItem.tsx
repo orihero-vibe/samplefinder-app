@@ -1,5 +1,5 @@
 import { Colors } from '@/constants/Colors';
-import { BadgeCircleIcon } from '@/icons';
+import {  EventsBadgeIcon, ReviewsBadgeIcon } from '@/icons';
 import React from 'react';
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
@@ -15,20 +15,16 @@ interface BadgeItemProps {
   size?: number;
   color?: string;
   style?: StyleProp<ViewStyle>;
+  isEventsBadge?: boolean;
 }
 
-const BadgeItem: React.FC<BadgeItemProps> = ({ badge, size = 50, color = Colors.badgePurpleLight, style }) => {
+const BadgeItem: React.FC<BadgeItemProps> = ({ badge, size = 50, color = Colors.badgePurpleLight, style, isEventsBadge = false }) => {
   return (
     <View style={[styles.container, { width: size }, style]}>
-      <BadgeCircleIcon size={size} color={color} disabled={!badge?.achieved} />
-      {/* Count text overlay */}
-      <View style={[styles.countContainer, { width: size, height: size }]}>
-        {badge?.count !== undefined && (
-          <Text style={[styles.countText, { color, fontSize: size * 0.36, opacity: badge?.achieved ? 1 : 0.3 }]}>{badge?.count}</Text>
-        )}
-      </View>
-      {badge?.label !== '' && (
-        <Text style={[styles.label, { color, opacity: badge?.achieved ? 1 : 0.3 }]}>{badge?.label}</Text>
+      {isEventsBadge ? (
+        <EventsBadgeIcon size={size} color={color} disabled={!badge?.achieved} value={badge?.count} />
+      ) : (
+        <ReviewsBadgeIcon size={size} color={color} disabled={!badge?.achieved} value={badge?.count} />
       )}
     </View>
   );

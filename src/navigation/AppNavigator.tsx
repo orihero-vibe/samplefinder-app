@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '@/screens/auth/LoginScreen';
@@ -9,8 +8,8 @@ import ForgotPasswordScreen from '@/screens/auth/ForgotPasswordScreen';
 import PasswordResetScreen from '@/screens/auth/PasswordResetScreen';
 import TabNavigator from '@/navigation/TabNavigator';
 import { getCurrentUser } from '@/lib/auth';
-import { Colors } from '@/constants/Colors';
 import { setNavigationRef, setupNotificationHandlers, getLastNotificationResponse } from '@/lib/notifications/handlers';
+import { CustomSplashScreen } from '@/components';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -38,14 +37,11 @@ const AppNavigator = () => {
 
   const checkAuthSession = async () => {
     try {
-      console.log('[AppNavigator] Checking for active session...');
       const user = await getCurrentUser();
       
       if (user) {
-        console.log('[AppNavigator] Active session found, navigating to MainTabs');
         setInitialRouteName('MainTabs');
       } else {
-        console.log('[AppNavigator] No active session, navigating to Login');
         setInitialRouteName('Login');
       }
     } catch (error: any) {
@@ -58,11 +54,7 @@ const AppNavigator = () => {
   };
 
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.brandPurpleDeep} />
-      </View>
-    );
+    return <CustomSplashScreen />;
   }
 
   return (
@@ -89,15 +81,6 @@ const AppNavigator = () => {
     </NavigationContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-  },
-});
 
 export default AppNavigator;
 
