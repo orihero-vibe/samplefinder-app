@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
@@ -17,12 +18,14 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   onPreviousMonth,
   onNextMonth,
 }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <LinearGradient
       colors={[Colors.brandPurpleDeep, Colors.brandBlueDeep]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
-      style={styles.container}
+      style={[styles.container, { paddingTop: insets.top + 10 }]}
     >
       <View style={styles.content}>
         <TouchableOpacity onPress={onPreviousMonth} style={styles.iconButton}>
@@ -39,7 +42,6 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: Platform.OS === 'android' ? 30 : 60,
     paddingBottom: 15,
   },
   content: {

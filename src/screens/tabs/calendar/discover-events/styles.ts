@@ -7,7 +7,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? 30 : 60,
     paddingBottom: 15,
     alignItems: 'center',
     justifyContent: 'center',

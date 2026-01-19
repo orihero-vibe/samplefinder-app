@@ -28,10 +28,7 @@
       "appleTeamId": "AYNR8DRWG3"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./src/assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
+      "icon": "./src/assets/icon.png",
       "splash": {
         "image": "./src/assets/splash-icon.png",
         "resizeMode": "contain",

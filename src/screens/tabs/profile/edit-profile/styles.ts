@@ -7,7 +7,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   headerBackground: {
-    paddingTop: Platform.OS === 'android' ? 30 : 60,
     paddingBottom: 15,
   },
   header: {
@@ -22,7 +21,6 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   iconButton: {
-    padding: 5,
   },
   rightSection: {
     flexDirection: 'row',

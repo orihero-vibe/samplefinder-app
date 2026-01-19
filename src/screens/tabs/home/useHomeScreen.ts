@@ -36,7 +36,7 @@ export const useHomeScreen = () => {
   const mapRef = useRef<ClusteredMapView>(null);
 
   // Snap points for the bottom sheet - collapsed shows only filters, expanded shows events + filters
-  const snapPoints = useMemo(() => [Platform.OS === 'ios' ? '10%' : '12%', Platform.OS === 'android' ? '90%' : '86%'], []);
+  const snapPoints = useMemo(() => ['12%', Platform.OS === 'android' ? '90%' : '86%'], []);
 
   // Helper function to convert date filter values to date ranges
   const convertDateFilterToRange = (dateValue: string): { start: string; end: string } | null => {
