@@ -230,17 +230,23 @@ export const parseEventDateTime = (
   }
 
   // Create start and end Date objects with minutes
-  const start = new Date(year, month, day, startHour, startMinute, 0, 0);
-  const end = new Date(year, month, day, endHour, endMinute, 0, 0);
+  let start = new Date(year, month, day, startHour, startMinute, 0, 0);
+  let end = new Date(year, month, day, endHour, endMinute, 0, 0);
 
   // Validate dates
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     throw new Error(`Invalid date/time values: ${dateString} ${timeString}`);
   }
 
-  // Ensure end time is after start time
+  // If end time is before or equal to start time, assume the event spans to the next day
   if (end <= start) {
-    throw new Error(`End time must be after start time: ${timeString}`);
+    end = new Date(year, month, day + 1, endHour, endMinute, 0, 0);
+  }
+
+  // If end is still before start (shouldn't happen with above logic, but being defensive),
+  // swap them so the event can still be added to calendar
+  if (end < start) {
+    [start, end] = [end, start];
   }
 
   return { start, end };
