@@ -5,6 +5,7 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import { logout, getCurrentUser } from '@/lib/auth';
 import { getUserProfile, calculateTierStatus, UserProfileRow } from '@/lib/database';
 import { formatDateForDisplay } from '@/utils/formatters';
+import { countAchievedBadges } from '@/constants';
 
 export const useProfileScreen = () => {
   const navigation = useNavigation();
@@ -41,22 +42,21 @@ export const useProfileScreen = () => {
       
       // Use statistics directly from profile fields
       if (userProfile) {
+        const eventCheckIns = userProfile.totalEvents ?? 0;
+        const samplingReviews = userProfile.totalReviews ?? 0;
+        
+        // Calculate badge achievements based on thresholds
+        const eventBadges = countAchievedBadges(eventCheckIns);
+        const reviewBadges = countAchievedBadges(samplingReviews);
+        const totalBadges = eventBadges + reviewBadges;
+        
         setStatistics({
           totalPoints: userProfile.totalPoints ?? 0,
-          eventCheckIns: userProfile.totalEvents ?? 0,
-          samplingReviews: userProfile.totalReviews ?? 0,
-          badgeAchievements: 0, // Not stored in user_profiles table yet
+          eventCheckIns,
+          samplingReviews,
+          badgeAchievements: totalBadges,
         });
       }
-      
-      console.log('[ProfileScreen] Profile loaded:', {
-        hasProfile: !!userProfile,
-        username: userProfile?.username,
-        email: user.email,
-        totalPoints: userProfile?.totalPoints,
-        totalEvents: userProfile?.totalEvents,
-        totalReviews: userProfile?.totalReviews,
-      });
     } catch (err: any) {
       console.error('Error loading profile:', err);
       setError(err?.message || 'Failed to load profile');

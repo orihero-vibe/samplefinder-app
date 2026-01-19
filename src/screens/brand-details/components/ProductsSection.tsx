@@ -25,26 +25,28 @@ const styles = StyleSheet.create({
   section: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 20,
-    alignItems: 'center',
+    marginBottom: 28,
+    alignItems: 'flex-start',
     width: '100%',
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
     marginRight: 16,
-    width: 80,
+    minWidth: 90,
     textAlign: 'left',
+    paddingTop: 4,
   },
   productsList: {
     flex: 1,
   },
   productText: {
-    fontSize: 15,
+    fontSize: 17,
     fontFamily: 'Quicksand_500Medium',
-    color: Colors.black,
-    lineHeight: 20,
+    color: '#050A24',
+    lineHeight: 24,
+
   },
 });
 

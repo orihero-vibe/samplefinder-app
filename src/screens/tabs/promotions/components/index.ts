@@ -10,6 +10,7 @@ export { default as EarnedSection } from './EarnedSection';
 export { default as HistorySection } from './HistorySection';
 export { default as HistoryItem } from './HistoryItem';
 export { default as AchievementModal } from './AchievementModal';
+export { default as BadgeRequirementsModal } from './BadgeRequirementsModal';
 export type { Badge } from './BadgeItem';
 export type { Tier } from './TierItem';
 export type { HistoryItemData } from './HistoryItem';

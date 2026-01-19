@@ -36,6 +36,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     isAddedToCalendar,
     reviewModalVisible,
     isSubmittingCheckIn,
+    isSubmittingReview,
     pointsModalVisible,
     pointsModalTitle,
     pointsModalAmount,
@@ -51,6 +52,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     handleCloseReviewModal,
     handleSubmitReview,
     handleClosePointsModal,
+    handleViewRewards,
   } = useBrandDetailsScreen({ route });
 
   // Show loading state
@@ -88,7 +90,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <BackShareHeader onBack={handleBack} onShare={handleShare} />
+      <BackShareHeader onBack={handleBack} onShare={handleShare}  />
 
       <ScrollView
         style={styles.scrollView}
@@ -129,6 +131,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         visible={reviewModalVisible}
         eventName={brand?.storeName}
         brandName={brand?.brandName}
+        isSubmitting={isSubmittingReview}
         onClose={handleCloseReviewModal}
         onSubmit={handleSubmitReview}
       />
@@ -138,7 +141,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         points={pointsModalAmount}
         title={pointsModalTitle}
         onClose={handleClosePointsModal}
-        onViewRewards={() => {}}
+        onViewRewards={handleViewRewards}
       />
     </View>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 export type FilterType = 'radius' | 'dates' | 'categories' | 'reset';
@@ -25,118 +25,121 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
     onFilterPress(filter);
   };
 
-  const getButtonText = (label: string, count: number) => {
-    return count > 0 ? `${label} (${count})` : label;
-  };
-
   return (
     <View style={styles.container}>
-      <View style={styles.buttonsRow}>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            styles.filterButtonSpacing,
-            (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonSelected,
-          ]}
-          onPress={() => handleFilterPress('radius')}
-          activeOpacity={0.7}
-        >
-          <Text
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.buttonsRow}>
+          <TouchableOpacity
             style={[
-              styles.filterButtonText,
-              (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonTextSelected,
+              styles.filterButton,
+              styles.filterButtonSpacing,
+              (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonSelected,
             ]}
+            onPress={() => handleFilterPress('radius')}
+            activeOpacity={0.7}
           >
-            {getButtonText('Radius', radiusCount)}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.filterButtonText,
+                (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonTextSelected,
+              ]}
+            >
+              Radius
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            styles.filterButtonSpacing,
-            (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonSelected,
-          ]}
-          onPress={() => handleFilterPress('dates')}
-          activeOpacity={0.7}
-        >
-          <Text
+          <TouchableOpacity
             style={[
-              styles.filterButtonText,
-              (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonTextSelected,
+              styles.filterButton,
+              styles.filterButtonSpacing,
+              (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonSelected,
             ]}
+            onPress={() => handleFilterPress('dates')}
+            activeOpacity={0.7}
           >
-            {getButtonText('Dates', datesCount)}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.filterButtonText,
+                (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonTextSelected,
+              ]}
+            >
+              Dates
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            styles.filterButtonSpacing,
-            (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonSelected,
-          ]}
-          onPress={() => handleFilterPress('categories')}
-          activeOpacity={0.7}
-        >
-          <Text
+          <TouchableOpacity
             style={[
-              styles.filterButtonText,
-              (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonTextSelected,
+              styles.filterButton,
+              styles.filterButtonSpacing,
+              (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonSelected,
             ]}
+            onPress={() => handleFilterPress('categories')}
+            activeOpacity={0.7}
           >
-            {getButtonText('Categories', categoriesCount)}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.filterButtonText,
+                (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonTextSelected,
+              ]}
+            >
+              Categories
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            styles.filterButtonReset,
-            hasAnyFilters && styles.filterButtonResetEnabled,
-          ]}
-          onPress={() => handleFilterPress('reset')}
-          activeOpacity={0.7}
-          disabled={!hasAnyFilters}
-        >
-          <Text
+          <TouchableOpacity
             style={[
-              styles.filterButtonTextReset,
-              hasAnyFilters && styles.filterButtonTextResetEnabled,
+              styles.filterButton,
+              styles.filterButtonReset,
+              hasAnyFilters && styles.filterButtonResetEnabled,
             ]}
+            onPress={() => handleFilterPress('reset')}
+            activeOpacity={0.7}
+            disabled={!hasAnyFilters}
           >
-            Reset
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <Text
+              style={[
+                styles.filterButtonTextReset,
+                hasAnyFilters && styles.filterButtonTextResetEnabled,
+              ]}
+            >
+              Reset
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 15,
+    paddingVertical: 12,
     backgroundColor: Colors.white,
     width: '100%',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
   },
   buttonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    justifyContent: 'space-between',
   },
   filterButton: {
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: Colors.blueColorMode,
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterButtonSpacing: {
-    marginRight: 10,
+    marginRight: 8,
   },
   filterButtonSelected: {
     backgroundColor: Colors.blueColorMode,
@@ -151,16 +154,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.blueColorMode,
   },
   filterButtonText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontSize: 16,
+    fontFamily: 'Quicksand_700Bold',
     color: Colors.brandPurpleDeep,
   },
   filterButtonTextSelected: {
     color: Colors.white,
   },
   filterButtonTextReset: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontSize: 16,
+    fontFamily: 'Quicksand_700Bold',
     color: '#9E9E9E',
   },
   filterButtonTextResetEnabled: {

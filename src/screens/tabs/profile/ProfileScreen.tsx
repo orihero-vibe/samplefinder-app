@@ -86,6 +86,7 @@ const ProfileScreen = () => {
         />
         <ProfileOverview
           username={profile?.username || authUser?.name || 'User'}
+          avatarUri={profile?.avatarURL || null}
           onEditProfilePress={handleEditProfilePress}
           isAmbassador={profile?.isAmbassador || false}
           isInfluencer={profile?.isInfluencer || false}
@@ -111,7 +112,7 @@ const ProfileScreen = () => {
         />
         <BrandAmbassadorSection 
           onApplyHerePress={handleApplyHerePress}
-          isAmbassador={profile?.isAmbassador || false}
+          // isAmbassador={profile?.isAmbassador || false}
         />
       </ScrollView>
 

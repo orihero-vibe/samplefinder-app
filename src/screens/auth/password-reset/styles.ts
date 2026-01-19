@@ -23,8 +23,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_400Regular',
     color: '#666',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
     lineHeight: 24,
+  },
+  codeInputContainer: {
+    width: '100%',
+    marginBottom: 24,
   },
   formContainer: {
     width: '100%',

@@ -11,6 +11,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
@@ -41,12 +42,14 @@ interface ReviewModalProps {
   visible: boolean;
   eventName?: string;
   brandName?: string;
+  isSubmitting?: boolean;
   onClose: () => void;
   onSubmit: (reviewText: string, rating: number, tags?: string[], purchased?: boolean) => void;
 }
 
 const ReviewModal: React.FC<ReviewModalProps> = ({
   visible,
+  isSubmitting = false,
   onClose,
   onSubmit,
 }) => {
@@ -95,12 +98,11 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   };
 
   const handleSubmit = () => {
-    if (rating === 0) {
+    if (rating === 0 || isSubmitting) {
       return;
     }
     
     onSubmit(reviewText, rating, selectedTags, purchased ?? undefined);
-    onClose();
   };
 
   const handleClose = () => {
@@ -274,13 +276,17 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                rating === 0 && styles.submitButtonDisabled,
+                (rating === 0 || isSubmitting) && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
               activeOpacity={0.7}
-              disabled={rating === 0}
+              disabled={rating === 0 || isSubmitting}
             >
-              <Text style={styles.submitButtonText}>Submit</Text>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Text style={styles.submitButtonText}>Submit</Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </Animated.View>

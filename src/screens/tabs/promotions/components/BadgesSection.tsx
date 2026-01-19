@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { CertifiedInfluencerIcon, CertifiedBrandAmbassadorIcon } from '@/icons';
 import BadgeItem, { Badge } from './BadgeItem';
+import BadgeRequirementsModal from './BadgeRequirementsModal';
 
 interface BadgesSectionProps {
   eventCheckIns: number;
@@ -22,6 +23,16 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
   isAmbassador = false,
   isInfluencer = false,
 }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const handleOpenModal = () => {
+    setModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+  };
+
   return (
     <View style={styles.card}>
       {/* Section Header */}
@@ -44,7 +55,7 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
         </Text>
         <View style={styles.badgesRow}>
           {eventBadges.map((badge) => (
-            <BadgeItem key={badge.id} badge={badge} />
+            <BadgeItem key={badge.id} badge={badge} isEventsBadge={true} />
           ))}
         </View>
       </View>
@@ -65,7 +76,7 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
       <View style={styles.identifierSection}>
         <View style={styles.identifierHeader}>
           <Text style={styles.identifierTitle}>Identifier Badges</Text>
-          <TouchableOpacity style={styles.helpButton}>
+          <TouchableOpacity hitSlop={10} onPress={handleOpenModal}>
             <Monicon name="mdi:help-circle-outline" size={18} color="#999999" />
           </TouchableOpacity>
         </View>
@@ -82,6 +93,12 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
           </Text>
         </View>
       </View>
+
+      {/* Badge Requirements Modal */}
+      <BadgeRequirementsModal
+        visible={modalVisible}
+        onClose={handleCloseModal}
+      />
     </View>
   );
 };
@@ -153,6 +170,7 @@ const styles = StyleSheet.create({
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 12,
   },
   identifierSection: {
@@ -169,9 +187,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.black,
-  },
-  helpButton: {
-    padding: 4,
   },
   identifierBadgeRow: {
     flexDirection: 'row',

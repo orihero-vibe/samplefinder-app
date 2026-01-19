@@ -17,14 +17,15 @@ const DiscountMessage: React.FC<DiscountMessageProps> = () => {
 const styles = StyleSheet.create({
   discountContainer: {
     paddingHorizontal: 40,
-    marginBottom: 20,
+    marginBottom: 28,
+    marginTop: 8,
     alignItems: 'center',
   },
   discountText: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
-    lineHeight: 22,
+    lineHeight: 26,
     textAlign: 'center',
   },
 });

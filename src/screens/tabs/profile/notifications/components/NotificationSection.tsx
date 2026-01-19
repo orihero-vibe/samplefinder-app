@@ -51,16 +51,33 @@ export const NotificationSection: React.FC<NotificationSectionProps> = ({
       <View style={styles.subHeadingSpacer} />
 
       {notificationSettings.map((setting) => (
-        <View key={setting.id} style={styles.notificationSettingRow}>
+        <View 
+          key={setting.id} 
+          style={[
+            styles.notificationSettingRow,
+            !enablePushNotifications && styles.notificationSettingRowDisabled,
+          ]}
+        >
           <View style={styles.settingContent}>
-            <Text style={styles.settingLabel}>{setting.label}</Text>
-            <Text style={styles.notificationDescription}>{setting.description}</Text>
+            <Text style={[
+              styles.settingLabel,
+              !enablePushNotifications && styles.settingLabelDisabled,
+            ]}>
+              {setting.label}
+            </Text>
+            <Text style={[
+              styles.notificationDescription,
+              !enablePushNotifications && styles.notificationDescriptionDisabled,
+            ]}>
+              {setting.description}
+            </Text>
           </View>
           <Switch
             value={setting.enabled}
             onValueChange={() => onNotificationToggle(setting.id)}
             trackColor={{ false: '#E0E0E0', true: Colors.blueColorMode }}
             thumbColor={Colors.white}
+            disabled={!enablePushNotifications}
           />
         </View>
       ))}
@@ -113,6 +130,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
   },
+  notificationSettingRowDisabled: {
+    opacity: 0.5,
+  },
   settingContent: {
     flex: 1,
     marginRight: 16,
@@ -123,11 +143,17 @@ const styles = StyleSheet.create({
     color: Colors.black,
     marginBottom: 4,
   },
+  settingLabelDisabled: {
+    color: '#999999',
+  },
   notificationDescription: {
     fontSize: 14,
     fontFamily: 'Quicksand_400Regular',
     color: '#666666',
     lineHeight: 20,
+  },
+  notificationDescriptionDisabled: {
+    color: '#AAAAAA',
   },
   subHeading: {
     fontSize: 14,

@@ -6,9 +6,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInputProps,
+  Dimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { formatPhoneNumber, formatDate } from '@/utils/formatters';
+import { QuestionMarkIcon } from '@/icons';
 
 export type InputType = 
   | 'text'
@@ -133,7 +135,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
               onPress={onHelpPress}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="help-outline" size={16} color="#fff" />
+              <QuestionMarkIcon size={20} />
             </TouchableOpacity>
           )}
         </View>
@@ -144,6 +146,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
             styles.input,
             { borderColor: getBorderColor() },
             error && styles.inputError,
+            shouldShowPasswordToggle && styles.inputWithIcon,
           ]}
           value={value}
           onChangeText={handleTextChange}
@@ -168,34 +171,35 @@ const CustomInput: React.FC<CustomInputProps> = ({
             />
           </TouchableOpacity>
         )}
+        {error && errorMessage && (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        )}
       </View>
-      {error && errorMessage && (
-        <Text style={styles.errorText}>{errorMessage}</Text>
-      )}
     </View>
   );
 };
 
+const { height: screenHeight } = Dimensions.get('window');
+const isSmallDevice = screenHeight < 700;
+
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginBottom: 16,
+    marginBottom: isSmallDevice ? 12 : 16,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: isSmallDevice ? 6 : 8,
   },
   label: {
-    fontSize: 16,
+    fontSize: isSmallDevice ? 14 : 16,
     fontFamily: 'Quicksand_500Medium',
   },
   helpIcon: {
     marginLeft: 8,
     width: 20,
     height: 20,
-    borderRadius: 10,
-    backgroundColor: '#2D1B69',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -206,13 +210,16 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: isSmallDevice ? 12 : 14,
     paddingHorizontal: 20,
-    fontSize: 16,
+    fontSize: isSmallDevice ? 14 : 16,
     color: '#333',
     fontFamily: 'Quicksand_400Regular',
     borderWidth: 1,
     borderColor: '#1D0A74',
+  },
+  inputWithIcon: {
+    paddingRight: 55,
   },
   inputError: {
     borderColor: '#FF0000',
@@ -224,11 +231,15 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -12 }],
   },
   errorText: {
+    position: 'absolute',
+    top: '100%',
+    left: 4,
+    right: 4,
     color: '#FF0000',
     fontSize: 12,
     fontFamily: 'Quicksand_400Regular',
     marginTop: 4,
-    marginLeft: 4,
+    zIndex: 10,
   },
 });
 

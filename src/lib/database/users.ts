@@ -442,15 +442,27 @@ export const getNotificationPreferences = async (authID: string): Promise<Notifi
     }
 
     // Extract notification preferences from profile
-    // Assuming preferences are stored as a JSON object in the profile
+    // Parse JSON string if it exists, otherwise use defaults
+    let parsedPreferences: any = null;
+    if ((profile as any).notificationPreferences) {
+      try {
+        // If it's a string, parse it; if already an object, use it directly
+        parsedPreferences = typeof (profile as any).notificationPreferences === 'string' 
+          ? JSON.parse((profile as any).notificationPreferences)
+          : (profile as any).notificationPreferences;
+      } catch (error) {
+        console.warn('[database.getNotificationPreferences] Error parsing preferences, using defaults:', error);
+      }
+    }
+
     const preferences: NotificationPreferences = {
-      enablePushNotifications: (profile as any).notificationPreferences?.enablePushNotifications ?? true,
-      eventReminders: (profile as any).notificationPreferences?.eventReminders ?? true,
-      checkInConfirmations: (profile as any).notificationPreferences?.checkInConfirmations ?? true,
-      triviaGames: (profile as any).notificationPreferences?.triviaGames ?? true,
-      rewardsUpdates: (profile as any).notificationPreferences?.rewardsUpdates ?? true,
-      newEventsNearby: (profile as any).notificationPreferences?.newEventsNearby ?? true,
-      favoriteBrandUpdates: (profile as any).notificationPreferences?.favoriteBrandUpdates ?? false,
+      enablePushNotifications: parsedPreferences?.enablePushNotifications ?? true,
+      eventReminders: parsedPreferences?.eventReminders ?? true,
+      checkInConfirmations: parsedPreferences?.checkInConfirmations ?? true,
+      triviaGames: parsedPreferences?.triviaGames ?? true,
+      rewardsUpdates: parsedPreferences?.rewardsUpdates ?? true,
+      newEventsNearby: parsedPreferences?.newEventsNearby ?? true,
+      favoriteBrandUpdates: parsedPreferences?.favoriteBrandUpdates ?? false,
     };
 
     console.log('[database.getNotificationPreferences] Preferences retrieved:', preferences);
@@ -543,14 +555,27 @@ export const updateNotificationPreferences = async (
     }
 
     // Get current preferences or use defaults
+    // Parse JSON string if it exists
+    let parsedPreferences: any = null;
+    if ((profile as any).notificationPreferences) {
+      try {
+        // If it's a string, parse it; if already an object, use it directly
+        parsedPreferences = typeof (profile as any).notificationPreferences === 'string' 
+          ? JSON.parse((profile as any).notificationPreferences)
+          : (profile as any).notificationPreferences;
+      } catch (error) {
+        console.warn('[database.updateNotificationPreferences] Error parsing existing preferences, using defaults:', error);
+      }
+    }
+
     const currentPreferences: NotificationPreferences = {
-      enablePushNotifications: (profile as any).notificationPreferences?.enablePushNotifications ?? true,
-      eventReminders: (profile as any).notificationPreferences?.eventReminders ?? true,
-      checkInConfirmations: (profile as any).notificationPreferences?.checkInConfirmations ?? true,
-      triviaGames: (profile as any).notificationPreferences?.triviaGames ?? true,
-      rewardsUpdates: (profile as any).notificationPreferences?.rewardsUpdates ?? true,
-      newEventsNearby: (profile as any).notificationPreferences?.newEventsNearby ?? true,
-      favoriteBrandUpdates: (profile as any).notificationPreferences?.favoriteBrandUpdates ?? false,
+      enablePushNotifications: parsedPreferences?.enablePushNotifications ?? true,
+      eventReminders: parsedPreferences?.eventReminders ?? true,
+      checkInConfirmations: parsedPreferences?.checkInConfirmations ?? true,
+      triviaGames: parsedPreferences?.triviaGames ?? true,
+      rewardsUpdates: parsedPreferences?.rewardsUpdates ?? true,
+      newEventsNearby: parsedPreferences?.newEventsNearby ?? true,
+      favoriteBrandUpdates: parsedPreferences?.favoriteBrandUpdates ?? false,
     };
 
     // Merge with new preferences
@@ -562,12 +587,13 @@ export const updateNotificationPreferences = async (
     console.log('[database.updateNotificationPreferences] Merged preferences:', updatedPreferences);
 
     // Update the profile with new preferences
+    // Convert to JSON string since Appwrite expects a string type
     await tablesDB.updateRow({
       databaseId: DATABASE_ID,
       tableId: USER_PROFILES_TABLE_ID,
       rowId: profile.$id,
       data: {
-        notificationPreferences: updatedPreferences,
+        notificationPreferences: JSON.stringify(updatedPreferences),
       },
     });
 

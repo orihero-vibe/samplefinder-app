@@ -1,25 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { CompositeNavigationProp } from '@react-navigation/native';
+import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Share, Alert, Linking } from 'react-native';
 import * as Calendar from 'expo-calendar';
 import * as Location from 'expo-location';
-import { parseEventDateTime, calculateDistance } from '@/utils/formatters';
-import { useFavoritesStore } from '@/stores/favoritesStore';
-import { 
-  fetchEventById, 
-  fetchClients, 
-  EventRow, 
-  ClientData,
 import { getCurrentUser } from '@/lib/auth';
 import {
+  fetchEventById,
+  fetchClients,
+  EventRow,
+  ClientData,
   createCheckIn,
   createReview,
-  EventRow,
-  fetchClients,
-  fetchEventById,
   getUserCheckInForEvent,
   getUserProfile,
   addFavoriteBrand,
@@ -29,16 +22,9 @@ import {
 import { cancelEventReminders, scheduleEventReminders } from '@/lib/notifications/eventReminders';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
-import { FavoriteBrandData, useFavoritesStore } from '@/stores/favoritesStore';
+import { useFavoritesStore } from '@/stores/favoritesStore';
 import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
 import { calculateDistance, parseEventDateTime } from '@/utils/formatters';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Calendar from 'expo-calendar';
-import * as Location from 'expo-location';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Share } from 'react-native';
 
 export interface BrandDetailsData {
   id: string; // Event ID
@@ -106,6 +92,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const [checkInStatus, setCheckInStatus] = useState<CheckInStatus>('none');
   const [hasSubmittedCode, setHasSubmittedCode] = useState(false);
   const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false); // Prevent duplicate submissions
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false); // Prevent duplicate review submissions
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [pointsModalVisible, setPointsModalVisible] = useState(false);
   const [pointsModalTitle, setPointsModalTitle] = useState('Nice Work!');
@@ -257,15 +244,12 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
       return;
     }
 
-    // If marked as added but no event ID (shouldn't happen), just reset state
-    if (isAddedToCalendar && !calendarEventId) {
     // If already added, cancel reminders and toggle the state
     if (isAddedToCalendar) {
       if (brand) {
         const eventIdForReminders = brand.id;
         try {
           await cancelEventReminders(eventIdForReminders);
-          console.log('[BrandDetailsScreen] Event reminders canceled');
         } catch (error) {
           console.error('[BrandDetailsScreen] Error canceling reminders:', error);
         }
@@ -357,8 +341,6 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
 
       const calendarEventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
       
-      if (eventId) {
-        setCalendarEventId(eventId);
       if (calendarEventId) {
         setIsAddedToCalendar(true);
         
@@ -377,7 +359,6 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
               eventTitle,
               addressString
             );
-            console.log('[BrandDetailsScreen] Event reminders scheduled successfully');
           } catch (reminderError) {
             // Don't fail the calendar add if reminder scheduling fails
             console.error('[BrandDetailsScreen] Error scheduling reminders:', reminderError);
@@ -588,11 +569,26 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     setPointsModalVisible(false);
   };
 
+  const handleViewRewards = () => {
+    setPointsModalVisible(false);
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.navigate('MainTabs', { screen: 'Promotions' });
+    }
+  };
+
   const handleSubmitReview = async (reviewText: string, rating: number) => {
+    if (isSubmittingReview) {
+      return;
+    }
+
     try {
+      setIsSubmittingReview(true);
+
       const authUser = await getCurrentUser();
       if (!authUser) {
         Alert.alert('Error', 'You must be logged in to leave a review');
+        setIsSubmittingReview(false);
         return;
       }
 
@@ -600,12 +596,15 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
       const userProfile = await getUserProfile(authUser.$id);
       if (!userProfile) {
         Alert.alert('Error', 'User profile not found');
+        setIsSubmittingReview(false);
         return;
       }
 
       const existingReview = await getUserReviewForEvent(userProfile.$id, eventId || '');
       if (existingReview) {
         Alert.alert('Already Reviewed', 'You have already reviewed this event');
+        setIsSubmittingReview(false);
+        setReviewModalVisible(false);
         return;
       }
 
@@ -620,6 +619,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
       await createReview(reviewData);
 
       setHasReviewed(true);
+      setReviewModalVisible(false);
       
       // Show points earned modal for review
       const earnedPoints = eventData?.reviewPoints || 0;
@@ -630,6 +630,8 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     } catch (error: any) {
       console.error('Error submitting review:', error);
       Alert.alert('Error', error.message || 'Failed to submit review');
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -645,6 +647,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     isAddedToCalendar,
     reviewModalVisible,
     isSubmittingCheckIn,
+    isSubmittingReview,
     pointsModalVisible,
     pointsModalTitle,
     pointsModalAmount,
@@ -660,6 +663,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     handleCloseReviewModal,
     handleSubmitReview,
     handleClosePointsModal,
+    handleViewRewards,
   };
 };
 

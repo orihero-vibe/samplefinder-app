@@ -15,11 +15,6 @@ const storage = new Storage(appwriteClient);
  * @returns Promise with the file URL
  */
 export const uploadAvatar = async (fileUri: string, userId: string): Promise<string> => {
-  console.log('[storage.uploadAvatar] Starting avatar upload');
-  console.log('[storage.uploadAvatar] File URI:', fileUri);
-  console.log('[storage.uploadAvatar] User ID:', userId);
-  console.log('[storage.uploadAvatar] Bucket ID:', BUCKET_ID);
-
   if (!BUCKET_ID) {
     const errorMsg = 'Avatar bucket ID not configured. Please check your .env file.';
     console.error('[storage.uploadAvatar]', errorMsg);
@@ -31,8 +26,6 @@ export const uploadAvatar = async (fileUri: string, userId: string): Promise<str
     const fileId = ID.unique();
     const fileName = `avatar_${userId}_${fileId}.jpg`;
 
-    console.log('[storage.uploadAvatar] Uploading file:', fileName);
-
     // React Native Appwrite Storage expects a file object with uri, name, type
     // Get file info to determine type and size
     const fileExtension = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
@@ -41,82 +34,49 @@ export const uploadAvatar = async (fileUri: string, userId: string): Promise<str
                      'image/jpeg';
 
     // Create file object for React Native Appwrite Storage
-    // Format: { uri: string, name: string, type: string }
+    // Format: { uri: string, name: string, type: string, size: number }
+    // Note: For React Native, we can't easily get file size before upload
+    // Setting size to 0 works for react-native-appwrite as it reads the actual file
     const fileObject = {
       uri: fileUri,
       name: fileName,
       type: mimeType,
+      size: 0, // Size will be determined by the SDK when reading the file
     };
 
     // Upload file to Appwrite Storage
-    // React Native Appwrite Storage expects a file object
-    console.log('[storage.uploadAvatar] Uploading with file object:', JSON.stringify(fileObject, null, 2));
-    console.log('[storage.uploadAvatar] Storage instance:', storage);
-    console.log('[storage.uploadAvatar] Storage methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(storage)));
-    
+    // React Native Appwrite Storage expects positional parameters: (bucketId, fileId, file, permissions?)
     let result;
     try {
-      // Try with fileId first
-      console.log('[storage.uploadAvatar] Attempting createFile with fileId...');
-      result = await storage.createFile({
-        bucketId: BUCKET_ID,
-        fileId: fileId,
-        file: fileObject,
-      });
-      console.log('[storage.uploadAvatar] createFile resolved with fileId');
+      // createFile(bucketId: string, fileId: string, file: File, permissions?: string[])
+      result = await storage.createFile(
+        BUCKET_ID,
+        fileId,
+        fileObject,
+        [] // Empty permissions array means use bucket-level permissions
+      );
     } catch (createError: any) {
-      console.error('[storage.uploadAvatar] createFile with fileId failed:', createError);
-      console.error('[storage.uploadAvatar] createFile error message:', createError?.message);
-      console.error('[storage.uploadAvatar] createFile error code:', createError?.code);
-      console.error('[storage.uploadAvatar] createFile error type:', typeof createError);
-      console.error('[storage.uploadAvatar] createFile error keys:', Object.keys(createError || {}));
-      
-      // If it failed, try without fileId (let Appwrite generate it)
-      console.log('[storage.uploadAvatar] Retrying without fileId...');
-      try {
-        result = await storage.createFile({
-          bucketId: BUCKET_ID,
-          file: fileObject,
-        });
-        console.log('[storage.uploadAvatar] createFile resolved without fileId');
-      } catch (retryError: any) {
-        console.error('[storage.uploadAvatar] createFile without fileId also failed:', retryError);
-        throw createError; // Throw original error
-      }
+      console.error('[storage.uploadAvatar] createFile failed:', createError);
+      throw createError;
     }
-
-    console.log('[storage.uploadAvatar] Upload result:', result);
-    console.log('[storage.uploadAvatar] Upload result type:', typeof result);
-    console.log('[storage.uploadAvatar] Upload result is null?', result === null);
-    console.log('[storage.uploadAvatar] Upload result is undefined?', result === undefined);
     
     if (result === undefined || result === null) {
       console.error('[storage.uploadAvatar] Storage API returned undefined/null without throwing error');
       throw new Error('Upload failed: Storage API returned undefined. Check bucket permissions and configuration.');
     }
     
-    console.log('[storage.uploadAvatar] Result keys:', Object.keys(result));
-    
     if (!result.$id) {
-      console.error('[storage.uploadAvatar] Result missing $id. Full result:', JSON.stringify(result, null, 2));
+      console.error('[storage.uploadAvatar] Result missing $id');
       throw new Error('Upload failed: File ID not returned from storage');
     }
-
-    console.log('[storage.uploadAvatar] File uploaded successfully:', result.$id);
 
     // Get file URL for viewing
     // Construct the Appwrite Storage file URL
     const fileUrl = `${ENDPOINT}/storage/buckets/${BUCKET_ID}/files/${result.$id}/view?project=${PROJECT_ID}`;
-    
-    console.log('[storage.uploadAvatar] File URL:', fileUrl);
 
     return fileUrl;
   } catch (error: any) {
     console.error('[storage.uploadAvatar] Error uploading avatar:', error);
-    console.error('[storage.uploadAvatar] Error message:', error?.message);
-    console.error('[storage.uploadAvatar] Error code:', error?.code);
-    console.error('[storage.uploadAvatar] Error response:', error?.response);
-    console.error('[storage.uploadAvatar] Full error:', JSON.stringify(error, null, 2));
     
     // Provide more specific error messages
     if (error?.code === 401 || error?.message?.includes('Unauthorized')) {
@@ -138,8 +98,6 @@ export const uploadAvatar = async (fileUri: string, userId: string): Promise<str
  * @param fileId - File ID to delete
  */
 export const deleteAvatar = async (fileId: string): Promise<void> => {
-  console.log('[storage.deleteAvatar] Deleting avatar:', fileId);
-
   if (!BUCKET_ID) {
     const errorMsg = 'Avatar bucket ID not configured. Please check your .env file.';
     console.error('[storage.deleteAvatar]', errorMsg);
@@ -147,15 +105,10 @@ export const deleteAvatar = async (fileId: string): Promise<void> => {
   }
 
   try {
-    await storage.deleteFile({
-      bucketId: BUCKET_ID,
-      fileId: fileId,
-    });
-
-    console.log('[storage.deleteAvatar] Avatar deleted successfully');
+    // deleteFile(bucketId: string, fileId: string)
+    await storage.deleteFile(BUCKET_ID, fileId);
   } catch (error: any) {
     console.error('[storage.deleteAvatar] Error deleting avatar:', error);
-    console.error('[storage.deleteAvatar] Error message:', error?.message);
     // Don't throw if file doesn't exist
     if (error?.code !== 404) {
       throw new Error(error.message || 'Failed to delete avatar');

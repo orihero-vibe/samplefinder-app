@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { SparkleIcon } from '@/icons';
+import { ViewStarIcon } from '@/icons';
 import { Colors } from '@/constants/Colors';
 
 interface RewardsProgressButtonProps {
@@ -10,7 +10,7 @@ interface RewardsProgressButtonProps {
 const RewardsProgressButton: React.FC<RewardsProgressButtonProps> = ({ onPress }) => {
   return (
     <TouchableOpacity onPress={onPress} style={styles.button}>
-      <SparkleIcon size={24} color={Colors.brandPurpleDeep} circleColor={Colors.white} />
+      <ViewStarIcon size={24} color={Colors.blueColorMode} />
       <Text style={styles.text}>View Rewards Progress</Text>
     </TouchableOpacity>
   );
@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 16,
     fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.brandPurpleDeep,
+    color: Colors.blueColorMode,
   },
 });
 

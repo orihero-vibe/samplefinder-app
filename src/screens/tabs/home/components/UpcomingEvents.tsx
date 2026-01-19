@@ -17,6 +17,7 @@ type UpcomingEventsNavigationProp = CompositeNavigationProp<
 export interface EventData {
   id: string;
   name: string;
+  brandName?: string;
   location: string;
   distance: string;
   date: Date | string; // Can be Date object or formatted string
@@ -44,6 +45,7 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events }) => {
           const unifiedEvent: UnifiedEvent = {
             id: event.id,
             name: event.name,
+            brandName: event.brandName,
             location: event.location,
             distance: event.distance,
             time: event.time,
@@ -69,16 +71,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   eventsContainer: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 5,
     paddingBottom: 20,
   },
 });

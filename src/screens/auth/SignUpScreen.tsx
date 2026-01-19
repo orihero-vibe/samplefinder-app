@@ -101,6 +101,7 @@ const SignUpScreen = () => {
           type="date"
           labelColor="#000"
           helpIcon={true}
+          onHelpPress={() => setShowAgeVerificationModal(true)}
           error={!!fieldErrors.dateOfBirth}
           errorMessage={fieldErrors.dateOfBirth}
         />

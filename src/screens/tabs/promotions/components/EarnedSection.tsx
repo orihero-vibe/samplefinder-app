@@ -13,6 +13,7 @@ interface EarnedSectionProps {
   totalPoints: number;
   onTierPress?: (tier: Tier, points: number) => void;
   onPointsPress?: (points: number, tier?: Tier) => void;
+  onViewHistory?: () => void;
   isAmbassador?: boolean;
   isInfluencer?: boolean;
 }
@@ -24,6 +25,7 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
   totalPoints,
   onTierPress,
   onPointsPress,
+  onViewHistory,
   isAmbassador = false,
   isInfluencer = false,
 }) => {
@@ -40,8 +42,7 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
     : tiers[0]; // Default to first tier if none earned
 
   const handleViewHistory = () => {
-    // Handle view history action
-    console.log('View history pressed');
+    onViewHistory?.();
   };
 
   return (

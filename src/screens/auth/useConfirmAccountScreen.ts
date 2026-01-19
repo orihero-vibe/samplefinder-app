@@ -23,7 +23,6 @@ export const useConfirmAccountScreen = () => {
     const initializeOTP = async () => {
       try {
         // Step 1: Get current user from session
-        console.log('[ConfirmAccount] Getting current user from session...');
         // Add a small delay to ensure session is available after navigation
         await new Promise(resolve => setTimeout(resolve, 100));
         const user = await getCurrentUser();
@@ -38,26 +37,17 @@ export const useConfirmAccountScreen = () => {
 
         const userEmail = user.email;
         const userUserId = user.$id;
-        
-        console.log('[ConfirmAccount] User retrieved:', {
-          id: userUserId,
-          email: userEmail,
-        });
 
         // Step 2: Delete the current session
-        console.log('[ConfirmAccount] Deleting current session...');
         try {
           await logout();
-          console.log('[ConfirmAccount] Session deleted successfully');
         } catch (logoutError: any) {
           console.warn('[ConfirmAccount] Error deleting session (may not exist):', logoutError?.message);
           // Continue anyway
         }
 
         // Step 3: Send Email OTP using createEmailToken
-        console.log('[ConfirmAccount] Sending Email OTP...');
         await sendEmailOTP(userUserId, userEmail);
-        console.log('[ConfirmAccount] Email OTP sent successfully');
 
         // Set state
         setEmail(userEmail);
@@ -92,13 +82,10 @@ export const useConfirmAccountScreen = () => {
     setError('');
 
     try {
-      console.log('[ConfirmAccount] Verifying email with code:', code);
       await verifyEmail(userId, code);
-      console.log('[ConfirmAccount] Email verified successfully');
       
       // Initialize push notifications after successful verification
       // This is the right time because we now have a valid session
-      console.log('[ConfirmAccount] Initializing push notifications...');
       initializePushNotifications().catch((error) => {
         console.warn('[ConfirmAccount] Failed to initialize push notifications:', error);
         // Don't block navigation - push notifications are not critical
@@ -128,9 +115,7 @@ export const useConfirmAccountScreen = () => {
     setCode(''); // Clear current code
 
     try {
-      console.log('[ConfirmAccount] Resending verification email...');
       await resendVerificationEmail(userId, email);
-      console.log('[ConfirmAccount] Verification email resent successfully');
       setError(''); // Clear any previous errors
       // Success message could be shown, but we'll just clear errors
     } catch (error: any) {
@@ -148,7 +133,6 @@ export const useConfirmAccountScreen = () => {
   };
 
   const handleCodeComplete = (completedCode: string) => {
-    console.log('Code completed:', completedCode);
     // Code completion is handled - user can now click verify button
   };
 

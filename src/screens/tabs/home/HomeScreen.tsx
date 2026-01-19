@@ -42,6 +42,7 @@ const HomeScreen = () => {
     initialRegion,
     events,
     hasAnyFilters,
+    activeView,
     setBottomSheetIndex,
     handleFilterPress,
     handleCloseFilter,
@@ -109,7 +110,7 @@ const HomeScreen = () => {
 
   return (
     <View style={[styles.container]}>
-      <MainHeader onMapPress={handleMapPress} onListPress={handleListPress} />
+      <MainHeader onMapPress={handleMapPress} onListPress={handleListPress} activeView={activeView} />
 
       <View style={styles.mapContainer}>
         <ClusteredMapView
@@ -163,6 +164,9 @@ const HomeScreen = () => {
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.handleIndicator}
         onChange={(index) => setBottomSheetIndex(index)}
+        activeOffsetY={[-10, 10]}
+        failOffsetX={[-10, 10]}
+        overDragResistanceFactor={0}
       >
         <View style={styles.bottomSheetContent}>
           <View style={styles.filtersContainer}>

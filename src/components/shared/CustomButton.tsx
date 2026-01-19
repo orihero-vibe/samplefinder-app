@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  Dimensions,
 } from 'react-native';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'dark' | 'outline' | 'text';
@@ -175,6 +176,9 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   );
 };
 
+const { height: screenHeight } = Dimensions.get('window');
+const isSmallDevice = screenHeight < 700;
+
 const styles = StyleSheet.create({
   baseButton: {
     borderRadius: 16,
@@ -204,16 +208,16 @@ const styles = StyleSheet.create({
   },
   // Sizes
   smallButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: isSmallDevice ? 6 : 8,
+    paddingHorizontal: isSmallDevice ? 16 : 20,
   },
   mediumButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 40,
+    paddingVertical: isSmallDevice ? 12 : 14,
+    paddingHorizontal: isSmallDevice ? 32 : 40,
   },
   largeButton: {
-    paddingVertical: 18,
-    paddingHorizontal: 50,
+    paddingVertical: isSmallDevice ? 14 : 18,
+    paddingHorizontal: isSmallDevice ? 40 : 50,
   },
   // Width
   fullWidth: {
@@ -242,13 +246,13 @@ const styles = StyleSheet.create({
   },
   // Size text styles
   smallText: {
-    fontSize: 14,
+    fontSize: isSmallDevice ? 13 : 14,
   },
   mediumText: {
-    fontSize: 18,
+    fontSize: isSmallDevice ? 16 : 18,
   },
   largeText: {
-    fontSize: 20,
+    fontSize: isSmallDevice ? 18 : 20,
   },
   // Disabled styles
   disabled: {

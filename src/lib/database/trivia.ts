@@ -36,6 +36,7 @@ export interface GetActiveTriviaResponse {
 export interface SubmitAnswerResult {
   success: boolean;
   isCorrect?: boolean;
+  correctAnswerIndex?: number;
   pointsAwarded?: number;
   message?: string;
   error?: string;
@@ -46,13 +47,7 @@ export interface SubmitAnswerResult {
  * @param userId - The user's profile document ID from user_profiles table
  */
 export const getActiveTrivia = async (userId: string): Promise<TriviaQuestion[]> => {
-  console.log('[trivia.getActiveTrivia] Fetching active trivia for userId:', userId);
-
   const functionId = APPWRITE_EVENTS_FUNCTION_ID || '';
-
-  // #region agent log
-  console.log('[DEBUG-H1-H2] trivia.ts:entry', JSON.stringify({userId,functionId,hasFunctionId:!!functionId}));
-  // #endregion
 
   if (!functionId) {
     throw new Error('APPWRITE_EVENTS_FUNCTION_ID must be configured. Please check your .env file.');
@@ -65,12 +60,6 @@ export const getActiveTrivia = async (userId: string): Promise<TriviaQuestion[]>
   try {
     const requestBody = { userId };
 
-    // #region agent log
-    console.log('[DEBUG-H1] trivia.ts:beforeExec', JSON.stringify({functionId,requestBody,xpath:'/get-active-trivia'}));
-    // #endregion
-
-    console.log('[trivia.getActiveTrivia] Executing function:', functionId);
-
     const execution = await functions.createExecution({
       functionId,
       body: JSON.stringify(requestBody),
@@ -81,13 +70,6 @@ export const getActiveTrivia = async (userId: string): Promise<TriviaQuestion[]>
       },
       async: false,
     });
-
-    // #region agent log
-    console.log('[DEBUG-H1-H3] trivia.ts:afterExec', JSON.stringify({status:execution.status,statusCode:execution.responseStatusCode,responseBodyPreview:execution.responseBody?.substring(0,500)}));
-    // #endregion
-
-    console.log('[trivia.getActiveTrivia] Execution status:', execution.status);
-    console.log('[trivia.getActiveTrivia] Response status code:', execution.responseStatusCode);
 
     // Check if execution was successful
     if (execution.status === 'failed') {
@@ -112,9 +94,6 @@ export const getActiveTrivia = async (userId: string): Promise<TriviaQuestion[]>
     let result: GetActiveTriviaResponse;
     try {
       result = JSON.parse(execution.responseBody);
-      // #region agent log
-      console.log('[DEBUG-H3] trivia.ts:parsed', JSON.stringify({hasSuccess:'success' in result,success:result.success,hasTrivia:'trivia' in result,triviaCount:result.trivia?.length,resultKeys:Object.keys(result)}));
-      // #endregion
     } catch (parseError) {
       console.error('[trivia.getActiveTrivia] Failed to parse response body:', execution.responseBody);
       throw new Error('Invalid JSON response from function');
@@ -137,15 +116,9 @@ export const getActiveTrivia = async (userId: string): Promise<TriviaQuestion[]>
     }
 
     const trivia = result.trivia || [];
-    console.log('[trivia.getActiveTrivia] Trivia fetched successfully:', {
-      count: trivia.length,
-    });
-
     return trivia;
   } catch (error: any) {
     console.error('[trivia.getActiveTrivia] Error fetching trivia:', error);
-    console.error('[trivia.getActiveTrivia] Error message:', error?.message);
-    console.error('[trivia.getActiveTrivia] Error code:', error?.code);
 
     // Re-throw validation errors as-is
     if (error.message?.includes('must be') || error.message?.includes('is required')) {
@@ -167,12 +140,6 @@ export const submitTriviaAnswer = async (
   triviaId: string,
   answerIndex: number
 ): Promise<SubmitAnswerResult> => {
-  console.log('[trivia.submitTriviaAnswer] Submitting answer:', {
-    userId,
-    triviaId,
-    answerIndex,
-  });
-
   const functionId = APPWRITE_EVENTS_FUNCTION_ID || '';
 
   if (!functionId) {
@@ -194,8 +161,6 @@ export const submitTriviaAnswer = async (
   try {
     const requestBody = { userId, triviaId, answerIndex };
 
-    console.log('[trivia.submitTriviaAnswer] Executing function:', functionId);
-
     const execution = await functions.createExecution({
       functionId,
       body: JSON.stringify(requestBody),
@@ -206,9 +171,6 @@ export const submitTriviaAnswer = async (
       },
       async: false,
     });
-
-    console.log('[trivia.submitTriviaAnswer] Execution status:', execution.status);
-    console.log('[trivia.submitTriviaAnswer] Response status code:', execution.responseStatusCode);
 
     // Check if execution was successful
     if (execution.status === 'failed') {
@@ -252,16 +214,9 @@ export const submitTriviaAnswer = async (
       };
     }
 
-    console.log('[trivia.submitTriviaAnswer] Answer submitted successfully:', {
-      isCorrect: result.isCorrect,
-      pointsAwarded: result.pointsAwarded,
-    });
-
     return result;
   } catch (error: any) {
     console.error('[trivia.submitTriviaAnswer] Error submitting answer:', error);
-    console.error('[trivia.submitTriviaAnswer] Error message:', error?.message);
-    console.error('[trivia.submitTriviaAnswer] Error code:', error?.code);
 
     // Re-throw validation errors as-is
     if (error.message?.includes('must be') || error.message?.includes('is required')) {

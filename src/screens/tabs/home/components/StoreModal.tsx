@@ -5,7 +5,7 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Colors } from '@/constants/Colors';
-import { EventCard, UnifiedEvent } from '@/components';
+import { StoreEventCard, StoreEventData } from '@/components';
 import { EventData } from './UpcomingEvents';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { HomeStackParamList } from '@/navigation/HomeStack';
@@ -40,7 +40,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents
 
   if (!store) return null;
 
-  const handleEventPress = (event: UnifiedEvent) => {
+  const handleEventPress = (event: StoreEventData) => {
     // Navigate to BrandDetailsScreen with eventId - it will fetch data from database
     onClose(); // Close modal first
     navigation.navigate('BrandDetails', { eventId: event.id });
@@ -85,26 +85,26 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents
                 <Text style={styles.emptyText}>No events available</Text>
               </View>
             ) : (
-              store.events.map((event) => {
-                const unifiedEvent: UnifiedEvent = {
+              store.events.map((event, index) => {
+                const storeEvent: StoreEventData = {
                   id: event.id,
                   name: event.name,
-                  location: event.location,
-                  distance: event.distance,
-                  time: event.time,
                   date: event.date,
+                  time: event.time,
                   logoURL: event.logoURL,
                 };
                 return (
-                  <EventCard
-                    key={event.id}
-                    event={unifiedEvent}
-                    onPress={handleEventPress}
-                    showDate={true}
-                  />
+                  <React.Fragment key={event.id}>
+                    <StoreEventCard
+                      event={storeEvent}
+                      onPress={handleEventPress}
+                    />
+                    {index < store.events.length - 1 && <View style={styles.separator} />}
+                  </React.Fragment>
                 );
               })
             )}
+            <View style={styles.separator} />
           </ScrollView>
         </View>
       </View>
@@ -124,9 +124,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: 16,
     width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
+    maxWidth: 500,
+    maxHeight: '85%',
     overflow: 'hidden',
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',
@@ -189,6 +190,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.black,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: Colors.brandPurpleDeep,
+    opacity: 0.2,
+    marginVertical: 10,
   },
 });
 

@@ -30,6 +30,7 @@ export const useHomeScreen = () => {
   const [isGeocodingZip, setIsGeocodingZip] = useState(false);
   const [zipCodeError, setZipCodeError] = useState<string | null>(null);
   const [bottomSheetIndex, setBottomSheetIndex] = useState(0);
+  const [activeView, setActiveView] = useState<'map' | 'list'>('map');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   const bottomSheetRef = useRef<any>(null);
   const mapRef = useRef<ClusteredMapView>(null);
@@ -188,11 +189,19 @@ export const useHomeScreen = () => {
           }
 
           if (datesValues.length > 0) {
-            if (!datesValues.includes('all')) {
-              const dateRange = convertDateFilterToRange(datesValues[0]);
-              if (dateRange) {
-                filters.dateRange = dateRange;
-              }
+            // Convert all selected date filters to ranges
+            const dateRanges = datesValues
+              .map(value => convertDateFilterToRange(value))
+              .filter((range): range is { start: string; end: string } => range !== null);
+            
+            if (dateRanges.length > 0) {
+              // Find the earliest start and latest end to create a combined range
+              const allStarts = dateRanges.map(r => new Date(r.start).getTime());
+              const allEnds = dateRanges.map(r => new Date(r.end).getTime());
+              filters.dateRange = {
+                start: new Date(Math.min(...allStarts)).toISOString(),
+                end: new Date(Math.max(...allEnds)).toISOString(),
+              };
             }
           }
 
@@ -277,7 +286,6 @@ export const useHomeScreen = () => {
             }
           }
         } catch (error) {
-          console.log('Could not get user profile for category filtering:', error);
           // If user is not logged in or profile not found, default to false (no adult categories)
           ageRestrictionAccepted = false;
         }
@@ -301,6 +309,15 @@ export const useHomeScreen = () => {
         return;
       }
 
+      // Wait for clients to finish loading if filters are active
+      const hasCategoryFilter = categoriesValues.length > 0;
+      const hasRadiusFilter = radiusValues.length > 0;
+      const hasActiveFilters = hasCategoryFilter || hasRadiusFilter;
+      
+      if (hasActiveFilters && isLoadingClients) {
+        return;
+      }
+
       try {
         setIsLoadingUpcomingEvents(true);
 
@@ -316,7 +333,44 @@ export const useHomeScreen = () => {
           return;
         }
 
-        const transformedEvents: EventData[] = response.events.map((event) => {
+        let filteredEvents = response.events;
+
+        // Apply date filter to events - event must fall within ANY of the selected date ranges
+        if (datesValues.length > 0) {
+          const dateRanges = datesValues
+            .map(value => convertDateFilterToRange(value))
+            .filter((range): range is { start: string; end: string } => range !== null);
+          
+          if (dateRanges.length > 0) {
+            filteredEvents = filteredEvents.filter((event) => {
+              const eventDate = new Date(event.date);
+              // Event passes filter if it falls within ANY of the selected date ranges
+              return dateRanges.some(dateRange => {
+                const startDate = new Date(dateRange.start);
+                const endDate = new Date(dateRange.end);
+                return eventDate >= startDate && eventDate <= endDate;
+              });
+            });
+          }
+        }
+
+        // Apply category and radius filters by only showing events from filtered clients
+        // If any filters are active, only show events from clients that passed the filters
+        if (hasActiveFilters) {
+          if (allClients.length === 0) {
+            // If filters are active but no clients match, show no events
+            filteredEvents = [];
+          } else {
+            // Only show events from filtered clients
+            const filteredClientIds = new Set(allClients.map(client => client.$id));
+            filteredEvents = filteredEvents.filter((event) => {
+              const clientId = event.client?.$id;
+              return clientId && filteredClientIds.has(clientId);
+            });
+          }
+        }
+
+        const transformedEvents: EventData[] = filteredEvents.map((event) => {
           const eventDate = new Date(event.date);
           const formattedDate = eventDate.toLocaleDateString('en-US', {
             month: 'short',
@@ -343,10 +397,15 @@ export const useHomeScreen = () => {
           const formattedDistance = formatEventDistance({ distanceMeters: event.distance });
 
           const location = event.client?.name || event.city || 'Location';
+          // Brand name comes from event.name (event title/brand)
+          const brandName = event.name || 'Brand';
+          // Product name comes from event.products (what's being sampled)
+          const productName = event.products || event.name || 'Product';
 
           return {
             id: event.$id,
-            name: event.products || event.name || 'Brand Product',
+            name: productName,
+            brandName: brandName,
             location,
             distance: formattedDistance,
             date: new Date(event.date),
@@ -365,7 +424,7 @@ export const useHomeScreen = () => {
     };
 
     loadEvents();
-  }, [userLocation]);
+  }, [userLocation, datesValues, categoriesValues, radiusValues, allClients, isLoadingClients]);
 
   const initialRegion = useMemo(() => {
     return {
@@ -393,18 +452,27 @@ export const useHomeScreen = () => {
     setRadiusValues((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
+    setSelectedFilter(null); // Close modal after selection
   };
 
   const handleDatesToggle = (value: string) => {
-    setDatesValues((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
+    // Multi-select behavior: users can select multiple date ranges
+    // "View All" means no filter, so set to empty array
+    if (value === 'all') {
+      setDatesValues([]);
+    } else {
+      setDatesValues((prev) =>
+        prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+      );
+    }
+    setSelectedFilter(null); // Close modal after selection
   };
 
   const handleCategoriesToggle = (value: string) => {
     setCategoriesValues((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
+    setSelectedFilter(null); // Close modal after selection
   };
 
   const handleResetFilters = () => {
@@ -444,10 +512,15 @@ export const useHomeScreen = () => {
           };
 
           const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
+          // Brand name comes from event.name (event title/brand)
+          const brandName = event.name || 'Brand';
+          // Product name comes from event.products (what's being sampled)
+          const productName = event.products || event.name || 'Product';
 
           return {
             id: event.$id,
-            name: event.products || event.name || 'Brand Product',
+            name: productName,
+            brandName: brandName,
             location: marker.title || 'Store Name',
             distance: '0.0 mi away',
             date: new Date(event.date),
@@ -507,11 +580,13 @@ export const useHomeScreen = () => {
   };
 
   const handleListPress = () => {
-    bottomSheetRef.current?.snapToPosition(snapPoints[1]);
+    setActiveView('list');
+    bottomSheetRef.current?.snapToIndex(1);
   };
 
   const handleMapPress = () => {
-    bottomSheetRef.current?.snapToPosition(snapPoints[0]);
+    setActiveView('map');
+    bottomSheetRef.current?.snapToIndex(0);
   };
 
   const hasAnyFilters = radiusValues.length > 0 || datesValues.length > 0 || categoriesValues.length > 0;
@@ -540,6 +615,7 @@ export const useHomeScreen = () => {
     initialRegion,
     events,
     hasAnyFilters,
+    activeView,
     setBottomSheetIndex,
     handleFilterPress,
     handleCloseFilter,

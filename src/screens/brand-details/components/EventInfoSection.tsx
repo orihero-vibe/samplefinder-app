@@ -19,24 +19,25 @@ const styles = StyleSheet.create({
   section: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 20,
-    alignItems: 'center',
+    marginBottom: 28,
+    alignItems: 'flex-start',
     width: '100%',
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
     marginRight: 16,
-    width: 80,
+    width: 90,
     textAlign: 'left',
+    paddingTop: 4,
   },
   eventInfoText: {
     flex: 1,
-    fontSize: 15,
-    fontFamily: 'Quicksand_400Regular',
-    color: Colors.black,
-    lineHeight: 20,
+    fontSize: 17,
+    fontFamily: 'Quicksand_500Medium',
+    color: '#050A24',
+    lineHeight: 24,
   },
 });
 
