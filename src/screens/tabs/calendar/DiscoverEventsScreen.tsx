@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { useDiscoverEventsScreen } from './discover-events/useDiscoverEventsScreen';
@@ -8,6 +9,8 @@ import { EventCard, UnifiedEvent } from '@/components';
 import styles from './discover-events/styles';
 
 const DiscoverEventsScreen = () => {
+  const insets = useSafeAreaInsets();
+  
   const {
     calendarEvents,
     isLoading,
@@ -23,7 +26,7 @@ const DiscoverEventsScreen = () => {
         colors={[Colors.brandPurpleDeep, Colors.brandBlueDeep]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 10 }]}
       >
         <Text style={styles.headerTitle}>Upcoming Events</Text>
       </LinearGradient>

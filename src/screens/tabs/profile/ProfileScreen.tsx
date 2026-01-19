@@ -112,7 +112,7 @@ const ProfileScreen = () => {
         />
         <BrandAmbassadorSection 
           onApplyHerePress={handleApplyHerePress}
-          // isAmbassador={profile?.isAmbassador || false}
+          isAmbassador={profile?.isAmbassador || false}
         />
       </ScrollView>
 

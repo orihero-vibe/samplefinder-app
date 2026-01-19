@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, ImageBackground, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { MapIcon, SampleFinderIcon } from '@/icons';
 
@@ -18,10 +19,12 @@ const MainHeader: React.FC<MainHeaderProps> = ({
   showLeftIcons = true,
   activeView = 'list',
 }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <ImageBackground
       source={require('@/assets/main-header-bg.png')}
-      style={styles.background}
+      style={[styles.background, { paddingTop: insets.top + 10 }]}
       resizeMode="cover"
     >
       <View style={styles.header}>
@@ -47,7 +50,6 @@ const MainHeader: React.FC<MainHeaderProps> = ({
 
 const styles = StyleSheet.create({
   background: {
-    paddingTop: Platform.OS === 'android' ? 30 : 60,
     paddingBottom: 15,
   },
   header: {

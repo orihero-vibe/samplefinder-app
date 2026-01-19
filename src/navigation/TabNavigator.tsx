@@ -56,7 +56,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   return (
     <ImageBackground
       source={require('@/assets/main-footer-bg.png')}
-      style={[styles.background, { paddingBottom: insets.bottom }]}
+      style={[styles.background, { paddingBottom: insets.bottom}]}
       resizeMode="cover"
     >
       <View style={styles.container}>
@@ -123,13 +123,12 @@ const TabNavigator = () => {
 const styles = StyleSheet.create({
   background: {
     paddingBottom: 0,
-    height: 100,
   },
   container: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 8,
     paddingHorizontal: 20,
   },
   tab: {

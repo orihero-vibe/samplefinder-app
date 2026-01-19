@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import CustomInput from '@/components/shared/CustomInput';
@@ -16,8 +17,11 @@ import CustomButton from '@/components/shared/CustomButton';
 import { useEditProfileScreen } from './profile/edit-profile/useEditProfileScreen';
 import { ProfilePictureSection, PasswordSection } from './profile/edit-profile/components';
 import styles from './profile/edit-profile/styles';
+import SampleFinderIcon from '@/icons/SampleFinderIcon';
 
 const EditProfileScreen = () => {
+  const insets = useSafeAreaInsets();
+  
   const {
     isLoading,
     isSaving,
@@ -50,7 +54,7 @@ const EditProfileScreen = () => {
         <StatusBar style="light" />
         <ImageBackground
           source={require('@/assets/main-header-bg.png')}
-          style={styles.headerBackground}
+          style={[styles.headerBackground, { paddingTop: insets.top + 10 }]}
           resizeMode="cover"
         >
           <View style={styles.header}>
@@ -66,8 +70,7 @@ const EditProfileScreen = () => {
           </View>
         </ImageBackground>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.blueColorMode} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <SampleFinderIcon width={160} color="#FFFFFF" />
         </View>
       </View>
     );
@@ -79,7 +82,7 @@ const EditProfileScreen = () => {
         <StatusBar style="light" />
         <ImageBackground
           source={require('@/assets/main-header-bg.png')}
-          style={styles.headerBackground}
+          style={[styles.headerBackground, { paddingTop: insets.top + 10 }]}
           resizeMode="cover"
         >
           <View style={styles.header}>
@@ -113,7 +116,7 @@ const EditProfileScreen = () => {
       <StatusBar style="light" />
       <ImageBackground
         source={require('@/assets/main-header-bg.png')}
-        style={styles.headerBackground}
+        style={[styles.headerBackground, { paddingTop: insets.top + 10 }]}
         resizeMode="cover"
       >
         <View style={styles.header}>
@@ -123,8 +126,7 @@ const EditProfileScreen = () => {
             </TouchableOpacity>
           </View>
           <View style={styles.rightSection}>
-            <Monicon name="mdi:map-marker" size={20} color="#FFFFFF" />
-            <Text style={styles.appTitle}>SampleFinder</Text>
+          <SampleFinderIcon width={160} color="#FFFFFF" />
           </View>
         </View>
       </ImageBackground>

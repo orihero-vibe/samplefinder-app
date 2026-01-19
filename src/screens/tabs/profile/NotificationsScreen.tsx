@@ -7,13 +7,17 @@ import {
   ImageBackground,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { useNotificationsScreen } from './notifications/useNotificationsScreen';
 import { NotificationItem } from './notifications/components';
 import { BellNotificationIcon } from '@/icons/BellNotificationIcon';
 import styles from './notifications/styles';
+import SampleFinderIcon from '@/icons/SampleFinderIcon';
 
 const NotificationsScreen = () => {
+  const insets = useSafeAreaInsets();
+  
   const {
     enablePushNotifications,
     notifications,
@@ -28,7 +32,7 @@ const NotificationsScreen = () => {
       <StatusBar style="light" />
       <ImageBackground
         source={require('@/assets/main-header-bg.png')}
-        style={styles.headerBackground}
+        style={[styles.headerBackground, { paddingTop: insets.top + 10 }]}
         resizeMode="cover"
       >
         <View style={styles.header}>
@@ -38,8 +42,7 @@ const NotificationsScreen = () => {
             </TouchableOpacity>
           </View>
           <View style={styles.rightSection}>
-            <Monicon name="mdi:map-marker" size={20} color="#FFFFFF" />
-            <Text style={styles.appTitle}>SampleFinder</Text>
+          <SampleFinderIcon width={160} color="#FFFFFF" />
           </View>
         </View>
       </ImageBackground>

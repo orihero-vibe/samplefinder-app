@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { BellOutlineIcon } from '@/icons/BellOutlineIcon';
+import SampleFinderIcon from '@/icons/SampleFinderIcon';
 
 interface BackShareHeaderProps {
   onBack?: () => void;
@@ -10,10 +12,12 @@ interface BackShareHeaderProps {
 }
 
 const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNotifications }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <ImageBackground
       source={require('@/assets/main-header-bg.png')}
-      style={styles.headerBackground}
+      style={[styles.headerBackground, { paddingTop: insets.top + 10 }]}
       resizeMode="cover"
     >
       <View style={styles.header}>
@@ -31,8 +35,7 @@ const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNo
           )}
         </View>
         <View style={styles.rightSection}>
-          <Monicon name="mdi:map-marker" size={20} color="#FFFFFF" />
-          <Text style={styles.appTitle}>SampleFinder</Text>
+        <SampleFinderIcon width={160} color="#FFFFFF" />
         </View>
       </View>
     </ImageBackground>
@@ -41,7 +44,6 @@ const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNo
 
 const styles = StyleSheet.create({
   headerBackground: {
-    paddingTop: Platform.OS === 'android' ? 30 : 60,
     paddingBottom: 15,
   },
   header: {
@@ -56,7 +58,6 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   iconButton: {
-    padding: 5,
   },
   rightSection: {
     flexDirection: 'row',
