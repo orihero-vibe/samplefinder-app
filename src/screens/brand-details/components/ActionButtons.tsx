@@ -2,6 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import SmallHeartIcon from '@/icons/SmallHeartIcon';
+import HeartOutlineIcon from '@/icons/HeartOutlineIcon';
+import CalendarIcon from '@/icons/CalendarIcon';
+import { CalendarAddedIcon } from '@/icons';
 
 interface ActionButtonsProps {
   onAddToCalendar: () => void;
@@ -23,11 +27,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onAddToCalendar}
         activeOpacity={0.7}
       >
-        <Monicon 
-          name={isAddedToCalendar ? 'mdi:calendar-check' : 'mdi:calendar-plus'} 
-          size={20} 
-          color={Colors.blueColorMode} 
-        />
+        {isAddedToCalendar ? <CalendarAddedIcon size={20} /> : <CalendarIcon size={20} />} 
         <Text style={styles.actionButtonText}>
           {isAddedToCalendar ? 'Added to Calendar' : 'Add to Calendar'}
         </Text>
@@ -38,11 +38,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onAddFavorite}
         activeOpacity={0.7}
       >
-        <Monicon
-          name={isFavorite ? 'mdi:heart' : 'mdi:heart-outline'}
-          size={20}
-          color={isFavorite ? '#8B1538' : Colors.blueColorMode}
-        />
+        {isFavorite ? <SmallHeartIcon size={16} /> : <HeartOutlineIcon size={16} />} 
         <Text style={styles.actionButtonText}>
           {isFavorite ? 'Favorite Brand' : 'Add Favorite Brand'}
         </Text>

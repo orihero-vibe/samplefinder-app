@@ -29,6 +29,20 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontFamily: 'Quicksand_600SemiBold',
   },
+  viewHistoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginVertical: 20,
+    gap: 8,
+  },
+  viewHistoryText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_600SemiBold',
+    color: Colors.white,
+  },
 });
 
 export default styles;

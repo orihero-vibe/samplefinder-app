@@ -32,6 +32,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_700Bold',
     color: '#FFFFFF',
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
@@ -45,12 +48,21 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 20,
     marginTop: 10,
+    gap: 12,
   },
   saveButton: {
     backgroundColor: Colors.blueColorMode,
   },
   saveButtonText: {
     color: Colors.white,
+  },
+  deleteButton: {
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderColor: Colors.blueColorMode,
+  },
+  deleteButtonText: {
+    color: Colors.blueColorMode,
   },
   loadingContainer: {
     flex: 1,
@@ -94,6 +106,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_500Medium',
     color: '#FF6B6B',
     textAlign: 'center',
+  },
+  logOutButton: {
+    padding: 5,
+    alignSelf: 'flex-end',
+    marginRight: 20,
+    marginTop: 10,
+  },
+  logOutText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.grayText,
   },
 });
 

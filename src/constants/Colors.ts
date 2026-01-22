@@ -25,6 +25,7 @@ export const Colors = {
   pinDarkBlue: '#1E0E50',
   pinBlueBlack: '#050A24',
   grayText: '#676767',
+  gray:"#C2C1C1",
 
   // Color Mode
   blueColorMode: '#1D0A74',

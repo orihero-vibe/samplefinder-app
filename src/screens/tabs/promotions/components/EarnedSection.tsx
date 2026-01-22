@@ -13,7 +13,6 @@ interface EarnedSectionProps {
   totalPoints: number;
   onTierPress?: (tier: Tier, points: number) => void;
   onPointsPress?: (points: number, tier?: Tier) => void;
-  onViewHistory?: () => void;
   isAmbassador?: boolean;
   isInfluencer?: boolean;
 }
@@ -25,7 +24,6 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
   totalPoints,
   onTierPress,
   onPointsPress,
-  onViewHistory,
   isAmbassador = false,
   isInfluencer = false,
 }) => {
@@ -40,10 +38,6 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
   const currentTier = earnedTiers.length > 0 
     ? earnedTiers[earnedTiers.length - 1] // Get the most recent earned tier
     : tiers[0]; // Default to first tier if none earned
-
-  const handleViewHistory = () => {
-    onViewHistory?.();
-  };
 
   return (
     <View style={styles.card}>
@@ -92,20 +86,26 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
       </TouchableOpacity>
 
       {/* Certifications */}
-      <View style={styles.certificationsContainer}>
-        <View style={styles.certificationRow}>
-          <CertifiedBrandAmbassadorIcon size={50} disabled={!isAmbassador} />
-          <Text style={[styles.certificationText, !isAmbassador && { color: '#999999' }]}>
-            Certified Brand Ambassador
-          </Text>
+      {(isAmbassador || isInfluencer) && (
+        <View style={styles.certificationsContainer}>
+          {isAmbassador && (
+            <View style={styles.certificationRow}>
+              <CertifiedBrandAmbassadorIcon size={50} disabled={false} />
+              <Text style={styles.certificationText}>
+                Certified Brand Ambassador
+              </Text>
+            </View>
+          )}
+          {isInfluencer && (
+            <View style={styles.certificationRow}>
+              <CertifiedInfluencerIcon size={50} disabled={false} />
+              <Text style={styles.certificationText}>
+                Certified Influencer
+              </Text>
+            </View>
+          )}
         </View>
-        <View style={styles.certificationRow}>
-          <CertifiedInfluencerIcon size={50} disabled={!isInfluencer} />
-          <Text style={[styles.certificationText, !isInfluencer && { color: '#999999' }]}>
-            Certified Influencer
-          </Text>
-        </View>
-      </View>
+      )}
 
       {/* Activity Badges */}
       <View style={styles.activityBadgesContainer}>
@@ -118,13 +118,6 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
           <BadgeItem key={badge.id} badge={badge} color={Colors.pinDarkBlue} />
         ))}
       </View>
-
-      {/* View History Button */}
-      <TouchableOpacity style={styles.viewHistoryButton} onPress={handleViewHistory}>
-        <Monicon name="mdi:refresh" size={20} color={Colors.pinDarkBlue} />
-        <View style={styles.viewHistoryTextSpacer} />
-        <Text style={styles.viewHistoryText}>View History</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -221,19 +214,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
     marginBottom: 16,
-  },
-  viewHistoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  viewHistoryTextSpacer: {
-    width: 8,
-  },
-  viewHistoryText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.pinDarkBlue,
   },
 });
 

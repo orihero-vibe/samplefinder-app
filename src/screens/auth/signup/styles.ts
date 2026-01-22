@@ -8,13 +8,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontFamily: 'Quicksand_700Bold',
-    color: '#2D1B69',
+    color: '#fff',
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 30,
   },
   formContainer: {
     width: '100%',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    width: '100%',
+  },
+  nameInput: {
+    flex: 1,
   },
   errorContainer: {
     marginTop: 12,
@@ -24,7 +33,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#FF6B6B',
     fontSize: 14,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Quicksand_700Bold',
     textAlign: 'center',
   },
   buttonContainer: {
@@ -45,19 +54,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   signInPrompt: {
-    color: '#666',
+    color: '#fff',
     fontSize: 16,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_700Bold',
   },
   signInLink: {
-    color: '#2D1B69',
+    color: '#fff',
     fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Quicksand_700Bold',
   },
   termsText: {
-    color: '#999',
+    color: '#fff',
     fontSize: 12,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_700Bold',
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 20,
@@ -75,9 +84,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   legalButtonText: {
-    color: '#2D1B69',
+    color: '#fff',
     fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+    fontFamily: 'Quicksand_700Bold',
     textDecorationLine: 'underline',
   },
 });

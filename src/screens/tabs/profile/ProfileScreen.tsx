@@ -6,6 +6,7 @@ import { Colors } from '@/constants/Colors';
 import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
 import ReferFriendSuccessBottomSheet from '@/components/shared/ReferFriendSuccessBottomSheet';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 import { calculateTierStatus } from '@/lib/database';
 import {
   TopLinks,
@@ -27,6 +28,8 @@ const ProfileScreen = () => {
     statistics,
     isLoading,
     error,
+    isLoggingOut,
+    showLogoutModal,
     formattedDOB,
     referralCode,
     referFriendBottomSheetRef,
@@ -39,6 +42,8 @@ const ProfileScreen = () => {
     handleReferSuccessClose,
     handleViewRewardsFromSuccess,
     handleLogOutPress,
+    handleConfirmLogout,
+    handleCancelLogout,
     handleEditProfilePress,
     handleViewRewardsPress,
     handleNotificationsPress,
@@ -130,6 +135,19 @@ const ProfileScreen = () => {
         points={100}
         onClose={handleReferSuccessClose}
         onViewRewards={handleViewRewardsFromSuccess}
+      />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
+        visible={showLogoutModal}
+        title="Are you sure you want to logout?"
+        description="You will need to sign in again to access your account."
+        confirmText="Yes, Logout"
+        cancelText="No, Stay Logged In"
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCancelLogout}
+        isLoading={isLoggingOut}
+        loadingText="Logging out..."
       />
     </View>
   );

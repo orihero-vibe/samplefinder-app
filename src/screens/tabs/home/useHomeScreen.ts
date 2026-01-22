@@ -29,14 +29,26 @@ export const useHomeScreen = () => {
   const [showZipCodeModal, setShowZipCodeModal] = useState(false);
   const [isGeocodingZip, setIsGeocodingZip] = useState(false);
   const [zipCodeError, setZipCodeError] = useState<string | null>(null);
-  const [bottomSheetIndex, setBottomSheetIndex] = useState(0);
-  const [activeView, setActiveView] = useState<'map' | 'list'>('map');
+  const [bottomSheetIndex, setBottomSheetIndex] = useState(1);
+  const [activeView, setActiveView] = useState<'map' | 'list'>('list');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
+  const [userIsAdult, setUserIsAdult] = useState<boolean>(false);
   const bottomSheetRef = useRef<any>(null);
   const mapRef = useRef<ClusteredMapView>(null);
 
   // Snap points for the bottom sheet - collapsed shows only filters, expanded shows events + filters
-  const snapPoints = useMemo(() => ['12%', Platform.OS === 'android' ? '90%' : '86%'], []);
+  const snapPoints = useMemo(() => ['12%', '86%'], []);
+
+  // Ensure bottom sheet opens at index 1 (expanded) on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (bottomSheetRef.current) {
+        bottomSheetRef.current.snapToIndex(1);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Helper function to convert date filter values to date ranges
   const convertDateFilterToRange = (dateValue: string): { start: string; end: string } | null => {
@@ -271,29 +283,48 @@ export const useHomeScreen = () => {
     setMarkers(clientMarkers);
   }, [allClients]);
 
+  // Fetch user profile to check isAdult field
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const user = await getCurrentUser();
+        console.log('[HomeScreen] Current user:', user?.$id);
+        if (user?.$id) {
+          const profile = await getUserProfile(user.$id);
+          console.log('[HomeScreen] User profile fetched:', {
+            profileId: profile?.$id,
+            isAdult: profile?.isAdult,
+            username: profile?.username
+          });
+          setUserIsAdult(profile?.isAdult || false);
+        } else {
+          console.log('[HomeScreen] No current user found');
+          setUserIsAdult(false);
+        }
+      } catch (error) {
+        console.error('[HomeScreen] Error loading user profile:', error);
+        setUserIsAdult(false);
+      }
+    };
+
+    loadUserProfile();
+  }, []);
+
+  // Load categories based on user's isAdult status
   useEffect(() => {
     const loadCategories = async () => {
       try {
         setIsLoadingCategories(true);
-        // Get user's age restriction acceptance status
-        let ageRestrictionAccepted: boolean | undefined = undefined;
-        try {
-          const currentUser = await getCurrentUser();
-          if (currentUser) {
-            const userProfile = await getUserProfile(currentUser.$id);
-            if (userProfile) {
-              ageRestrictionAccepted = userProfile.ageRestrictionAccepted || false;
-            }
-          }
-        } catch (error) {
-          // If user is not logged in or profile not found, default to false (no adult categories)
-          ageRestrictionAccepted = false;
-        }
-        
-        const fetchedCategories = await fetchCategories(ageRestrictionAccepted);
+        console.log('[HomeScreen] Loading categories with userIsAdult:', userIsAdult);
+        // Use user's isAdult field to determine if adult categories should be shown
+        const fetchedCategories = await fetchCategories(userIsAdult);
+        console.log('[HomeScreen] Categories fetched:', {
+          count: fetchedCategories.length,
+          categories: fetchedCategories.map(c => ({ name: c.name, isAdult: c.isAdult }))
+        });
         setCategories(fetchedCategories);
       } catch (error) {
-        console.error('Error loading categories:', error);
+        console.error('[HomeScreen] Error loading categories:', error);
         setCategories([]);
       } finally {
         setIsLoadingCategories(false);
@@ -301,7 +332,7 @@ export const useHomeScreen = () => {
     };
 
     loadCategories();
-  }, []);
+  }, [userIsAdult]);
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -449,30 +480,31 @@ export const useHomeScreen = () => {
   };
 
   const handleRadiusToggle = (value: string) => {
+    // Single-select behavior: only one radius can be selected at a time
     setRadiusValues((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+      prev.includes(value) ? [] : [value]
     );
-    setSelectedFilter(null); // Close modal after selection
+    // Keep modal open for user to review selection
   };
 
   const handleDatesToggle = (value: string) => {
-    // Multi-select behavior: users can select multiple date ranges
+    // Single-select behavior: only one date range can be selected at a time
     // "View All" means no filter, so set to empty array
     if (value === 'all') {
       setDatesValues([]);
     } else {
       setDatesValues((prev) =>
-        prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+        prev.includes(value) ? [] : [value]
       );
     }
-    setSelectedFilter(null); // Close modal after selection
+    // Keep modal open for user to review selection
   };
 
   const handleCategoriesToggle = (value: string) => {
     setCategoriesValues((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
-    setSelectedFilter(null); // Close modal after selection
+    // Keep modal open for multi-select
   };
 
   const handleResetFilters = () => {

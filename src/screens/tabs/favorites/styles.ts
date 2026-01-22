@@ -37,9 +37,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   motivationalText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_400Regular',
-    color: Colors.black,
+    fontSize: 16,
+    fontFamily: 'Quicksand_600SemiBold',
+    color: Colors.pinBlueBlack,
     textAlign: 'center',
     lineHeight: 20,
   },

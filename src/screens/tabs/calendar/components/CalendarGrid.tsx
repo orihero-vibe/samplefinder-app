@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 
 interface CalendarEvent {
   id: string;
@@ -20,6 +21,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   events,
   onDateSelect,
 }) => {
+  const { isSavedToCalendar } = useCalendarEventsStore();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -46,7 +48,9 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   const hasEvent = (day: number): boolean => {
     return monthEvents.some((event) => {
       const eventDate = normalizeDate(event.date);
-      return eventDate.getDate() === day;
+      const isOnDay = eventDate.getDate() === day;
+      const isSaved = isSavedToCalendar(event.id);
+      return isOnDay && isSaved;
     });
   };
 
@@ -147,6 +151,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                       styles.eventDot,
                       selected && styles.selectedEventDot,
                       today && !selected && styles.todayEventDot,
+                      pastDate && !selected && !today && styles.pastEventDot,
                     ]}
                   />
                 )}
@@ -161,7 +166,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
     paddingVertical: 10,
   },
   daysOfWeekContainer: {
@@ -175,7 +180,7 @@ const styles = StyleSheet.create({
   dayOfWeekText: {
     fontSize: 14,
     fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.brandPurpleDeep,
+    color: Colors.blueColorMode,
   },
   grid: {
     flexDirection: 'row',
@@ -189,29 +194,28 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   dateContainer: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 56,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
+    justifyContent: 'space-between',
+    paddingTop:4,
   },
   selectedDateContainer: {
-    backgroundColor: Colors.brandBlueBright,
+    backgroundColor: Colors.blueColorMode,
   },
   dateText: {
     fontSize: 16,
     fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.brandPurpleDeep,
+    color: Colors.blueColorMode,
   },
   selectedDateText: {
     color: Colors.white,
   },
   todayDateContainer: {
-    borderWidth: 2,
-    borderColor: Colors.brandBlueBright,
+    backgroundColor: Colors.blueColorMode,
   },
   todayDateText: {
-    color: Colors.brandBlueBright,
+    color: Colors.white,
   },
   pastDateText: {
     color: '#CCCCCC',
@@ -222,13 +226,17 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.brandPurpleDeep,
+    backgroundColor: Colors.blueColorMode,
+    marginBottom:10,
   },
   selectedEventDot: {
     backgroundColor: Colors.white,
   },
   todayEventDot: {
-    backgroundColor: Colors.brandBlueBright,
+    backgroundColor: Colors.white,
+  },
+  pastEventDot: {
+    backgroundColor: Colors.gray,
   },
 });
 

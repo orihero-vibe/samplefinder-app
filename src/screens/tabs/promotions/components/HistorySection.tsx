@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { SparkleIcon } from '@/icons';
+import { HistoryIcon } from '@/icons';
 import HistoryItem, { HistoryItemData } from './HistoryItem';
 
 interface HistorySectionProps {
@@ -10,58 +9,79 @@ interface HistorySectionProps {
 }
 
 const HistorySection: React.FC<HistorySectionProps> = ({ historyItems }) => {
-  if (historyItems.length === 0) {
-    return null;
-  }
-
   return (
-    <View style={styles.container}>
-      {/* Section Header */}
-      <View style={styles.header}>
-        <View style={styles.headerIconContainer}>
-          <View style={styles.headerIcon}>
-            <Monicon name="streamline:star-2-remix" size={24} color={Colors.pinDarkBlue} />
-          </View>
+    <View style={styles.wrapper}>
+      <View style={styles.container}>
+        {/* Section Header */}
+        <View style={styles.header}>
+          <HistoryIcon size={40} />
+          <Text style={styles.headerTitle}>YOUR HISTORY</Text>
         </View>
-        <Text style={styles.headerTitle}>YOUR HISTORY</Text>
-      </View>
 
-      {/* History Items */}
-      <View style={styles.itemsContainer}>
-        {historyItems.map((item, index) => (
-          <HistoryItem key={item.id} item={item} defaultExpanded={index === 0 && !!item.review} />
-        ))}
+        {/* History Items or Empty State */}
+      {historyItems.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateTitle}>No History Yet</Text>
+          <Text style={styles.emptyStateText}>
+            Keep sampling and earning badges & points!{'\n'}
+            Come back to track your progress.
+          </Text>
+        </View>
+        ) : (
+          <View style={styles.itemsContainer}>
+            {historyItems.map((item, index) => (
+              <HistoryItem key={item.id} item={item} defaultExpanded={index === 0 && !!item.review} />
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     paddingHorizontal: 20,
     marginBottom: 20,
+    marginTop: 20,
+  },
+  container: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 20,
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerIconContainer: {
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  headerIcon: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 24,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinDarkBlue,
+    marginTop: 8,
   },
   itemsContainer: {
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyIcon: {
+    opacity: 0.3,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontFamily: 'Quicksand_700Bold',
+    color: Colors.pinDarkBlue,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.pinDarkBlue,
+    textAlign: 'center',
+    lineHeight: 20,
+    opacity: 0.7,
   },
 });
 

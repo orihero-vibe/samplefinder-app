@@ -11,6 +11,7 @@ import { CalendarStackParamList } from '@/navigation/CalendarStack';
 import { fetchAllEvents, fetchClients, EventRow, ClientData } from '@/lib/database';
 import { convertEventToCalendarEventDetail, extractClientFromEvent } from '@/utils/brandUtils';
 import { CalendarEvent, CalendarEventDetail } from './components';
+import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 
 type CalendarScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>,
@@ -29,6 +30,9 @@ export const useCalendarScreen = () => {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Subscribe to saved events from store to trigger re-renders
+  const savedEvents = useCalendarEventsStore((state) => state.savedEvents);
 
   useEffect(() => {
     const getCurrentLocation = async () => {
@@ -65,12 +69,18 @@ export const useCalendarScreen = () => {
           fetchClients(),
         ]);
 
-        const simpleEvents: CalendarEvent[] = eventRows.map((event) => ({
+        // Get user's saved event IDs from store
+        const savedEventIds = useCalendarEventsStore.getState().savedEvents.map((e) => e.eventId);
+
+        // Filter to only include events the user has saved
+        const userSavedEventRows = eventRows.filter((event) => savedEventIds.includes(event.$id));
+
+        const simpleEvents: CalendarEvent[] = userSavedEventRows.map((event) => ({
           id: event.$id,
           date: new Date(event.date),
         }));
 
-        const detailed: CalendarEventDetail[] = eventRows.map((event) => {
+        const detailed: CalendarEventDetail[] = userSavedEventRows.map((event) => {
           let client = extractClientFromEvent(event);
           
           if (!client || !client.location) {
@@ -99,41 +109,73 @@ export const useCalendarScreen = () => {
     };
 
     loadEvents();
-  }, [userLocation]);
+  }, [userLocation, savedEvents]);
 
   const handlePreviousMonth = () => {
     if (viewType === 'list') {
-      const displayDate = selectedDate || currentDate;
-      const newDate = new Date(displayDate);
-      newDate.setDate(newDate.getDate() - 1);
-      setSelectedDate(newDate);
-      setCurrentDate(newDate);
+      // Only navigate days if a date is selected (Day View)
+      if (selectedDate) {
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() - 1);
+        setSelectedDate(newDate);
+        setCurrentDate(newDate);
+      }
+      // Don't navigate in Upcoming Events view (no date selected)
     } else {
-      const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-      setCurrentDate(newDate);
-      setSelectedDate(null);
+      // Calendar mode
+      if (selectedDate) {
+        // Week View - go to previous week
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() - 7);
+        setSelectedDate(newDate);
+        setCurrentDate(newDate);
+      } else {
+        // Calendar Grid - go to previous month
+        const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+        setCurrentDate(newDate);
+        setSelectedDate(null);
+      }
     }
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   const handleNextMonth = () => {
     if (viewType === 'list') {
-      const displayDate = selectedDate || currentDate;
-      const newDate = new Date(displayDate);
-      newDate.setDate(newDate.getDate() + 1);
-      setSelectedDate(newDate);
-      setCurrentDate(newDate);
+      // Only navigate days if a date is selected (Day View)
+      if (selectedDate) {
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() + 1);
+        setSelectedDate(newDate);
+        setCurrentDate(newDate);
+      }
+      // Don't navigate in Upcoming Events view (no date selected)
     } else {
-      const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-      setCurrentDate(newDate);
-      setSelectedDate(null);
+      // Calendar mode
+      if (selectedDate) {
+        // Week View - go to next week
+        const newDate = new Date(selectedDate);
+        newDate.setDate(newDate.getDate() + 7);
+        setSelectedDate(newDate);
+        setCurrentDate(newDate);
+      } else {
+        // Calendar Grid - go to next month
+        const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+        setCurrentDate(newDate);
+        setSelectedDate(null);
+      }
     }
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
-    bottomSheetRef.current?.expand();
+    // Don't open bottom sheet anymore, we'll show week view instead
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleBackToCalendar = () => {
+    setSelectedDate(null);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   const handleCloseBottomSheet = () => {
@@ -142,6 +184,8 @@ export const useCalendarScreen = () => {
 
   const handleViewToggle = (newViewType: 'calendar' | 'list') => {
     setViewType(newViewType);
+    // When switching to list view, keep selected date to show day view
+    // When switching to calendar view, keep selected date to show week view
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
@@ -206,6 +250,7 @@ export const useCalendarScreen = () => {
     handleCloseBottomSheet,
     handleViewToggle,
     handleDiscoverPress,
+    handleBackToCalendar,
   };
 };
 

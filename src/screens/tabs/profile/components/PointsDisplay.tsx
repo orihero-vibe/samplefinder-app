@@ -21,10 +21,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   pointsValue: {
-    fontSize: 64,
+    fontSize: 50,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.brandPurpleBright,
-    marginBottom: 4,
   },
   pointsLabel: {
     fontSize: 16,

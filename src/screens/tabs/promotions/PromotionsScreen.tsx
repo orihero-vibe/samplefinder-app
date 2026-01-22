@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { ScrollView, View, ActivityIndicator, Text } from 'react-native';
+import { ScrollView, View, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Monicon } from '@monicon/native';
 import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
 import ReferFriendSuccessBottomSheet from '@/components/shared/ReferFriendSuccessBottomSheet';
 import BackShareHeader from '@/components/wrappers/BackShareHeader';
@@ -118,10 +119,16 @@ const PromotionsScreen = () => {
                   totalPoints={totalPoints}
                   onTierPress={handleTierPress}
                   onPointsPress={handlePointsPress}
-                  onViewHistory={handleViewHistory}
                   isAmbassador={isAmbassador}
                   isInfluencer={isInfluencer}
                 />
+                
+                {/* View History Button */}
+                <TouchableOpacity style={styles.viewHistoryButton} onPress={handleViewHistory}>
+                  <Monicon name="mdi:refresh" size={20} color={Colors.white} />
+                  <Text style={styles.viewHistoryText}>View History</Text>
+                </TouchableOpacity>
+                
                 <View ref={historyRef} collapsable={false}>
                   <HistorySection historyItems={historyItems} />
                 </View>

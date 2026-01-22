@@ -12,12 +12,14 @@ import CustomButton from '@/components/shared/CustomButton';
 import { useSignUpScreen } from './useSignUpScreen';
 import { AgeVerificationModal, TermsModal, PrivacyModal, PushNotificationModal } from './signup/components';
 import styles from './signup/styles';
+import { Colors } from '@/constants/Colors';
 
 const SignUpScreen = () => {
   const {
     firstName,
     lastName,
     phoneNumber,
+    zipCode,
     dateOfBirth,
     username,
     email,
@@ -35,6 +37,7 @@ const SignUpScreen = () => {
     setFirstName,
     setLastName,
     setPhoneNumber,
+    setZipCode,
     setDateOfBirth,
     setUsername,
     setEmail,
@@ -57,41 +60,48 @@ const SignUpScreen = () => {
 
   return (
     <ScreenWrapper
-      contentBackgroundColor="#fff"
       contentContainerStyle={styles.contentContainer}
     >
       <StatusBar style="light" />
       <Text style={styles.title}>GET STARTED!</Text>
 
       <View style={styles.formContainer}>
-        <CustomInput
-          label="First Name"
-          value={firstName}
-          onChangeText={setFirstName}
-          type="text"
-          labelColor="#000"
-          error={!!fieldErrors.firstName}
-          errorMessage={fieldErrors.firstName}
-        />
+        <View style={styles.nameRow}>
+          <CustomInput
+            label="First Name"
+            value={firstName}
+            onChangeText={setFirstName}
+            type="text"
+            labelColor="white"
+            inputBorderColor={Colors.blueColorMode}
+            inputBorderWidth={3}
+            error={!!fieldErrors.firstName}
+            containerStyle={styles.nameInput}
+          />
 
-        <CustomInput
-          label="Last Name"
-          value={lastName}
-          onChangeText={setLastName}
-          type="text"
-          labelColor="#000"
-          error={!!fieldErrors.lastName}
-          errorMessage={fieldErrors.lastName}
-        />
+          <CustomInput
+            label="Last Name"
+            value={lastName}
+            onChangeText={setLastName}
+            type="text"
+            labelColor="white"
+            inputBorderColor={Colors.blueColorMode}
+            inputBorderWidth={3}
+            error={!!fieldErrors.lastName}
+            containerStyle={styles.nameInput}
+          />
+        </View>
 
         <CustomInput
           label="Phone Number"
           value={phoneNumber}
           onChangeText={setPhoneNumber}
           type="phone"
-          labelColor="#000"
+          labelColor="white"
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={3}
           error={!!fieldErrors.phoneNumber}
-          errorMessage={fieldErrors.phoneNumber}
+  
         />
 
         <CustomInput
@@ -99,11 +109,13 @@ const SignUpScreen = () => {
           value={dateOfBirth}
           onChangeText={setDateOfBirth}
           type="date"
-          labelColor="#000"
+          labelColor="white"
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={3}
           helpIcon={true}
           onHelpPress={() => setShowAgeVerificationModal(true)}
           error={!!fieldErrors.dateOfBirth}
-          errorMessage={fieldErrors.dateOfBirth}
+  
         />
 
         <CustomInput
@@ -111,9 +123,24 @@ const SignUpScreen = () => {
           value={username}
           onChangeText={setUsername}
           type="text"
-          labelColor="#000"
+          labelColor="white"
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={3}
           error={!!fieldErrors.username}
-          errorMessage={fieldErrors.username || (isCheckingUsername ? 'Checking availability...' : undefined)}
+        
+        />
+
+        <CustomInput
+          label="Zip Code"
+          value={zipCode}
+          onChangeText={setZipCode}
+          type="numeric"
+          labelColor="white"
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={3}
+          error={!!fieldErrors.zipCode}
+          placeholder="12345"
+          maxLength={5}
         />
 
         <CustomInput
@@ -121,9 +148,10 @@ const SignUpScreen = () => {
           value={email}
           onChangeText={setEmail}
           type="email"
-          labelColor="#000"
+          labelColor="white"
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={3}
           error={!!fieldErrors.email}
-          errorMessage={fieldErrors.email}
         />
 
         <CustomInput
@@ -131,9 +159,10 @@ const SignUpScreen = () => {
           value={password}
           onChangeText={setPassword}
           type="password"
-          labelColor="#000"
+          labelColor="white"
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={3}
           error={!!fieldErrors.password}
-          errorMessage={fieldErrors.password}
         />
 
         {showError && (

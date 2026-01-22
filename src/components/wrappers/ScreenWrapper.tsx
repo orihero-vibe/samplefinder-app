@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import AuthHeader from '@/components/wrappers/AuthHeader';
 import Footer from '@/components/wrappers/Footer';
 
@@ -39,7 +40,20 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
 
   if (scrollable && keyboardAvoiding) {
     return (
-      <View style={styles.container}>
+      <LinearGradient
+      colors={[
+        '#6C0331',
+        '#4B0350',
+        '#2A0458',
+        '#0F0556',
+        '#000047',
+        '#080860',
+      ]}
+      locations={[0, 0.2, 0.45, 0.65, 0.85, 1]}
+      start={{ x: 0, y: 1 }}
+      end={{ x: 1, y: 0 }}
+      style={{ flex: 1 }}
+    >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -52,13 +66,26 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           </ScrollView>
         </KeyboardAvoidingView>
         <Footer />
-      </View>
+      </LinearGradient>
     );
   }
 
   if (scrollable) {
     return (
-      <View style={styles.container}>
+      <LinearGradient
+  colors={[
+    '#6C0331',
+    '#4B0350',
+    '#2A0458',
+    '#0F0556',
+    '#000047',
+    '#080860',
+  ]}
+  locations={[0, 0.2, 0.45, 0.65, 0.85, 1]}
+  start={{ x: 0, y: 1 }}
+  end={{ x: 1, y: 0 }}
+  style={{ flex: 1 }}
+>
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { paddingBottom: totalFooterHeight + 16 }]}
           showsVerticalScrollIndicator={false}
@@ -66,15 +93,28 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           {content}
         </ScrollView>
         <Footer />
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+  colors={[
+    '#6C0331',
+    '#4B0350',
+    '#2A0458',
+    '#0F0556',
+    '#000047',
+    '#080860',
+  ]}
+  locations={[0, 0.2, 0.45, 0.65, 0.85, 1]}
+  start={{ x: 0, y: 1 }}
+  end={{ x: 1, y: 0 }}
+  style={{ flex: 1 }}
+>
       {content}
       <Footer />
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -85,7 +125,6 @@ const isMediumDevice = screenHeight >= 700 && screenHeight < 800;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2D1B69',
   },
   keyboardView: {
     flex: 1,

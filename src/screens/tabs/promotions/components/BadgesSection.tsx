@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { CertifiedInfluencerIcon, CertifiedBrandAmbassadorIcon } from '@/icons';
@@ -34,22 +35,32 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
   };
 
   return (
-    <View style={styles.card}>
-      {/* Section Header */}
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionIconContainer}>
-          <View style={styles.sectionIcon}>
-            <Monicon name="streamline:star-2-remix" size={24} color={Colors.pinDarkBlue} />
+    <View style={styles.cardWrapper}>
+      <LinearGradient
+        colors={[Colors.badgePurpleLight, Colors.badgePurpleLight , Colors.blueColorMode, Colors.blueColorMode]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBorderContainer}
+      >
+        <View style={styles.card}>
+          {/* Section Header */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconContainer}>
+              <View style={styles.sectionIcon}>
+                <Monicon name="streamline:star-2-remix" size={24} color={Colors.pinDarkBlue} />
+              </View>
+              <Text style={styles.sectionTitle}>BADGES</Text>
+            </View>
+            <Text style={styles.sectionDescription}>
+              Earn badges as you sample and leave reviews! You'll earn points as you go.
+            </Text>
           </View>
-          <Text style={styles.sectionTitle}>BADGES</Text>
-        </View>
-        <Text style={styles.sectionDescription}>
-          Earn badges as you sample and leave reviews! You'll earn points as you go.
-        </Text>
-      </View>
 
-      {/* Event Check-in Progress */}
-      <View style={styles.progressSection}>
+          {/* Gradient Border Line */}
+          <View style={styles.gradientBorder}/>
+
+          {/* Event Check-in Progress */}
+          <View style={styles.progressSection}>
         <Text style={styles.progressText}>
           You've checked in at <Text style={styles.boldText}>{eventCheckIns}</Text> events!
         </Text>
@@ -94,22 +105,25 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
         </View>
       </View>
 
-      {/* Badge Requirements Modal */}
-      <BadgeRequirementsModal
-        visible={modalVisible}
-        onClose={handleCloseModal}
-      />
+          {/* Badge Requirements Modal */}
+          <BadgeRequirementsModal
+            visible={modalVisible}
+            onClose={handleCloseModal}
+          />
+        </View>
+      </LinearGradient>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 20,
+  cardWrapper: {
     marginHorizontal: 20,
     marginBottom: 20,
+  },
+  gradientBorderContainer: {
+    borderRadius: 16,
+    padding: 4,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -119,9 +133,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+  },
   sectionHeader: {
-    marginBottom: 20,
     flexDirection: 'row',
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  gradientBorder: {
+    height: 5,
+    marginBottom: 20,
+    backgroundColor: Colors.badgePurpleLight,
   },
   sectionIconContainer: {
     alignItems: 'center',
@@ -156,6 +181,7 @@ const styles = StyleSheet.create({
   progressSection: {
     marginBottom: 20,
     paddingTop: 20,
+    paddingHorizontal: 20,
   },
   progressText: {
     fontSize: 14,
@@ -175,6 +201,8 @@ const styles = StyleSheet.create({
   },
   identifierSection: {
     marginTop: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   identifierHeader: {
     flexDirection: 'row',

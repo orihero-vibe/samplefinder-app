@@ -12,6 +12,10 @@ export type { StoreEventData } from './shared/StoreEventCard';
 export { default as ReviewModal } from './shared/ReviewModal';
 export { default as PointsEarnedModal } from './shared/PointsEarnedModal';
 export { default as CustomSplashScreen } from './shared/CustomSplashScreen';
+export { default as ConfirmationModal } from './shared/ConfirmationModal';
+export type { ConfirmationModalProps } from './shared/ConfirmationModal';
+export { default as CloseIcon } from './shared/CloseIcon';
+export { default as SealCheckLightIcon } from './shared/SealCheckLightIcon';
 export { TriviaModal } from './trivia';
 export type { TriviaQuestion } from './trivia';
 

@@ -17,21 +17,31 @@ type EventListNavigationProp = CompositeNavigationProp<
 
 interface EventListProps {
   events: CalendarEventDetail[];
-  selectedDate: Date;
+  selectedDate: Date | null;
+  showUpcoming?: boolean;
 }
 
-const EventList: React.FC<EventListProps> = ({ events, selectedDate }) => {
+const EventList: React.FC<EventListProps> = ({ events, selectedDate, showUpcoming = false }) => {
   const navigation = useNavigation<EventListNavigationProp>();
   
-  // Filter events for the selected date only
-  const filteredEvents = events.filter((event) => {
-    const eventDate = new Date(event.date);
-    return (
-      eventDate.getDate() === selectedDate.getDate() &&
-      eventDate.getMonth() === selectedDate.getMonth() &&
-      eventDate.getFullYear() === selectedDate.getFullYear()
-    );
-  });
+  // Filter events based on mode
+  const filteredEvents = showUpcoming
+    ? events.filter((event) => {
+        const eventDate = new Date(event.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return eventDate >= today;
+      }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    : selectedDate
+    ? events.filter((event) => {
+        const eventDate = new Date(event.date);
+        return (
+          eventDate.getDate() === selectedDate.getDate() &&
+          eventDate.getMonth() === selectedDate.getMonth() &&
+          eventDate.getFullYear() === selectedDate.getFullYear()
+        );
+      })
+    : [];
 
   const handleEventPress = (event: UnifiedEvent) => {
     // Navigate to BrandDetailsScreen with eventId - it will fetch data from database
@@ -41,7 +51,9 @@ const EventList: React.FC<EventListProps> = ({ events, selectedDate }) => {
   if (filteredEvents.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No events for this date</Text>
+        <Text style={styles.emptyText}>
+          {showUpcoming ? 'No upcoming events' : 'No events for this date'}
+        </Text>
       </View>
     );
   }

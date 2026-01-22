@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: isSmallDevice ? 14 : 16,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_700Bold',
     color: '#fff',
     textAlign: 'center',
     marginBottom: isSmallDevice ? 16 : isMediumDevice ? 24 : 30,
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   errorText: {
-    color: '#FF6B6B',
+    color: '#F51616',
     fontSize: isSmallDevice ? 12 : 14,
     fontFamily: 'Quicksand_500Medium',
     textAlign: 'center',
@@ -42,8 +42,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: isSmallDevice ? 4 : 8,
-    marginBottom: isSmallDevice ? 12 : 20,
+    marginBottom: 5
+  },
+  centralErrorContainer: {
+    paddingVertical: isSmallDevice ? 12 : 16,
+    paddingHorizontal: 16,
+    marginBottom: 5,
+    alignItems: 'center',
+  },
+  centralErrorText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Quicksand_500Medium',
+    textAlign: 'center',
   },
   rememberMeContainer: {
     flexDirection: 'row',
@@ -55,7 +66,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 2,
     borderColor: '#fff',
-    backgroundColor: '#2D1B69',
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',

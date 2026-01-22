@@ -143,7 +143,7 @@ export const useFavoritesScreen = () => {
         ...brand,
         isFavorited: isFavorite(brand.id),
       }));
-  }, [allBrands, isFavorite]);
+  }, [allBrands, isFavorite, favoriteIds]);
 
   const handleToggleFavorite = async (brandId: string) => {
     try {

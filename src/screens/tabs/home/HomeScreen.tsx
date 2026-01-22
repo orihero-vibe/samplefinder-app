@@ -157,16 +157,15 @@ const HomeScreen = () => {
 
       <BottomSheet
         ref={bottomSheetRef}
-        index={0}
+        index={1}
         snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        animateOnMount={true}
         enablePanDownToClose={false}
-        enableContentPanningGesture={true}
+        enableContentPanningGesture={false}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.handleIndicator}
         onChange={(index) => setBottomSheetIndex(index)}
-        activeOffsetY={[-10, 10]}
-        failOffsetX={[-10, 10]}
-        overDragResistanceFactor={0}
       >
         <View style={styles.bottomSheetContent}>
           <View style={styles.filtersContainer}>

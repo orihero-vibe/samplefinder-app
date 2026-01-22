@@ -75,8 +75,8 @@ export const convertEventToCalendarEventDetail = (
     userLocation,
     eventCoordinates: client?.location 
       ? { 
-          latitude: client.location[0],
-          longitude: client.location[1]
+          latitude: client.location[1],
+          longitude: client.location[0]
         }
       : undefined
   });

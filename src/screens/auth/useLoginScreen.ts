@@ -15,6 +15,7 @@ export const useLoginScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [authError, setAuthError] = useState('');
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -22,6 +23,7 @@ export const useLoginScreen = () => {
     // Clear previous errors
     setEmailError('');
     setPasswordError('');
+    setAuthError('');
 
     // Validate email
     if (!email.trim()) {
@@ -54,61 +56,57 @@ export const useLoginScreen = () => {
     // Clear previous errors
     setEmailError('');
     setPasswordError('');
+    setAuthError('');
 
-      // Check for invalid credentials - display the actual backend message
-      if (errorMessage.includes('Invalid credentials')) {
-        // Show on both fields since it could be either email or password
-        const message = errorMessage;
-        setEmailError(message);
-        setPasswordError(message);
-        return;
-      }
+    // Check for invalid credentials - show in central location
+    if (errorMessage.includes('Invalid credentials')) {
+      setAuthError("Your information doesn't match our records.");
+      return;
+    }
     
-    // Check for email validation errors
+    // Check for authentication failed - show in central location
+    if (errorMessage.toLowerCase().includes('authentication failed')) {
+      setAuthError("Your information doesn't match our records.");
+      return;
+    }
+    
+    // Check for account not found - show in central location
+    if (errorMessage.toLowerCase().includes('user') && 
+        (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist'))) {
+      setAuthError("Your information doesn't match our records.");
+      return;
+    }
+    
+    // Check for email validation errors - show under email field
     if (errorMessage.toLowerCase().includes('email') && 
         (errorMessage.toLowerCase().includes('valid') || errorMessage.toLowerCase().includes('invalid'))) {
       setEmailError('Please enter a valid email address.');
       return;
     }
     
-    // Check for authentication failed
-    if (errorMessage.toLowerCase().includes('authentication failed')) {
-      setEmailError('Invalid email or password. Please try again.');
-      setPasswordError('Invalid email or password. Please try again.');
-      return;
-    }
-    
-    // Check for account not found
-    if (errorMessage.toLowerCase().includes('user') && 
-        (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('does not exist'))) {
-      setEmailError('No account found with this email address.');
-      return;
-    }
-    
-    // Check for password errors (but not if already handled above)
-    if (errorMessage.toLowerCase().includes('password') && 
-        !errorMessage.includes('Invalid credentials')) {
+    // Check for password errors - show under password field
+    if (errorMessage.toLowerCase().includes('password')) {
       setPasswordError(errorMessage);
       return;
     }
     
-    // Network or server errors - show on email field as primary field
+    // Network or server errors - show in central location
     if (errorMessage.toLowerCase().includes('network') || 
         errorMessage.toLowerCase().includes('fetch') || 
         errorMessage.toLowerCase().includes('timeout')) {
-      setEmailError('Network error. Please check your connection.');
+      setAuthError('Network error. Please check your connection.');
       return;
     }
     
-    // Default fallback - show the actual error message if available
-    const displayMessage = errorMessage || 'Login failed. Please check your credentials.';
-    setEmailError(displayMessage);
+    // Default fallback - show in central location
+    setAuthError(errorMessage || "Your information doesn't match our records.");
   };
 
   const handleLogin = async () => {
     // Clear errors before validation
     setEmailError('');
     setPasswordError('');
+    setAuthError('');
 
     if (!validateForm()) {
       return;
@@ -161,11 +159,13 @@ export const useLoginScreen = () => {
   const handleEmailChange = (text: string) => {
     setEmail(text);
     setEmailError(''); // Clear email error when user types
+    setAuthError(''); // Clear auth error when user types
   };
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
     setPasswordError(''); // Clear password error when user types
+    setAuthError(''); // Clear auth error when user types
   };
 
   const handleRememberMeToggle = () => {
@@ -179,6 +179,7 @@ export const useLoginScreen = () => {
     isLoading,
     emailError,
     passwordError,
+    authError,
     handleEmailChange,
     handlePasswordChange,
     handleRememberMeToggle,

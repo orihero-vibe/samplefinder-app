@@ -245,7 +245,7 @@ export const usePromotionsScreen = () => {
       currentPoints: totalPoints >= tier.requiredPoints 
         ? tierRange 
         : Math.min(pointsInTier, tierRange),
-      requiredPoints: tierRange,
+      requiredPoints: tier.requiredPoints,
       badgeEarned: totalPoints >= tier.requiredPoints,
       imageURL: cleanImageURL,
     };

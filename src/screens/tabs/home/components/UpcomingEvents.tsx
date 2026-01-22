@@ -41,26 +41,33 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events }) => {
     <View style={styles.container}>
       <Text style={styles.title}>UPCOMING EVENTS</Text>
       <View style={styles.eventsContainer}>
-        {events.map((event) => {
-          const unifiedEvent: UnifiedEvent = {
-            id: event.id,
-            name: event.name,
-            brandName: event.brandName,
-            location: event.location,
-            distance: event.distance,
-            time: event.time,
-            date: event.date,
-            logoURL: event.logoURL,
-          };
-          return (
-            <EventCard
-              key={event.id}
-              event={unifiedEvent}
-              onPress={handleEventPress}
-              showDate={true}
-            />
-          );
-        })}
+        {events.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No upcoming events found</Text>
+            <Text style={styles.emptyStateSubtext}>Check back later for new events</Text>
+          </View>
+        ) : (
+          events.map((event) => {
+            const unifiedEvent: UnifiedEvent = {
+              id: event.id,
+              name: event.name,
+              brandName: event.brandName,
+              location: event.location,
+              distance: event.distance,
+              time: event.time,
+              date: event.date,
+              logoURL: event.logoURL,
+            };
+            return (
+              <EventCard
+                key={event.id}
+                event={unifiedEvent}
+                onPress={handleEventPress}
+                showDate={true}
+              />
+            );
+          })
+        )}
       </View>
     </View>
   );
@@ -82,6 +89,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 5,
     paddingBottom: 20,
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontFamily: 'Quicksand_600SemiBold',
+    color: Colors.blueColorMode,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_400Regular',
+    color: Colors.grayText,
   },
 });
 
