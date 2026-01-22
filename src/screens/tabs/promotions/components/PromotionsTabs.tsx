@@ -48,23 +48,23 @@ const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 20,
     marginBottom: 20,
+    marginHorizontal: 35,
   },
   container: {
     flexDirection: 'row',
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: Colors.pinDarkBlue,
+    borderWidth: 1,
+    borderColor: Colors.brandBlueBright,
     overflow: 'hidden',
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 6,
     paddingHorizontal: 20,
     alignItems: 'center',
     backgroundColor: Colors.white,
   },
   activeTab: {
-    backgroundColor: Colors.pinDarkBlue,
+    backgroundColor: Colors.brandBlueBright,
   },
   tabText: {
     fontSize: 16,
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   inactiveTabText: {
-    color: Colors.pinDarkBlue,
+    color: Colors.blueColorMode,
   },
 });
 

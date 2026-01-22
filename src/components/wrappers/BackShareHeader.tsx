@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { BellOutlineIcon } from '@/icons/BellOutlineIcon';
 import SampleFinderIcon from '@/icons/SampleFinderIcon';
+import { ShareIcon } from '@/icons';
 
 interface BackShareHeaderProps {
   onBack?: () => void;
@@ -26,7 +27,7 @@ const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNo
             <Monicon name="mdi:arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity onPress={onShare} style={styles.iconButton}>
-            <Monicon name="mdi:share-variant" size={24} color="#FFFFFF" />
+            <ShareIcon size={20} color="#FFFFFF" />
           </TouchableOpacity>
           {onNotifications && (
             <TouchableOpacity onPress={onNotifications} style={styles.iconButton}>

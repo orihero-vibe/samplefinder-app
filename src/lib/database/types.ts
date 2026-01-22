@@ -6,9 +6,11 @@ export interface UserProfileData {
   firstname: string;
   lastname: string;
   phoneNumber: string;
+  zipCode?: string;
   dob: string; // ISO 8601 date string
   username: string;
   role?: 'admin' | 'user';
+  isAdult?: boolean;
 }
 
 export interface UserProfileRow extends UserProfileData {
@@ -19,13 +21,14 @@ export interface UserProfileRow extends UserProfileData {
   zipCode?: string | null;
   referralCode?: string | null;
   isBlocked?: boolean;
+  isAdult?: boolean;
   totalEvents?: number;
   totalReviews?: number;
   totalPoints?: number;
   isAmbassador?: boolean;
   isInfluencer?: boolean;
-  ageRestrictionAccepted?: boolean;
   favoriteIds?: string[]; // Array of favorite brand/client IDs
+  savedEventIds?: Array<{ eventId: string; addedAt: string }>; // User's saved calendar events with timestamps
   notifications?: UserNotification[]; // User notification history
   notificationPreferences?: any; // User notification preferences (JSON object)
 }

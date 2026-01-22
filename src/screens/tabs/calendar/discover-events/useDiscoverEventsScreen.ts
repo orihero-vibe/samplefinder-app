@@ -10,6 +10,7 @@ import { formatEventTime, formatEventDistance } from '@/utils/formatters';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
 import { UnifiedEvent } from '@/components';
+import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 
 interface EventWithClient {
   event: EventRow;
@@ -34,6 +35,9 @@ export const useDiscoverEventsScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  
+  // Subscribe to saved events from store to trigger re-renders
+  const savedEvents = useCalendarEventsStore((state) => state.savedEvents);
 
   useEffect(() => {
     const getCurrentLocation = async () => {
@@ -70,7 +74,13 @@ export const useDiscoverEventsScreen = () => {
           fetchClients(),
         ]);
 
-        const eventsWithClient: EventWithClient[] = eventRows.map((event: EventRow) => {
+        // Get user's saved event IDs from store to filter them out
+        const savedEventIds = useCalendarEventsStore.getState().savedEvents.map((e) => e.eventId);
+
+        // Filter out events that user has already added to their calendar
+        const availableEventRows = eventRows.filter((event) => !savedEventIds.includes(event.$id));
+
+        const eventsWithClient: EventWithClient[] = availableEventRows.map((event: EventRow) => {
           let client: ClientData | null = extractClientFromEvent(event);
 
           if (!client && event.client) {
@@ -87,7 +97,7 @@ export const useDiscoverEventsScreen = () => {
           const distance = formatEventDistance({
             userLocation: userLocation || undefined,
             eventCoordinates: client?.location 
-              ? { latitude: client.location[0], longitude: client.location[1] }
+              ? { latitude: client.location[1], longitude: client.location[0] }
               : undefined
           });
 
@@ -121,7 +131,7 @@ export const useDiscoverEventsScreen = () => {
     };
 
     loadEvents();
-  }, [userLocation]);
+  }, [userLocation, savedEvents]);
 
   const handleEventPress = (eventId: string) => {
     navigation.navigate('BrandDetails', { eventId });

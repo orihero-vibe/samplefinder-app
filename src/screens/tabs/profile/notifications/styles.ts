@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   iconTitleContainer: {
     alignItems: 'center',
     paddingTop: 32,
-    paddingBottom: 24,
+    paddingBottom: 10,
     gap: 16,
   },
   notificationsTitle: {
@@ -110,12 +110,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_700Bold',
     color: '#1D0A74',
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 10,
     paddingBottom: 12,
   },
   // Empty state
   emptyStateContainer: {
-    paddingVertical: 60,
+    paddingVertical: 10,
     paddingHorizontal: 40,
     alignItems: 'center',
   },

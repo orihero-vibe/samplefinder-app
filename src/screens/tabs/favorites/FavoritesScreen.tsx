@@ -53,11 +53,7 @@ const FavoritesScreen = () => {
             {/* Favorite Brands List */}
             <View style={styles.favoritesList}>
               {favorites.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No favorites yet. Start exploring and add brands you love!
-                  </Text>
-                </View>
+                null
               ) : (
                 favorites.map((brand) => (
                   <FavoriteBrandItem

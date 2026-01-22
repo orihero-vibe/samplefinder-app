@@ -12,6 +12,7 @@ export const useProfileScreen = () => {
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
   const referFriendSuccessBottomSheetRef = useRef<BottomSheet>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [profile, setProfile] = useState<UserProfileRow | null>(null);
   const [authUser, setAuthUser] = useState<{ email: string; name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,47 +123,37 @@ export const useProfileScreen = () => {
     navigation.navigate('Promotions' as never);
   };
 
-  const handleLogOutPress = async () => {
-    // Show confirmation alert
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsLoggingOut(true);
-              await logout();
-              // Navigate to Login screen and reset navigation stack
-              // Get root navigator by traversing up the navigation tree
-              const rootNavigation = navigation.getParent()?.getParent() || navigation.getParent() || navigation;
-              rootNavigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [{ name: 'Login' }],
-                })
-              );
-            } catch (error: any) {
-              console.error('Logout error:', error);
-              Alert.alert(
-                'Logout Failed',
-                error.message || 'Failed to log out. Please try again.',
-                [{ text: 'OK' }]
-              );
-            } finally {
-              setIsLoggingOut(false);
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+  const handleLogOutPress = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout();
+      // Navigate to Login screen and reset navigation stack
+      // Get root navigator by traversing up the navigation tree
+      const rootNavigation = navigation.getParent()?.getParent() || navigation.getParent() || navigation;
+      rootNavigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        })
+      );
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      setIsLoggingOut(false);
+      setShowLogoutModal(false);
+      Alert.alert(
+        'Logout Failed',
+        error.message || 'Failed to log out. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   const handleEditProfilePress = () => {
@@ -210,6 +201,7 @@ export const useProfileScreen = () => {
     isLoading,
     error,
     isLoggingOut,
+    showLogoutModal,
     formattedDOB,
     referralCode,
     referFriendBottomSheetRef,
@@ -222,6 +214,8 @@ export const useProfileScreen = () => {
     handleReferSuccessClose,
     handleViewRewardsFromSuccess,
     handleLogOutPress,
+    handleConfirmLogout,
+    handleCancelLogout,
     handleEditProfilePress,
     handleViewRewardsPress,
     handleNotificationsPress,

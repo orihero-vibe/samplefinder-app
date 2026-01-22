@@ -4,9 +4,31 @@ import type { UserProfileData, UserProfileRow } from './types';
 import type { NotificationPreferences } from '../notifications/types';
 
 /**
+ * Helper function to parse savedEventIds from Appwrite (can be string or array)
+ */
+const parseSavedEventIds = (savedEventIds: any): Array<{ eventId: string; addedAt: string }> => {
+  if (!savedEventIds) return [];
+  
+  try {
+    // If it's a string, parse it as JSON
+    if (typeof savedEventIds === 'string') {
+      return JSON.parse(savedEventIds);
+    }
+    // If it's already an array, return it
+    if (Array.isArray(savedEventIds)) {
+      return savedEventIds;
+    }
+    return [];
+  } catch (error) {
+    console.error('[parseSavedEventIds] Error parsing savedEventIds:', error);
+    return [];
+  }
+};
+
+/**
  * Create a user profile in the database
  */
-export const createUserProfile = async (profileData: UserProfileData & { ageRestrictionAccepted?: boolean }): Promise<void> => {
+export const createUserProfile = async (profileData: UserProfileData): Promise<void> => {
   console.log('[database.createUserProfile] Starting user profile creation');
   console.log('[database.createUserProfile] Profile data:', {
     authID: profileData.authID,
@@ -15,7 +37,6 @@ export const createUserProfile = async (profileData: UserProfileData & { ageRest
     phoneNumber: profileData.phoneNumber,
     username: profileData.username,
     role: profileData.role || 'user',
-    ageRestrictionAccepted: (profileData as any).ageRestrictionAccepted,
   });
 
   // Validate environment variables
@@ -65,15 +86,12 @@ export const createUserProfile = async (profileData: UserProfileData & { ageRest
       firstname: profileData.firstname,
       lastname: profileData.lastname,
       phoneNumber: profileData.phoneNumber,
+      zipCode: profileData.zipCode,
       dob: dobISO,
       username: profileData.username,
       role: profileData.role || 'user',
+      idAdult: profileData.isAdult ?? false, // Use 'idAdult' to match Appwrite column name
     };
-
-    // Add ageRestrictionAccepted if provided
-    if ((profileData as any).ageRestrictionAccepted !== undefined) {
-      rowData.ageRestrictionAccepted = (profileData as any).ageRestrictionAccepted;
-    }
 
     console.log('[database.createUserProfile] Creating row with data:', {
       ...rowData,
@@ -92,12 +110,14 @@ export const createUserProfile = async (profileData: UserProfileData & { ageRest
       dataKeys: Object.keys(rowData),
     });
     
+    // Note: If profile creation fails with permission error, ensure your Appwrite
+    // database table has "Create" permission enabled for "Users" role
     const result = await tablesDB.createRow({
       databaseId: DATABASE_ID,
       tableId: USER_PROFILES_TABLE_ID,
       rowId: rowId,
       data: rowData,
-      // Set permissions so the user can read their own profile
+      // Set permissions so the user can read/update/delete their own profile
       permissions: [
         `read("user:${profileData.authID}")`,
         `update("user:${profileData.authID}")`,
@@ -146,6 +166,9 @@ export const createUserProfile = async (profileData: UserProfileData & { ageRest
     if (error?.code === 401 || error?.message?.includes('Unauthorized') || error?.message?.includes('authentication')) {
       throw new Error('Authentication failed. Please ensure you are logged in.');
     }
+    if (error?.code === 403 || error?.message?.includes('permission') || error?.message?.includes('Permission')) {
+      throw new Error('Permission denied. Please ensure your Appwrite database table has "Create" permission enabled for the "Users" role in the Appwrite Console.');
+    }
     if (error?.code === 404 || error?.message?.includes('not found')) {
       throw new Error('Database or table not found. Please check your environment variables.');
     }
@@ -165,7 +188,6 @@ export const updateUserProfile = async (
     totalEvents?: number;
     totalReviews?: number;
     totalPoints?: number;
-    ageRestrictionAccepted?: boolean;
     favoriteIds?: string[];
   }
 ): Promise<UserProfileRow> => {
@@ -212,11 +234,11 @@ export const updateUserProfile = async (
     if (updates.totalPoints !== undefined) {
       updateData.totalPoints = updates.totalPoints;
     }
-    if (updates.ageRestrictionAccepted !== undefined) {
-      updateData.ageRestrictionAccepted = updates.ageRestrictionAccepted;
-    }
     if (updates.favoriteIds !== undefined) {
       updateData.favoriteIds = updates.favoriteIds;
+    }
+    if ((updates as any).savedEventIds !== undefined) {
+      updateData.savedEventIds = (updates as any).savedEventIds;
     }
     if (updates.dob !== undefined) {
       // Convert date to ISO format if needed
@@ -265,12 +287,15 @@ export const updateUserProfile = async (
       avatarURL: updatedProfile.avatarURL,
       zipCode: updatedProfile.zipCode,
       referralCode: updatedProfile.referralCode,
-      isBlocked: updatedProfile.isBlocked || false,
+      isBlocked: Boolean(updatedProfile.isBlocked),
+      isAdult: Boolean(updatedProfile.isAdult ?? updatedProfile.idAdult),
       totalEvents: updatedProfile.totalEvents || 0,
       totalReviews: updatedProfile.totalReviews || 0,
       totalPoints: updatedProfile.totalPoints || 0,
-      ageRestrictionAccepted: updatedProfile.ageRestrictionAccepted || false,
+      isAmbassador: updatedProfile.isAmbassador || false,
+      isInfluencer: updatedProfile.isInfluencer || false,
       favoriteIds: updatedProfile.favoriteIds || [],
+      savedEventIds: parseSavedEventIds(updatedProfile.savedEventIds),
       notifications: updatedProfile.notifications || [],
       notificationPreferences: updatedProfile.notificationPreferences,
     };
@@ -381,10 +406,27 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
     }
 
     const profile = result.rows[0] as any;
-    console.log('[database.getUserProfile] Profile found:', {
+    
+    // Log RAW value from database
+    console.log('[database.getUserProfile] RAW Profile Data:', {
       rowId: profile.$id,
       authID: profile.authID,
       username: profile.username,
+      isAdult_RAW: profile.isAdult,
+      idAdult_RAW: profile.idAdult,
+      ALL_KEYS: Object.keys(profile),
+    });
+
+    // Convert isAdult - handle both 'isAdult' and 'idAdult' field names
+    // Check both possible field names (isAdult or idAdult - Appwrite column name)
+    const rawAdultValue = profile.isAdult ?? profile.idAdult;
+    const isAdultValue = rawAdultValue === true || 
+                        rawAdultValue === 'true' || 
+                        rawAdultValue === 1 || 
+                        rawAdultValue === '1';
+    console.log('[database.getUserProfile] Converted isAdult:', {
+      raw: rawAdultValue,
+      converted: isAdultValue
     });
 
     return {
@@ -401,14 +443,15 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       avatarURL: profile.avatarURL,
       zipCode: profile.zipCode,
       referralCode: profile.referralCode,
-      isBlocked: profile.isBlocked || false,
+      isBlocked: Boolean(profile.isBlocked),
+      isAdult: isAdultValue,
       totalEvents: profile.totalEvents || 0,
       totalReviews: profile.totalReviews || 0,
       totalPoints: profile.totalPoints || 0,
       isAmbassador: profile.isAmbassador || false,
       isInfluencer: profile.isInfluencer || false,
-      ageRestrictionAccepted: profile.ageRestrictionAccepted || false,
       favoriteIds: profile.favoriteIds || [],
+      savedEventIds: parseSavedEventIds(profile.savedEventIds),
       notifications: profile.notifications || [],
       notificationPreferences: profile.notificationPreferences,
     };
@@ -531,6 +574,109 @@ export const removeFavoriteBrand = async (authID: string, brandId: string): Prom
 };
 
 /**
+ * Add an event to user's calendar
+ */
+export const addEventToUserCalendar = async (authID: string, eventId: string): Promise<void> => {
+  console.log('[database.addEventToUserCalendar] Adding event to calendar:', { authID, eventId });
+
+  try {
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      throw new Error('User profile not found');
+    }
+
+    const currentSavedEvents = profile.savedEventIds || [];
+    
+    // Check if already saved
+    if (currentSavedEvents.some((e) => e.eventId === eventId)) {
+      console.log('[database.addEventToUserCalendar] Event already in calendar');
+      return;
+    }
+
+    // Add new saved event with timestamp
+    const updatedSavedEvents = [
+      ...currentSavedEvents,
+      { eventId, addedAt: new Date().toISOString() }
+    ];
+
+    // Store as JSON string for Appwrite
+    const savedEventIdsJson = JSON.stringify(updatedSavedEvents);
+    
+    await tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      rowId: profile.$id,
+      data: {
+        savedEventIds: savedEventIdsJson,
+      },
+    });
+    console.log('[database.addEventToUserCalendar] Event added to calendar successfully');
+  } catch (error: any) {
+    console.error('[database.addEventToUserCalendar] Error adding event to calendar:', error);
+    throw new Error(error.message || 'Failed to add event to calendar');
+  }
+};
+
+/**
+ * Remove an event from user's calendar
+ */
+export const removeEventFromUserCalendar = async (authID: string, eventId: string): Promise<void> => {
+  console.log('[database.removeEventFromUserCalendar] Removing event from calendar:', { authID, eventId });
+
+  try {
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      throw new Error('User profile not found');
+    }
+
+    const currentSavedEvents = profile.savedEventIds || [];
+    
+    // Remove the event
+    const updatedSavedEvents = currentSavedEvents.filter((e) => e.eventId !== eventId);
+
+    // Store as JSON string for Appwrite
+    const savedEventIdsJson = JSON.stringify(updatedSavedEvents);
+    
+    await tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      rowId: profile.$id,
+      data: {
+        savedEventIds: savedEventIdsJson,
+      },
+    });
+    console.log('[database.removeEventFromUserCalendar] Event removed from calendar successfully');
+  } catch (error: any) {
+    console.error('[database.removeEventFromUserCalendar] Error removing event from calendar:', error);
+    throw new Error(error.message || 'Failed to remove event from calendar');
+  }
+};
+
+/**
+ * Get user's saved event IDs
+ */
+export const getUserSavedEventIds = async (authID: string): Promise<string[]> => {
+  console.log('[database.getUserSavedEventIds] Fetching saved event IDs for authID:', authID);
+
+  try {
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      console.log('[database.getUserSavedEventIds] No profile found, returning empty array');
+      return [];
+    }
+
+    const savedEvents = profile.savedEventIds || [];
+    const eventIds = savedEvents.map((e) => e.eventId);
+    
+    console.log('[database.getUserSavedEventIds] Found saved events:', eventIds.length);
+    return eventIds;
+  } catch (error: any) {
+    console.error('[database.getUserSavedEventIds] Error fetching saved event IDs:', error);
+    throw new Error(error.message || 'Failed to fetch saved event IDs');
+  }
+};
+
+/**
  * Update notification preferences for a user
  */
 export const updateNotificationPreferences = async (
@@ -602,6 +748,43 @@ export const updateNotificationPreferences = async (
     console.error('[database.updateNotificationPreferences] Error updating preferences:', error);
     console.error('[database.updateNotificationPreferences] Error message:', error?.message);
     throw new Error(error.message || 'Failed to update notification preferences');
+  }
+};
+
+/**
+ * Delete user profile from the database
+ */
+export const deleteUserProfile = async (authID: string): Promise<void> => {
+  console.log('[database.deleteUserProfile] Deleting user profile for authID:', authID);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.deleteUserProfile]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    // Get user profile first
+    const profile = await getUserProfile(authID);
+    if (!profile) {
+      console.log('[database.deleteUserProfile] No profile found for authID:', authID);
+      return;
+    }
+
+    // Delete the profile row
+    await tablesDB.deleteRow({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      rowId: profile.$id,
+    });
+
+    console.log('[database.deleteUserProfile] User profile deleted successfully:', profile.$id);
+  } catch (error: any) {
+    console.error('[database.deleteUserProfile] Error deleting user profile:', error);
+    console.error('[database.deleteUserProfile] Error message:', error?.message);
+    console.error('[database.deleteUserProfile] Error code:', error?.code);
+    throw new Error(error.message || 'Failed to delete user profile');
   }
 };
 

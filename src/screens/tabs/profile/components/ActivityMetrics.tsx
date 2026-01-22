@@ -50,14 +50,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metricValue: {
-    fontSize: 42,
+    fontSize: 30,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.brandPurpleBright,
-    marginBottom: 4,
   },
   metricLabel: {
-    fontSize: 15,
-    fontFamily: 'Quicksand_400Regular',
+    fontSize: 16,
+    fontFamily: 'Quicksand_500Regular',
     color: Colors.black,
     textAlign: 'center',
     flexWrap: 'wrap',

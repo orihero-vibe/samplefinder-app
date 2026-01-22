@@ -58,7 +58,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 20,
     marginBottom: 20,
-    borderRadius: 8,
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.brandBlueBright,
@@ -67,7 +66,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 5,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',

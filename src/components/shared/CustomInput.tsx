@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { formatPhoneNumber, formatDate } from '@/utils/formatters';
-import { QuestionMarkIcon } from '@/icons';
+import { QuestionIcon, QuestionMarkIcon } from '@/icons';
 
 export type InputType = 
   | 'text'
@@ -28,6 +28,7 @@ interface CustomInputProps extends Omit<TextInputProps, 'style'> {
   type?: InputType;
   labelColor?: string;
   inputBorderColor?: string;
+  inputBorderWidth?: number;
   error?: boolean;
   errorMessage?: string;
   showPasswordToggle?: boolean;
@@ -45,6 +46,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
   type = 'text',
   labelColor = '#000',
   inputBorderColor,
+  inputBorderWidth,
   error = false,
   errorMessage,
   showPasswordToggle,
@@ -114,7 +116,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
 
   // Determine border color
   const getBorderColor = (): string => {
-    if (error) return '#FF0000';
+    if (error) return '#F51616';
     if (inputBorderColor) return inputBorderColor;
     return '#2D1B69';
   };
@@ -126,7 +128,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
     <View style={[styles.container, containerStyle]}>
       {label && (
         <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: error ? '#FF0000' : labelColor }]}>
+          <Text style={[styles.label, { color: error ? '#F51616' : labelColor }]}>
             {label}
           </Text>
           {helpIcon && (
@@ -135,7 +137,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
               onPress={onHelpPress}
               activeOpacity={0.7}
             >
-              <QuestionMarkIcon size={20} />
+              <QuestionIcon size={20} />
             </TouchableOpacity>
           )}
         </View>
@@ -144,7 +146,10 @@ const CustomInput: React.FC<CustomInputProps> = ({
         <TextInput
           style={[
             styles.input,
-            { borderColor: getBorderColor() },
+            { 
+              borderColor: getBorderColor(),
+              ...(inputBorderWidth && { borderWidth: inputBorderWidth })
+            },
             error && styles.inputError,
             shouldShowPasswordToggle && styles.inputWithIcon,
           ]}
@@ -194,7 +199,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: isSmallDevice ? 14 : 16,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Quicksand_700Bold',
   },
   helpIcon: {
     marginLeft: 8,
@@ -214,7 +219,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     fontSize: isSmallDevice ? 14 : 16,
     color: '#333',
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_700Bold',
     borderWidth: 1,
     borderColor: '#1D0A74',
   },
@@ -222,7 +227,7 @@ const styles = StyleSheet.create({
     paddingRight: 55,
   },
   inputError: {
-    borderColor: '#FF0000',
+    borderColor: '#F51616',
   },
   eyeIcon: {
     position: 'absolute',
@@ -235,9 +240,9 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 4,
     right: 4,
-    color: '#FF0000',
+    color: '#F51616',
     fontSize: 12,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_700Bold',
     marginTop: 4,
     zIndex: 10,
   },

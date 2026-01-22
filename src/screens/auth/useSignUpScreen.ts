@@ -13,6 +13,7 @@ interface FieldErrors {
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
+  zipCode?: string;
   dateOfBirth?: string;
   username?: string;
   email?: string;
@@ -24,6 +25,7 @@ export const useSignUpScreen = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -36,7 +38,6 @@ export const useSignUpScreen = () => {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
-  const [ageRestrictionAccepted, setAgeRestrictionAccepted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,6 +75,17 @@ export const useSignUpScreen = () => {
     }
     if (!isValidPhoneNumber(value)) {
       return 'Please enter a valid 10-digit phone number';
+    }
+    return undefined;
+  };
+
+  const validateZipCode = (value: string): string | undefined => {
+    if (!value.trim()) {
+      return 'Zip Code is required';
+    }
+    // US Zip code validation (5 digits or 5+4 format)
+    if (!/^\d{5}(-\d{4})?$/.test(value.trim())) {
+      return 'Please enter a valid 5-digit zip code';
     }
     return undefined;
   };
@@ -168,6 +180,9 @@ export const useSignUpScreen = () => {
     
     const phoneError = validatePhoneNumber(phoneNumber);
     if (phoneError) errors.phoneNumber = phoneError;
+    
+    const zipCodeError = validateZipCode(zipCode);
+    if (zipCodeError) errors.zipCode = zipCodeError;
     
     const dobError = validateDateOfBirth(dateOfBirth);
     if (dobError) errors.dateOfBirth = dobError;
@@ -273,6 +288,14 @@ export const useSignUpScreen = () => {
     setErrorMessage('');
   };
 
+  const handleZipCodeChange = (text: string) => {
+    setZipCode(text);
+    const error = validateZipCode(text);
+    updateFieldError('zipCode', error);
+    setShowError(false);
+    setErrorMessage('');
+  };
+
   const handleDateOfBirthChange = (text: string) => {
     setDateOfBirth(text);
     const error = validateDateOfBirth(text);
@@ -309,6 +332,7 @@ export const useSignUpScreen = () => {
     firstName.trim() !== '' &&
     lastName.trim() !== '' &&
     phoneNumber.trim() !== '' &&
+    zipCode.trim() !== '' &&
     dateOfBirth.trim() !== '' &&
     username.trim() !== '' &&
     email.trim() !== '' &&
@@ -332,12 +356,11 @@ export const useSignUpScreen = () => {
   const handleAgeVerificationAccept = () => {
     setShowAgeVerificationModal(false);
     setAgeVerified(true);
-    setAgeRestrictionAccepted(true);
   };
 
   const handleAgeVerificationDismiss = () => {
     setShowAgeVerificationModal(false);
-    setAgeRestrictionAccepted(false);
+    setAgeVerified(false);
   };
 
   const handleTermsAccept = () => {
@@ -456,9 +479,9 @@ export const useSignUpScreen = () => {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
+        zipCode: zipCode.trim(),
         dateOfBirth: dateOfBirth.trim(),
         username: username.trim(),
-        ageRestrictionAccepted: ageRestrictionAccepted,
       });
 
       navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
@@ -475,6 +498,7 @@ export const useSignUpScreen = () => {
     firstName,
     lastName,
     phoneNumber,
+    zipCode,
     dateOfBirth,
     username,
     email,
@@ -493,6 +517,7 @@ export const useSignUpScreen = () => {
     setFirstName: handleFirstNameChange,
     setLastName: handleLastNameChange,
     setPhoneNumber: handlePhoneNumberChange,
+    setZipCode: handleZipCodeChange,
     setDateOfBirth: handleDateOfBirthChange,
     setUsername: handleUsernameChange,
     setEmail: handleEmailChange,

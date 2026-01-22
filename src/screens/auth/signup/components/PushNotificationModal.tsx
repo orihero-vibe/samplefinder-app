@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { requestNotificationPermissions } from '@/lib/notifications';
+import { Colors } from '@/constants/Colors';
 
 interface PushNotificationModalProps {
   visible: boolean;
@@ -127,6 +128,6 @@ const styles = StyleSheet.create({
   notNowButtonText: {
     fontSize: 16,
     fontFamily: 'Quicksand_400Regular',
-    color: '#999',
+    color: Colors.blueColorMode,
   },
 });

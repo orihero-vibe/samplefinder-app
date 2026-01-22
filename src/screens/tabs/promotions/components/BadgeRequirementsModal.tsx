@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import CloseIcon from '@/components/shared/CloseIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -92,9 +93,7 @@ const BadgeRequirementsModal: React.FC<BadgeRequirementsModalProps> = ({
         >
           {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <View style={styles.closeButtonCircle}>
-              <Monicon name="mdi:close" size={20} color={Colors.pinDarkBlue} />
-            </View>
+            <CloseIcon />
           </TouchableOpacity>
 
           {/* Title */}
@@ -174,9 +173,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   closeButtonCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
@@ -185,7 +184,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: Colors.pinDarkBlue,
     textAlign: 'left',
     marginTop: 24,
@@ -226,8 +225,8 @@ const styles = StyleSheet.create({
   },
   applyButtonText: {
     fontSize: 16,
-    fontFamily: 'Quicksand_500Regular',
-    color: Colors.pinDarkBlue,
+    fontFamily: 'Poppins_600SemiBold',
+    color: Colors.blueColorMode,
 
   },
 });

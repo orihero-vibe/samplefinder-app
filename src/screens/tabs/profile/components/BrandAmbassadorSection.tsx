@@ -20,7 +20,7 @@ const BrandAmbassadorSection: React.FC<BrandAmbassadorSectionProps> = ({
   return (
     <View style={styles.container}>
       <Text style={styles.text}>
-        Want to join our brand ambassador team and represent your favorite brands in stores? Earn
+        Want to join our brand ambassador team and represent your favorite brands in stores? {'\n'} Earn
         your Certified Brand Ambassador badge!
       </Text>
       <CustomButton

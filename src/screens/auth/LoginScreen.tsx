@@ -12,6 +12,9 @@ import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { useLoginScreen } from './useLoginScreen';
 import styles from './login/styles';
+import QuestionMarkIcon from '@/icons/QuestionMarkIcon';
+import { QuestionIcon } from '@/icons';
+import { Colors } from '@/constants/Colors';
 
 const { height: screenHeight } = Dimensions.get('window');
 const isSmallDevice = screenHeight < 700;
@@ -24,6 +27,7 @@ const LoginScreen = () => {
     isLoading,
     emailError,
     passwordError,
+    authError,
     handleEmailChange,
     handlePasswordChange,
     handleRememberMeToggle,
@@ -52,8 +56,10 @@ const LoginScreen = () => {
           autoCorrect={false}
           labelColor='white'
           editable={!isLoading}
-          error={!!emailError}
+          error={!!emailError || !!authError}
           errorMessage={emailError}
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={2}
         />
 
         <CustomInput
@@ -66,8 +72,10 @@ const LoginScreen = () => {
           autoCorrect={false}
           labelColor='white'
           editable={!isLoading}
-          error={!!passwordError}
+          error={!!passwordError || !!authError}
           errorMessage={passwordError}
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={2}
         />
 
         <View style={styles.optionsContainer}>
@@ -90,13 +98,23 @@ const LoginScreen = () => {
             disabled={isLoading}
           >
             <View style={styles.forgotPasswordContainer}>
-              <MaterialIcons name="help-outline" size={isSmallDevice ? 18 : 20} color="#fff" />
+              <QuestionIcon
+                size={isSmallDevice ? 18 : 20}
+              />
               <Text style={styles.forgotPasswordText}>
                 Forgot Password?
               </Text>
             </View>
           </TouchableOpacity>
         </View>
+
+        {authError && (
+          <View style={styles.centralErrorContainer}>
+            <Text style={styles.centralErrorText}>
+              {authError}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.buttonContainer}>
           <CustomButton

@@ -7,6 +7,7 @@ import {
   ImageBackground,
   Platform,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,13 +19,19 @@ import { useEditProfileScreen } from './profile/edit-profile/useEditProfileScree
 import { ProfilePictureSection, PasswordSection } from './profile/edit-profile/components';
 import styles from './profile/edit-profile/styles';
 import SampleFinderIcon from '@/icons/SampleFinderIcon';
+import TopLinks from './profile/components/TopLinks';
+import { useProfileScreen } from './profile/useProfileScreen';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 
 const EditProfileScreen = () => {
   const insets = useSafeAreaInsets();
+  const {handleLogOutPress, showLogoutModal, handleConfirmLogout, handleCancelLogout, isLoggingOut } = useProfileScreen();
   
   const {
     isLoading,
     isSaving,
+    isDeleting,
+    showDeleteModal,
     error,
     profile,
     username,
@@ -45,6 +52,9 @@ const EditProfileScreen = () => {
     handleBackPress,
     handleSaveUpdates,
     handleChangeProfilePicture,
+    handleDeleteAccountPress,
+    handleConfirmDelete,
+    handleCancelDelete,
     loadProfile,
   } = useEditProfileScreen();
 
@@ -131,79 +141,123 @@ const EditProfileScreen = () => {
         </View>
       </ImageBackground>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ProfilePictureSection
-          username={username}
-          avatarUri={avatarUri}
-          isUploadingAvatar={isUploadingAvatar}
-          onChangePicture={handleChangeProfilePicture}
-        />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <TouchableOpacity onPress={handleLogOutPress} style={styles.logOutButton}>
+            <Text style={styles.logOutText}>Log Out</Text>
+          </TouchableOpacity>
+          <ProfilePictureSection
+            username={username}
+            avatarUri={avatarUri}
+            isUploadingAvatar={isUploadingAvatar}
+            onChangePicture={handleChangeProfilePicture}
+          />
 
-        {error ? (
-          <View style={styles.errorMessageContainer}>
-            <Text style={styles.errorMessageText}>{error}</Text>
+          {error ? (
+            <View style={styles.errorMessageContainer}>
+              <Text style={styles.errorMessageText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.inputsContainer}>
+            <CustomInput
+              label="Update Username"
+              value={username}
+              onChangeText={setUsername}
+              type="text"
+              placeholder="Enter username"
+              labelColor={Colors.blueColorMode}
+              inputBorderColor={Colors.blueColorMode}
+            />
+
+            <CustomInput
+              label="Update Phone Number"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              type="phone"
+              placeholder="( )"
+              labelColor={Colors.blueColorMode}
+              inputBorderColor={Colors.blueColorMode}
+              autoFormat={true}
+            />
+
+            <CustomInput
+              label="Update Email"
+              value={email}
+              onChangeText={setEmail}
+              type="email"
+              placeholder="name@gmail.com"
+              labelColor={Colors.blueColorMode}
+              inputBorderColor={Colors.blueColorMode}
+            />
+            <CustomInput
+              label="Update Password"
+              value={password}
+              onChangeText={setPassword}
+              type="password"
+              placeholder="Enter password"
+              labelColor={Colors.blueColorMode}
+              inputBorderColor={Colors.blueColorMode}
+              showPasswordToggle={true}
+            />
           </View>
-        ) : null}
 
-        <View style={styles.inputsContainer}>
-          <CustomInput
-            label="Update Username"
-            value={username}
-            onChangeText={setUsername}
-            type="text"
-            placeholder="Enter username"
-            labelColor={Colors.blueColorMode}
-            inputBorderColor={Colors.blueColorMode}
-          />
+          <View style={styles.buttonContainer}>
+            <CustomButton
+              title={isSaving ? 'Saving...' : 'Save Updates'}
+              onPress={handleSaveUpdates}
+              variant="dark"
+              size="medium"
+              style={styles.saveButton}
+              textStyle={styles.saveButtonText}
+              disabled={isSaving || !hasChanges}
+            />
+            <CustomButton
+              title="Delete Account"
+              onPress={handleDeleteAccountPress}
+              variant="outline"
+              size="small"
+              style={styles.deleteButton}
+              textStyle={styles.deleteButtonText}
+              disabled={isDeleting}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+        {/* Logout Confirmation Modal */}
+        <ConfirmationModal
+        visible={showLogoutModal}
+        title="Are you sure you want to logout?"
+        description="You will need to sign in again to access your account."
+        confirmText="Yes, Logout"
+        cancelText="No, Stay Logged In"
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCancelLogout}
+        isLoading={isLoggingOut}
+        loadingText="Logging out..."
+      />
 
-          <CustomInput
-            label="Update Phone Number"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            type="phone"
-            placeholder="( )"
-            labelColor={Colors.blueColorMode}
-            inputBorderColor={Colors.blueColorMode}
-            autoFormat={true}
-          />
-
-          <CustomInput
-            label="Update Email"
-            value={email}
-            onChangeText={setEmail}
-            type="email"
-            placeholder="name@gmail.com"
-            labelColor={Colors.blueColorMode}
-            inputBorderColor={Colors.blueColorMode}
-          />
-
-          <PasswordSection
-            password={password}
-            newPassword={newPassword}
-            confirmPassword={confirmPassword}
-            onPasswordChange={setPassword}
-            onNewPasswordChange={setNewPassword}
-            onConfirmPasswordChange={setConfirmPassword}
-            isLoading={isSaving}
-          />
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <CustomButton
-            title={isSaving ? 'Saving...' : 'Save Updates'}
-            onPress={handleSaveUpdates}
-            variant="dark"
-            size="large"
-            style={styles.saveButton}
-            textStyle={styles.saveButtonText}
-            disabled={isSaving || !hasChanges}
-          />
-        </View>
-      </ScrollView>
+      {/* Delete Account Confirmation Modal */}
+      <ConfirmationModal
+        visible={showDeleteModal}
+        title="Are you sure you want to delete your account?"
+        description="All of your account information, progress and history will be lost."
+        confirmText="Yes, Delete Account"
+        cancelText="No, Keep Account"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        isLoading={isDeleting}
+        loadingText="Deleting account..."
+      />
     </View>
   );
 };

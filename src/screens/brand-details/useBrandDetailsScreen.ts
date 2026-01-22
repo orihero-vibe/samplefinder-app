@@ -3,7 +3,6 @@ import { CompositeNavigationProp, useNavigation } from '@react-navigation/native
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Share, Alert, Linking } from 'react-native';
-import * as Calendar from 'expo-calendar';
 import * as Location from 'expo-location';
 import { getCurrentUser } from '@/lib/auth';
 import {
@@ -19,10 +18,10 @@ import {
   removeFavoriteBrand,
   getUserReviewForEvent
 } from '@/lib/database';
-import { cancelEventReminders, scheduleEventReminders } from '@/lib/notifications/eventReminders';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { useFavoritesStore } from '@/stores/favoritesStore';
+import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
 import { calculateDistance, parseEventDateTime } from '@/utils/formatters';
 
@@ -87,8 +86,12 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const addFavoriteToStore = useFavoritesStore((state) => state.addFavorite);
   const removeFavoriteFromStore = useFavoritesStore((state) => state.removeFavorite);
   
+  // Zustand calendar events store
+  const addSavedEventToStore = useCalendarEventsStore((state) => state.addSavedEvent);
+  const removeSavedEventFromStore = useCalendarEventsStore((state) => state.removeSavedEvent);
+  const isSavedToCalendarInStore = useCalendarEventsStore((state) => state.isSavedToCalendar);
+  
   const [isAddedToCalendar, setIsAddedToCalendar] = useState(false);
-  const [calendarEventId, setCalendarEventId] = useState<string | null>(null);
   const [checkInStatus, setCheckInStatus] = useState<CheckInStatus>('none');
   const [hasSubmittedCode, setHasSubmittedCode] = useState(false);
   const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false); // Prevent duplicate submissions
@@ -101,6 +104,14 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const [checkInPoints, setCheckInPoints] = useState(0);
   const [reviewPoints, setReviewPoints] = useState(0);
   
+  // Initialize calendar state from store
+  useEffect(() => {
+    if (brand?.id) {
+      const isSaved = isSavedToCalendarInStore(brand.id);
+      setIsAddedToCalendar(isSaved);
+    }
+  }, [brand?.id]);
+
   useEffect(() => {
     const loadEventData = async () => {
       if (!eventId) {
@@ -222,160 +233,36 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   };
 
   const handleAddToCalendar = async () => {
-    // If already added, remove it from calendar
-    if (isAddedToCalendar && calendarEventId) {
-      try {
-        await Calendar.deleteEventAsync(calendarEventId);
+    if (!brand?.id) return;
+
+    try {
+      // If already added, remove it from calendar
+      if (isAddedToCalendar) {
+        await removeSavedEventFromStore(brand.id);
         setIsAddedToCalendar(false);
-        setCalendarEventId(null);
+        
         Alert.alert(
           'Removed',
           'Event removed from your calendar.',
           [{ text: 'OK' }]
         );
-      } catch (error) {
-        console.error('Error removing event from calendar:', error);
-        Alert.alert(
-          'Error',
-          'Failed to remove event from calendar. You may need to delete it manually.',
-          [{ text: 'OK' }]
-        );
-      }
-      return;
-    }
-
-    // If already added, cancel reminders and toggle the state
-    if (isAddedToCalendar) {
-      if (brand) {
-        const eventIdForReminders = brand.id;
-        try {
-          await cancelEventReminders(eventIdForReminders);
-        } catch (error) {
-          console.error('[BrandDetailsScreen] Error canceling reminders:', error);
-        }
-      }
-      setIsAddedToCalendar(false);
-      return;
-    }
-
-    try {
-      const { status: currentStatus } = await Calendar.getCalendarPermissionsAsync();
-
-      let finalStatus = currentStatus;
-
-      if (currentStatus === 'undetermined') {
-        const { status: requestedStatus } = await Calendar.requestCalendarPermissionsAsync();
-        finalStatus = requestedStatus;
-      }
-
-      if (finalStatus !== 'granted') {
-        if (finalStatus === 'denied') {
-          Alert.alert(
-            'Calendar Access Required',
-            'Please enable calendar access in your device settings to add events to your calendar.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Open Settings',
-                onPress: () => {
-                  Linking.openSettings();
-                },
-              },
-            ]
-          );
-        } else {
-          Alert.alert(
-            'Permission Needed',
-            'Please grant calendar access to add events to your calendar.',
-            [{ text: 'OK' }]
-          );
-        }
         return;
       }
 
-      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      if (calendars.length === 0) {
-        Alert.alert(
-          'No Calendars',
-          'No calendars are available on your device.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      const defaultCalendar = calendars.find((cal) => cal.isPrimary) || calendars[0];
-      if (!defaultCalendar.allowsModifications) {
-        Alert.alert(
-          'Calendar Not Writable',
-          'The selected calendar does not allow modifications.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      if (!brand) return;
+      // Add to user's calendar via store (which syncs with database)
+      await addSavedEventToStore(brand.id);
+      setIsAddedToCalendar(true);
       
-      let eventDates;
-      try {
-        eventDates = parseEventDateTime(brand.date, brand.time);
-      } catch (error) {
-        Alert.alert(
-          'Invalid Date/Time',
-          'Unable to parse the event date or time. Please check the event details.',
-          [{ text: 'OK' }]
-        );
-        console.error('Error parsing date/time:', error);
-        return;
-      }
-
-      const addressString = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;
-
-      const eventDetails = {
-        title: `${brand.brandName} at ${brand.storeName}`,
-        startDate: eventDates.start,
-        endDate: eventDates.end,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York',
-        location: addressString,
-        notes: brand.eventInfo || `Sample sale event for ${brand.brandName}`,
-      };
-
-      const calendarEventId = await Calendar.createEventAsync(defaultCalendar.id, eventDetails);
-      
-      if (calendarEventId) {
-        setIsAddedToCalendar(true);
-        
-        // Schedule push reminders for the event (24 hours and 1 hour before)
-        if (brand && eventDates.start) {
-          const eventTitle = `${brand.brandName} at ${brand.storeName}`;
-          const addressString = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;
-          
-          // Use the event ID from the database if available, otherwise use calendar event ID
-          const eventIdForReminders = brand.id || calendarEventId;
-          
-          try {
-            await scheduleEventReminders(
-              eventIdForReminders,
-              eventDates.start,
-              eventTitle,
-              addressString
-            );
-          } catch (reminderError) {
-            // Don't fail the calendar add if reminder scheduling fails
-            console.error('[BrandDetailsScreen] Error scheduling reminders:', reminderError);
-          }
-        }
-        
-        Alert.alert(
-          'Success',
-          'Event added to your calendar!',
-          [{ text: 'OK' }]
-        );
-      }
+      Alert.alert(
+        'Success',
+        'Event added to your calendar!',
+        [{ text: 'OK' }]
+      );
     } catch (error) {
-      console.error('Error adding event to calendar:', error);
+      console.error('Error updating calendar:', error);
       Alert.alert(
         'Error',
-        'Failed to add event to calendar. Please try again.',
+        'Failed to update calendar. Please try again.',
         [{ text: 'OK' }]
       );
     }
@@ -474,8 +361,8 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     const distance = calculateDistance(
       userLocation.latitude,
       userLocation.longitude,
-      eventLocation[0],
-      eventLocation[1]
+      eventLocation[1],
+      eventLocation[0]
     );
 
     return distance <= eventRadius;

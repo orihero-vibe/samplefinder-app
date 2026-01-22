@@ -137,15 +137,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   username: {
-    fontSize: 40,
+    fontSize: 24,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinBlueBlack,
-    marginBottom: 8,
     textAlign: 'center',
   },
   editProfileText: {
-    fontSize: 18,
-    fontFamily: 'Quicksand_400Regular',
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Regular',
     color: Colors.grayText,
   },
 });

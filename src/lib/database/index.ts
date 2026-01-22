@@ -22,8 +22,12 @@ export {
   createUserProfile,
   updateUserProfile,
   getUserProfile,
+  deleteUserProfile,
   addFavoriteBrand,
   removeFavoriteBrand,
+  addEventToUserCalendar,
+  removeEventFromUserCalendar,
+  getUserSavedEventIds,
 } from './users';
 
 // Re-export client functions

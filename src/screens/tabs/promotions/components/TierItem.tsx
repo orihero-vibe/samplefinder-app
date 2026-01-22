@@ -75,13 +75,13 @@ const styles = StyleSheet.create({
   },
   points: {
     fontSize: 16,
-    fontFamily: 'Quicksand_400Normal',
-    color: Colors.black,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.pinBlueBlack,
   },
   badgeEarnedText: {
     fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.success,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.pinBlueBlack,
   },
   progressBarContainer: {
     height: 8,

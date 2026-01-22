@@ -76,7 +76,7 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
         $updatedAt: row.$updatedAt,
       }));
 
-    console.log('[database.fetchEventsByClient] Events fetched successfully:', events.length);
+    console.log('[database.fetchEventsByClient] Events fetched successfully:', events);
     return events;
   } catch (error: any) {
     console.error('[database.fetchEventsByClient] Error fetching events:', error);

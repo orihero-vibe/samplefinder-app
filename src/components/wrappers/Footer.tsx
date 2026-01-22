@@ -11,7 +11,7 @@ const Footer = () => {
   const footerHeight = isSmallDevice ? 60 : isMediumDevice ? 70 : 80;
   
   return (
-    <View style={[styles.footer, { height: footerHeight + bottom, paddingBottom: bottom }]}>
+    <View style={[styles.footer, { height: footerHeight,  }]}>
       <Image
         source={require('@/assets/footer.png')}
         style={styles.footerImage}

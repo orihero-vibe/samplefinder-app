@@ -20,9 +20,9 @@ const DiscoverButton: React.FC<DiscoverButtonProps> = ({ onPress }) => {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: Colors.brandBlueBright,
+    backgroundColor: Colors.blueColorMode,
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 10,
     paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',

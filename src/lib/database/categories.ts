@@ -3,11 +3,11 @@ import type { CategoryData } from './types';
 
 /**
  * Fetch all categories from the database
- * @param ageRestrictionAccepted - If false, filters out categories with isAdult=true. If true or undefined, includes all categories.
+ * @param userIsAdult - If true, includes all categories (including adult ones). If false, filters out categories with isAdult=true.
  */
-export const fetchCategories = async (ageRestrictionAccepted?: boolean): Promise<CategoryData[]> => {
+export const fetchCategories = async (userIsAdult?: boolean): Promise<CategoryData[]> => {
   console.log('[database.fetchCategories] Fetching categories from database', {
-    ageRestrictionAccepted,
+    userIsAdult,
   });
 
   console.log('[database.fetchCategories] DATABASE_ID:', DATABASE_ID);
@@ -39,24 +39,33 @@ export const fetchCategories = async (ageRestrictionAccepted?: boolean): Promise
       return [];
     }
 
+    // Log raw data to see what we're getting from the database
+    console.log('[database.fetchCategories] Raw rows sample:', 
+      result.rows.slice(0, 3).map((r: any) => ({ 
+        title: r.title, 
+        isAdult: r.isAdult, 
+        isAdultType: typeof r.isAdult 
+      }))
+    );
+
     // Map the rows to CategoryData format
     let categories: CategoryData[] = result.rows
       .map((row: any) => ({
         $id: row.$id,
-        name: row.name || row.title || '',
-        slug: row.slug || row.name?.toLowerCase().replace(/\s+/g, '-') || '',
+        name: row.title,
+        slug: row.slug || row.title?.toLowerCase().replace(/\s+/g, '-') || '',
         description: row.description || '',
         icon: row.icon || '',
         isActive: row.isActive !== false, // Default to true if not specified
-        isAdult: row.isAdult || false,
+        isAdult: row.isAdult === true || row.isAdult === 'true', // Handle both boolean and string
         $createdAt: row.$createdAt,
         $updatedAt: row.$updatedAt,
         ...row, // Include all other fields
       }))
       .filter((cat: CategoryData) => cat.isActive !== false); // Filter out inactive categories
 
-    // Filter out adult categories if user hasn't accepted age restrictions
-    if (ageRestrictionAccepted === false) {
+    // Filter out adult categories if user is not an adult
+    if (!userIsAdult) {
       const beforeFilter = categories.length;
       categories = categories.filter((cat: CategoryData) => !cat.isAdult);
       console.log('[database.fetchCategories] Filtered out adult categories:', {

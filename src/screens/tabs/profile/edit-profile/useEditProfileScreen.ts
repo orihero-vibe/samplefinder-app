@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, deleteAccount } from '@/lib/auth';
 import { getUserProfile, updateUserProfile, UserProfileRow } from '@/lib/database';
 import { updateEmail, updatePassword } from '@/lib/auth';
 import { uploadAvatar, deleteAvatar, extractFileIdFromUrl } from '@/lib/storage';
@@ -11,6 +11,8 @@ export const useEditProfileScreen = () => {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState<string>('');
   
   const [profile, setProfile] = useState<UserProfileRow | null>(null);
@@ -242,7 +244,7 @@ export const useEditProfileScreen = () => {
           { text: 'Camera', onPress: () => pickImage('camera') },
           { text: 'Photo Library', onPress: () => pickImage('library') },
           { text: 'Cancel', style: 'cancel' },
-          ...(avatarUri ? [{ text: 'Remove Photo', style: 'destructive', onPress: handleRemovePhoto }] : []),
+          ...(avatarUri ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: handleRemovePhoto }] : []),
         ],
         { cancelable: true }
       );
@@ -385,9 +387,46 @@ export const useEditProfileScreen = () => {
     );
   };
 
+  const handleDeleteAccountPress = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setIsDeleting(true);
+      
+      console.log('[EditProfileScreen] Deleting account...');
+      await deleteAccount();
+      
+      // Navigate to Login screen and reset navigation stack
+      const rootNavigation = navigation.getParent()?.getParent() || navigation.getParent() || navigation;
+      rootNavigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        })
+      );
+    } catch (error: any) {
+      console.error('[EditProfileScreen] Delete account error:', error);
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      Alert.alert(
+        'Delete Failed',
+        error.message || 'Failed to delete account. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+  };
+
   return {
     isLoading,
     isSaving,
+    isDeleting,
+    showDeleteModal,
     error,
     profile,
     username,
@@ -408,6 +447,9 @@ export const useEditProfileScreen = () => {
     handleBackPress,
     handleSaveUpdates,
     handleChangeProfilePicture,
+    handleDeleteAccountPress,
+    handleConfirmDelete,
+    handleCancelDelete,
     loadProfile,
   };
 };

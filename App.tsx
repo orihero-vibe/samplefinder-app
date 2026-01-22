@@ -11,6 +11,14 @@ import {
   Quicksand_600SemiBold,
   Quicksand_700Bold,
 } from '@expo-google-fonts/quicksand';
+import { 
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+  Poppins_800ExtraBold,
+  Poppins_900Black,
+} from '@expo-google-fonts/poppins';
 import AppNavigator from '@/navigation/AppNavigator';
 import { TriviaModal } from '@/components/trivia';
 import type { TriviaQuestion } from '@/lib/database/trivia';
@@ -19,6 +27,7 @@ import { getUserProfile } from '@/lib/database';
 import { setupTokenRefreshListener, initializePushNotifications } from '@/lib/notifications';
 import { getCurrentUser } from '@/lib/auth';
 import { CustomSplashScreen } from '@/components';
+import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
@@ -41,6 +50,12 @@ export default function App() {
           Quicksand_500Medium,
           Quicksand_600SemiBold,
           Quicksand_700Bold,
+          Poppins_400Regular,
+          Poppins_500Medium,
+          Poppins_600SemiBold,
+          Poppins_700Bold,
+          Poppins_800ExtraBold,
+          Poppins_900Black,
         });
 
         // Set up push notification token refresh listener
@@ -62,6 +77,13 @@ export default function App() {
               }
             } catch (profileError) {
               console.warn('[App] Failed to get user profile:', profileError);
+            }
+
+            // Sync calendar events store with user profile
+            try {
+              await useCalendarEventsStore.getState().syncWithUserProfile();
+            } catch (syncError) {
+              console.warn('[App] Failed to sync calendar events:', syncError);
             }
           }
         } catch (error) {

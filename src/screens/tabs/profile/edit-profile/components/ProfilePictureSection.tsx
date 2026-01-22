@@ -43,7 +43,7 @@ export const ProfilePictureSection: React.FC<ProfilePictureSectionProps> = ({
       <Text style={styles.username}>{username || 'User'}</Text>
       <TouchableOpacity onPress={onChangePicture} disabled={isUploadingAvatar}>
         <Text style={styles.changePictureText}>
-          {isUploadingAvatar ? 'Uploading...' : avatarUri ? 'Change Profile Picture' : 'Add Profile Picture'}
+          {isUploadingAvatar ? 'Uploading...' : avatarUri ? 'Add / Change Profile Picture' : 'Add / Change Profile Picture'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -103,15 +103,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.white,
   },
   username: {
-    fontSize: 32,
+    fontSize: 24,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.black,
-    marginBottom: 8,
+    color: Colors.pinBlueBlack,
   },
   changePictureText: {
-    fontSize: 16,
-    fontFamily: 'Quicksand_400Regular',
-    color: Colors.blueColorMode,
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Regular',
+    color: Colors.grayText,
   },
 });
 
