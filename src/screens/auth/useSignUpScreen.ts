@@ -440,16 +440,10 @@ export const useSignUpScreen = () => {
       return;
     }
 
-    // Validate T&C and Privacy acceptance
+    // Validate T&C acceptance
     if (!termsAccepted) {
       setErrorMessage('Please accept the Terms & Conditions to continue.');
       setShowTermsModal(true);
-      return;
-    }
-
-    if (!privacyAccepted) {
-      setErrorMessage('Please accept the Privacy Policy to continue.');
-      setShowPrivacyModal(true);
       return;
     }
     

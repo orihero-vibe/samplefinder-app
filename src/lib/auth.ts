@@ -1,6 +1,8 @@
-import { Account, ID } from 'react-native-appwrite';
+import { Account, ID, ExecutionMethod } from 'react-native-appwrite';
 import appwriteClient from './appwrite';
 import { createUserProfile } from './database';
+import { functions } from './database/config';
+import { APPWRITE_EVENTS_FUNCTION_ID } from '@env';
 // Note: Push notifications are initialized after email verification completes,
 // not during login/signup, to avoid race conditions with session deletion
 
@@ -609,6 +611,7 @@ export const updatePasswordRecovery = async (
 /**
  * Delete user account
  * This will delete both the Appwrite account and the user profile from the database
+ * Uses the Appwrite Function to perform server-side deletion of the auth account
  */
 export const deleteAccount = async (): Promise<void> => {
   console.log('[auth.deleteAccount] Starting account deletion process');
@@ -620,19 +623,8 @@ export const deleteAccount = async (): Promise<void> => {
       throw new Error('No user is currently logged in');
     }
     
-    console.log('[auth.deleteAccount] Deleting user profile from database...');
-    // Delete user profile from database first
-    try {
-      const { deleteUserProfile } = await import('./database');
-      await deleteUserProfile(user.$id);
-      console.log('[auth.deleteAccount] User profile deleted successfully');
-    } catch (profileError: any) {
-      console.warn('[auth.deleteAccount] Failed to delete user profile:', profileError);
-      // Continue with account deletion even if profile deletion fails
-    }
-    
-    // Delete push target before deleting account
     console.log('[auth.deleteAccount] Deleting push target...');
+    // Delete push target before deleting account
     try {
       const { deletePushTarget } = await import('./notifications');
       await deletePushTarget();
@@ -642,14 +634,70 @@ export const deleteAccount = async (): Promise<void> => {
       // Continue with account deletion even if push target deletion fails
     }
     
-    // Delete the Appwrite account
-    console.log('[auth.deleteAccount] Deleting Appwrite account...');
-    // Note: In Appwrite, we can't directly delete an account from the client SDK
-    // We need to delete the session which effectively logs the user out
-    // The actual account deletion would need to be handled by an admin function
-    // For now, we'll just delete all sessions and the profile
-    await account.deleteSessions();
-    console.log('[auth.deleteAccount] Account sessions deleted successfully');
+    console.log('[auth.deleteAccount] Calling server function to delete account...');
+    // Call the Appwrite Function to delete the user account from Auth
+    // The function will also handle database profile deletion
+    try {
+      const functionId = APPWRITE_EVENTS_FUNCTION_ID;
+      if (!functionId) {
+        throw new Error('Function ID not configured');
+      }
+      
+      const requestBody = {
+        userId: user.$id,
+      };
+      
+      const execution = await functions.createExecution({
+        functionId,
+        body: JSON.stringify(requestBody),
+        method: ExecutionMethod.POST,
+        xpath: '/delete-account',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        async: false,
+      });
+      
+      console.log('[auth.deleteAccount] Function execution status:', execution.status);
+      
+      if (execution.status === 'failed') {
+        let errorMessage = 'Failed to delete account';
+        if (execution.responseBody) {
+          try {
+            const errorResponse = JSON.parse(execution.responseBody);
+            errorMessage = errorResponse.error || errorResponse.message || execution.responseBody;
+          } catch {
+            errorMessage = execution.responseBody;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+      
+      if (execution.responseBody) {
+        const result = JSON.parse(execution.responseBody);
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to delete account');
+        }
+        console.log('[auth.deleteAccount] Account deleted successfully:', result.message);
+      }
+    } catch (functionError: any) {
+      console.error('[auth.deleteAccount] Function execution failed:', functionError);
+      throw new Error(functionError.message || 'Failed to delete account from server');
+    }
+    
+    // Try to delete local sessions, but don't fail if it errors
+    // (the account is already deleted, so sessions are gone)
+    console.log('[auth.deleteAccount] Cleaning up local sessions...');
+    try {
+      await account.deleteSessions();
+      console.log('[auth.deleteAccount] Local sessions deleted');
+    } catch (sessionError: any) {
+      // Ignore errors - if account was deleted, sessions are already gone
+      // This is expected to fail with "missing scopes" since the user no longer exists
+      console.log('[auth.deleteAccount] Session cleanup skipped (account already deleted)');
+    }
+    
+    console.log('[auth.deleteAccount] Account deletion completed successfully');
   } catch (error: any) {
     console.error('[auth.deleteAccount] Error deleting account:', error);
     console.error('[auth.deleteAccount] Error message:', error?.message);

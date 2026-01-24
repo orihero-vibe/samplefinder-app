@@ -48,7 +48,13 @@ const FilterModal: React.FC<FilterModalProps> = ({
           showsVerticalScrollIndicator={false}
         >
           {options.map((option) => {
-            const isSelected = selectedValues.includes(option.value);
+            // Special handling for "View All" option
+            // "View All" is selected when no other filters are selected
+            const isViewAll = option.value === 'all';
+            const isSelected = isViewAll 
+              ? selectedValues.length === 0 
+              : selectedValues.includes(option.value);
+
             return (
               <TouchableOpacity
                 key={option.id}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { getSetting } from '@/lib/database/settings';
+import { PRIVACY_POLICY } from '@/constants/LegalContent';
 
 interface PrivacyModalProps {
   visible: boolean;
@@ -14,23 +15,22 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
   onClose,
   onAccept,
 }) => {
-  const [content, setContent] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [content, setContent] = useState<string>(PRIVACY_POLICY);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchPrivacyContent = async () => {
       if (visible) {
         setIsLoading(true);
         try {
+          // Try to fetch from database first, fallback to static content
           const setting = await getSetting('privacy_policy');
-          if (setting) {
+          if (setting && setting.value) {
             setContent(setting.value);
-          } else {
-            setContent('Privacy Policy content not available.');
           }
         } catch (error) {
           console.error('Error fetching privacy policy:', error);
-          setContent('Error loading privacy policy. Please try again later.');
+          // Use static content as fallback (already set in initial state)
         } finally {
           setIsLoading(false);
         }
