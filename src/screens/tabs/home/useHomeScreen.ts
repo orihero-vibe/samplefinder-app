@@ -72,9 +72,15 @@ export const useHomeScreen = () => {
           end: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
         };
       case 'week':
+        // Calculate next week: start from next Monday (or the Monday after today)
+        const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        const daysUntilNextMonday = currentDay === 0 ? 1 : 8 - currentDay;
+        const nextMonday = new Date(today.getTime() + daysUntilNextMonday * 24 * 60 * 60 * 1000);
+        const nextSunday = new Date(nextMonday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+        
         return {
-          start: new Date(today.getTime()).toISOString(),
-          end: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          start: nextMonday.toISOString(),
+          end: nextSunday.toISOString(),
         };
       case 'all':
         return null; // No date filter
@@ -488,11 +494,11 @@ export const useHomeScreen = () => {
   };
 
   const handleDatesToggle = (value: string) => {
-    // Single-select behavior: only one date range can be selected at a time
-    // "View All" means no filter, so set to empty array
+    // "View All" means no filter, so clear all selections
     if (value === 'all') {
       setDatesValues([]);
     } else {
+      // Single-select behavior: only one date range can be selected at a time
       setDatesValues((prev) =>
         prev.includes(value) ? [] : [value]
       );
@@ -501,9 +507,15 @@ export const useHomeScreen = () => {
   };
 
   const handleCategoriesToggle = (value: string) => {
-    setCategoriesValues((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
+    // "View All" means no filter, so clear all selections
+    if (value === 'all') {
+      setCategoriesValues([]);
+    } else {
+      // Multi-select behavior for categories
+      setCategoriesValues((prev) =>
+        prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+      );
+    }
     // Keep modal open for multi-select
   };
 

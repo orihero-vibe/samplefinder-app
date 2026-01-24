@@ -200,24 +200,18 @@ const SignUpScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.termsText}>
-          By signing up, you acknowledge & agree to the Terms & Conditions of
-          SampleFinder by Polaris Brand Promotions.
-        </Text>
-
-        <View style={styles.legalButtonsContainer}>
-          <TouchableOpacity
-            onPress={handleTermsLinkPress}
-            style={styles.legalButton}
-          >
-            <Text style={styles.legalButtonText}>Terms & Conditions</Text>
+        <View style={styles.termsContainer}>
+          <Text style={styles.termsText}>
+            By signing up, you acknowledge & agree to the{' '}
+          </Text>
+          <TouchableOpacity onPress={handleTermsLinkPress}>
+            <Text style={[styles.termsText, styles.termsLinkText]}>
+              Terms & Conditions
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handlePrivacyLinkPress}
-            style={styles.legalButton}
-          >
-            <Text style={styles.legalButtonText}>Privacy Policy</Text>
-          </TouchableOpacity>
+          <Text style={styles.termsText}>
+            {' '}of SampleFinder by Polaris Brand Promotions.
+          </Text>
         </View>
       </View>
 

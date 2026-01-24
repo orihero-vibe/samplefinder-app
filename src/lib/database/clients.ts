@@ -210,14 +210,17 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
     }
 
     // Step 3: Filter clients to only include those that have matching events
-    // If no events matched, return empty array
-    if (clientIdsFromEvents.size === 0 && (filters.dateRange || (filters.categoryIds && filters.categoryIds.length > 0))) {
+    // Only filter by event matches if date or category filters were applied
+    const hasEventFilters = filters.dateRange || (filters.categoryIds && filters.categoryIds.length > 0);
+    
+    // If no events matched AND we had event filters, return empty array
+    if (clientIdsFromEvents.size === 0 && hasEventFilters) {
       return [];
     }
 
-    // Filter clients: must be in clientIdsFromEvents (if events were filtered) AND pass radius filter (if applied)
+    // Filter clients: must be in clientIdsFromEvents (only if event filters were applied)
     let filteredClients = clientsResult.rows;
-    if (clientIdsFromEvents.size > 0) {
+    if (hasEventFilters && clientIdsFromEvents.size > 0) {
       filteredClients = clientsResult.rows.filter((client: any) => {
         return clientIdsFromEvents.has(client.$id);
       });

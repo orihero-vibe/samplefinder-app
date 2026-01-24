@@ -63,13 +63,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
   },
+  termsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+    paddingHorizontal: 10,
+  },
   termsText: {
     color: '#fff',
     fontSize: 12,
     fontFamily: 'Quicksand_700Bold',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 20,
+  },
+  termsLinkText: {
+    textDecorationLine: 'underline',
   },
   legalButtonsContainer: {
     flexDirection: 'row',

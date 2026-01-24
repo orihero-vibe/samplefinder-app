@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { getSetting } from '@/lib/database/settings';
+import { TERMS_AND_CONDITIONS } from '@/constants/LegalContent';
 
 interface TermsModalProps {
   visible: boolean;
@@ -14,23 +15,22 @@ export const TermsModal: React.FC<TermsModalProps> = ({
   onClose,
   onAccept,
 }) => {
-  const [content, setContent] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [content, setContent] = useState<string>(TERMS_AND_CONDITIONS);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchTermsContent = async () => {
       if (visible) {
         setIsLoading(true);
         try {
-          const setting = await getSetting('terms_and_conditions');
-          if (setting) {
+          // Try to fetch from database first, fallback to static content
+          const setting = await getSetting('termsAndCondition');
+          if (setting && setting.value) {
             setContent(setting.value);
-          } else {
-            setContent('Terms & Conditions content not available.');
           }
         } catch (error) {
           console.error('Error fetching terms and conditions:', error);
-          setContent('Error loading terms and conditions. Please try again later.');
+          // Use static content as fallback (already set in initial state)
         } finally {
           setIsLoading(false);
         }
