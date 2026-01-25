@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useDiscoverEventsScreen } from './discover-events/useDiscoverEventsScreen';
 import { EventCard, UnifiedEvent } from '@/components';
@@ -14,9 +15,12 @@ const DiscoverEventsScreen = () => {
   const {
     calendarEvents,
     isLoading,
+    isRefreshing,
     error,
     handleEventPress,
     handleRetry,
+    handleRefresh,
+    handleGoBack,
   } = useDiscoverEventsScreen();
 
   return (
@@ -28,7 +32,11 @@ const DiscoverEventsScreen = () => {
         end={{ x: 1, y: 0 }}
         style={[styles.header, { paddingTop: insets.top + 10 }]}
       >
+        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+          <MaterialIcons name="arrow-back-ios" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Upcoming Events</Text>
+        <View style={styles.headerSpacer} />
       </LinearGradient>
 
       <View style={styles.contentWrapper}>
@@ -56,6 +64,14 @@ const DiscoverEventsScreen = () => {
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.brandBlueBright}
+                colors={[Colors.brandBlueBright]}
+              />
+            }
           >
             {calendarEvents.map((event) => (
               <EventCard

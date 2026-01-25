@@ -3,7 +3,6 @@ import { View, StyleSheet, Text } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { Colors } from '@/constants/Colors';
 import { Monicon } from '@monicon/native';
-import { EventData } from './UpcomingEvents';
 
 export interface MapMarkerData {
   id: string;
@@ -18,7 +17,7 @@ export interface MapMarkerData {
     state: string;
     zip: string;
   };
-  events?: EventData[];
+  events: string[]; // Event IDs for this location
 }
 
 interface MapMarkerProps {

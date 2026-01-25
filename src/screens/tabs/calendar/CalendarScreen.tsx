@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, Platform, ActivityIndicator, Text } from 'react-native';
+import { View, ScrollView, Platform, ActivityIndicator, Text, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   CalendarHeader,
@@ -22,6 +22,7 @@ const CalendarScreen = () => {
     calendarEvents,
     detailedEvents,
     isLoading,
+    isRefreshing,
     error,
     selectedDateEvents,
     monthName,
@@ -36,6 +37,7 @@ const CalendarScreen = () => {
     handleViewToggle,
     handleDiscoverPress,
     handleBackToCalendar,
+    handleRefresh,
   } = useCalendarScreen();
 
   if (isLoading) {
@@ -101,6 +103,14 @@ const CalendarScreen = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.brandBlueBright}
+              colors={[Colors.brandBlueBright]}
+            />
+          }
         >
           <ViewToggle selectedView={viewType} onViewChange={handleViewToggle} />
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Monicon } from '@monicon/native';
 import PointsBadge from './PointsBadge';
@@ -11,41 +11,61 @@ interface CheckInSuccessProps {
   onLeaveReview?: () => void;
   pointsEarned?: number;
   showReviewButton?: boolean;
+  discount?: number | null;
+  discountImageURL?: string | null;
 }
 
 const CheckInSuccess: React.FC<CheckInSuccessProps> = ({
   onLeaveReview,
   pointsEarned = 10,
   showReviewButton = true,
+  discount,
+  discountImageURL,
 }) => {
+  // Only show discount section if there's a discount or discount image
+  const hasDiscount = discount != null || discountImageURL;
+
   return (
     <View style={styles.container}>
-      {/* Barcode Section */}
-      <View style={styles.barcodeSection}>
-        <View style={styles.barcodeRow}>
-          <Text style={styles.barcodeText}>
-            Scan to save $1 on{'\n'}today's purchase
-          </Text>
-          <View style={styles.barcodeContainer}>
-            {/* Barcode representation */}
-            <View style={styles.barcode}>
-              {Array.from({ length: 40 }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.barcodeLine,
-                    {
-                      width: i % 4 === 0 ? 2.5 : i % 3 === 0 ? 1.5 : 1,
-                      height: 50,
-                    },
-                  ]}
+      {/* Barcode/Discount Section - only show if discount exists */}
+      {hasDiscount && (
+        <View style={styles.barcodeSection}>
+          <View style={styles.barcodeRow}>
+            {discount != null && (
+              <Text style={styles.barcodeText}>
+                Scan to save ${discount} on{'\n'}today's purchase
+              </Text>
+            )}
+            {discountImageURL ? (
+              <View style={styles.barcodeContainer}>
+                <Image
+                  source={{ uri: discountImageURL }}
+                  style={styles.discountImage}
+                  resizeMode="contain"
                 />
-              ))}
-            </View>
-            <Text style={styles.barcodeNumber}>0 12345 678912</Text>
+              </View>
+            ) : (
+              <View style={styles.barcodeContainer}>
+                {/* Fallback barcode representation */}
+                <View style={styles.barcode}>
+                  {Array.from({ length: 40 }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.barcodeLine,
+                        {
+                          width: i % 4 === 0 ? 2.5 : i % 3 === 0 ? 1.5 : 1,
+                          height: 50,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         </View>
-      </View>
+      )}
 
       {/* Points Earned Badge */}
       <PointsBadge points={pointsEarned} />
@@ -118,6 +138,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_500Medium',
     color: Colors.black,
     letterSpacing: 1,
+  },
+  discountImage: {
+    width: 150,
+    height: 60,
+    backgroundColor: Colors.white,
   },
   reviewButton: {
     backgroundColor: Colors.blueColorMode,

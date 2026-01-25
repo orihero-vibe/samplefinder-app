@@ -8,6 +8,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: 15,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -15,6 +23,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.white,
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 40,
   },
   contentWrapper: {
     flex: 1,

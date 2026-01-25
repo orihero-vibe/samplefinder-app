@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import MainHeader from '@/components/wrappers/MainHeader';
@@ -17,8 +17,10 @@ const FavoritesScreen = () => {
     favorites,
     newBrands,
     isLoading,
+    isRefreshing,
     handleToggleFavorite,
     handleToggleNewFavorite,
+    handleRefresh,
   } = useFavoritesScreen();
 
   return (
@@ -30,6 +32,14 @@ const FavoritesScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.pinDarkBlue}
+            colors={[Colors.pinDarkBlue]}
+          />
+        }
       >
         {/* Favorites Header Section */}
         <View style={styles.headerSection}>

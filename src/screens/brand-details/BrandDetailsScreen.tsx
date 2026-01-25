@@ -116,6 +116,8 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
             onLeaveReview={handleLeaveReview}
             pointsEarned={totalEarnedPoints}
             showReviewButton={!hasReviewed}
+            discount={brand?.discount}
+            discountImageURL={brand?.discountImageURL}
           />
         )}
 
