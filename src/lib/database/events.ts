@@ -52,29 +52,44 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
         
         return clientMatches && !isArchived && !isHidden;
       })
-      .map((row: any) => ({
-        $id: row.$id,
-        name: row.name || '',
-        date: row.date || '',
-        startTime: row.startTime || '',
-        endTime: row.endTime || '',
-        city: row.city || '',
-        address: row.address || '',
-        state: row.state || '',
-        zipCode: row.zipCode || '',
-        products: row.products || '',
-        client: row.client,
-        checkInCode: row.checkInCode || '',
-        checkInPoints: row.checkInPoints || 0,
-        reviewPoints: row.reviewPoints || 0,
-        eventInfo: row.eventInfo || '',
-        discountImageURL: row.discountImageURL || null,
-        radius: row.radius || undefined,
-        isArchived: row.isArchived || false,
-        isHidder: row.isHidder || false,
-        $createdAt: row.$createdAt,
-        $updatedAt: row.$updatedAt,
-      }));
+      .map((row: any) => {
+        // Extract location from point field - format: [longitude, latitude]
+        let location: [number, number] | undefined;
+        if (row.location) {
+          if (Array.isArray(row.location) && row.location.length >= 2) {
+            location = [row.location[0], row.location[1]];
+          } else if (row.location?.coordinates && Array.isArray(row.location.coordinates)) {
+            location = [row.location.coordinates[0], row.location.coordinates[1]];
+          }
+        }
+
+        return {
+          $id: row.$id,
+          name: row.name || '',
+          date: row.date || '',
+          startTime: row.startTime || '',
+          endTime: row.endTime || '',
+          city: row.city || '',
+          address: row.address || '',
+          state: row.state || '',
+          zipCode: row.zipCode || '',
+          products: row.products || '',
+          client: row.client,
+          checkInCode: row.checkInCode || '',
+          checkInPoints: row.checkInPoints || 0,
+          reviewPoints: row.reviewPoints || 0,
+          eventInfo: row.eventInfo || '',
+          discount: row.discount ?? null,
+          discountImageURL: row.discountImageURL || null,
+          radius: row.radius || undefined,
+          categories: row.categories || [], // Include categories for adult filtering
+          location,
+          isArchived: row.isArchived || false,
+          isHidder: row.isHidder || false,
+          $createdAt: row.$createdAt,
+          $updatedAt: row.$updatedAt,
+        };
+      });
 
     console.log('[database.fetchEventsByClient] Events fetched successfully:', events);
     return events;
@@ -132,28 +147,44 @@ export const fetchAllEvents = async (): Promise<EventRow[]> => {
     }
 
     // Map the rows to EventRow format
-    const events: EventRow[] = result.rows.map((row: any) => ({
-      $id: row.$id,
-      name: row.name || '',
-      date: row.date || '',
-      startTime: row.startTime || '',
-      endTime: row.endTime || '',
-      city: row.city || '',
-      address: row.address || '',
-      state: row.state || '',
-      zipCode: row.zipCode || '',
-      products: row.products || '',
-      client: row.client,
-      checkInCode: row.checkInCode || '',
-      checkInPoints: row.checkInPoints || 0,
-      reviewPoints: row.reviewPoints || 0,
-      eventInfo: row.eventInfo || '',
-      radius: row.radius || undefined,
-      isArchived: row.isArchived || false,
-      isHidder: row.isHidder || false,
-      $createdAt: row.$createdAt,
-      $updatedAt: row.$updatedAt,
-    }));
+    const events: EventRow[] = result.rows.map((row: any) => {
+      // Extract location from point field - format: [longitude, latitude]
+      let location: [number, number] | undefined;
+      if (row.location) {
+        if (Array.isArray(row.location) && row.location.length >= 2) {
+          location = [row.location[0], row.location[1]];
+        } else if (row.location?.coordinates && Array.isArray(row.location.coordinates)) {
+          location = [row.location.coordinates[0], row.location.coordinates[1]];
+        }
+      }
+
+      return {
+        $id: row.$id,
+        name: row.name || '',
+        date: row.date || '',
+        startTime: row.startTime || '',
+        endTime: row.endTime || '',
+        city: row.city || '',
+        address: row.address || '',
+        state: row.state || '',
+        zipCode: row.zipCode || '',
+        products: row.products || '',
+        client: row.client,
+        checkInCode: row.checkInCode || '',
+        checkInPoints: row.checkInPoints || 0,
+        reviewPoints: row.reviewPoints || 0,
+        eventInfo: row.eventInfo || '',
+        discount: row.discount ?? null,
+        discountImageURL: row.discountImageURL || null,
+        radius: row.radius || undefined,
+        categories: row.categories || [], // Include categories for adult filtering
+        location,
+        isArchived: row.isArchived || false,
+        isHidder: row.isHidder || false,
+        $createdAt: row.$createdAt,
+        $updatedAt: row.$updatedAt,
+      };
+    });
 
     console.log('[database.fetchAllEvents] Events fetched successfully:', events.length);
     return events;
@@ -215,28 +246,44 @@ export const fetchAllUpcomingEvents = async (): Promise<EventRow[]> => {
     }
 
     // Map the rows to EventRow format
-    const events: EventRow[] = result.rows.map((row: any) => ({
-      $id: row.$id,
-      name: row.name || '',
-      date: row.date || '',
-      startTime: row.startTime || '',
-      endTime: row.endTime || '',
-      city: row.city || '',
-      address: row.address || '',
-      state: row.state || '',
-      zipCode: row.zipCode || '',
-      products: row.products || '',
-      client: row.client,
-      checkInCode: row.checkInCode || '',
-      checkInPoints: row.checkInPoints || 0,
-      reviewPoints: row.reviewPoints || 0,
-      eventInfo: row.eventInfo || '',
-      radius: row.radius || undefined,
-      isArchived: row.isArchived || false,
-      isHidder: row.isHidder || false,
-      $createdAt: row.$createdAt,
-      $updatedAt: row.$updatedAt,
-    }));
+    const events: EventRow[] = result.rows.map((row: any) => {
+      // Extract location from point field - format: [longitude, latitude]
+      let location: [number, number] | undefined;
+      if (row.location) {
+        if (Array.isArray(row.location) && row.location.length >= 2) {
+          location = [row.location[0], row.location[1]];
+        } else if (row.location?.coordinates && Array.isArray(row.location.coordinates)) {
+          location = [row.location.coordinates[0], row.location.coordinates[1]];
+        }
+      }
+
+      return {
+        $id: row.$id,
+        name: row.name || '',
+        date: row.date || '',
+        startTime: row.startTime || '',
+        endTime: row.endTime || '',
+        city: row.city || '',
+        address: row.address || '',
+        state: row.state || '',
+        zipCode: row.zipCode || '',
+        products: row.products || '',
+        client: row.client,
+        checkInCode: row.checkInCode || '',
+        checkInPoints: row.checkInPoints || 0,
+        reviewPoints: row.reviewPoints || 0,
+        eventInfo: row.eventInfo || '',
+        discount: row.discount ?? null,
+        discountImageURL: row.discountImageURL || null,
+        radius: row.radius || undefined,
+        categories: row.categories || [], // Include categories for adult filtering
+        location,
+        isArchived: row.isArchived || false,
+        isHidder: row.isHidder || false,
+        $createdAt: row.$createdAt,
+        $updatedAt: row.$updatedAt,
+      };
+    });
 
     console.log('[database.fetchAllUpcomingEvents] Events fetched successfully:', events.length);
     return events;
@@ -290,6 +337,16 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       clientData = await fetchClientById(result.client);
     }
 
+    // Extract location from point field - format: [longitude, latitude]
+    let location: [number, number] | undefined;
+    if (result.location) {
+      if (Array.isArray(result.location) && result.location.length >= 2) {
+        location = [result.location[0], result.location[1]];
+      } else if (result.location?.coordinates && Array.isArray(result.location.coordinates)) {
+        location = [result.location.coordinates[0], result.location.coordinates[1]];
+      }
+    }
+
     const event: EventRow = {
       $id: result.$id,
       name: result.name || '',
@@ -306,8 +363,11 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       checkInPoints: result.checkInPoints || 0,
       reviewPoints: result.reviewPoints || 0,
       eventInfo: result.eventInfo || '',
+      discount: result.discount ?? null,
       discountImageURL: result.discountImageURL || null,
       radius: result.radius || undefined,
+      categories: result.categories || [], // Include categories for adult filtering
+      location,
       isArchived: result.isArchived || false,
       isHidder: result.isHidder || false,
       $createdAt: result.$createdAt,

@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Share } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
 import { getCurrentUser } from '@/lib/auth';
@@ -28,6 +28,7 @@ export const usePromotionsScreen = () => {
   
   // State for live data
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [eventCheckInsCount, setEventCheckInsCount] = useState(0);
   const [reviewsCount, setReviewsCount] = useState(0);
@@ -36,14 +37,18 @@ export const usePromotionsScreen = () => {
   const [isAmbassador, setIsAmbassador] = useState(false);
   const [isInfluencer, setIsInfluencer] = useState(false);
   
-  // Fetch user statistics and history on mount
-  useEffect(() => {
-    loadUserData();
-  }, []);
+  // Fetch user statistics and history on mount and when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+    }, [])
+  );
 
-  const loadUserData = async () => {
+  const loadUserData = async (isRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (!isRefresh) {
+        setIsLoading(true);
+      }
       
       const authUser = await getCurrentUser();
       
@@ -80,7 +85,13 @@ export const usePromotionsScreen = () => {
       console.error('Error loading user data:', error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadUserData(true);
   };
 
   const buildHistoryItems = async (
@@ -265,9 +276,11 @@ export const usePromotionsScreen = () => {
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
     isLoading,
+    isRefreshing,
     totalPoints,
     isAmbassador,
     isInfluencer,
+    handleRefresh,
     setActiveTab,
     handleBackPress,
     handleSharePress,

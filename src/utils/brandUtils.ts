@@ -1,9 +1,97 @@
-import { EventRow, ClientData } from '@/lib/database';
+import { EventRow, ClientData, CategoryData } from '@/lib/database';
 import { BrandDetailsData } from '@/screens/brand-details';
 import { CalendarEventDetail } from '@/screens/tabs/calendar/components';
 import { formatEventDate, formatEventTime, parseProducts, formatEventDistance } from './formatters';
 import { Colors } from '@/constants/Colors';
 import { NewBrandData } from '@/screens/tabs/favorites/components';
+
+/**
+ * Filters events based on user's adult status and category adult flags
+ * If user is not an adult, filters out events that have any category with isAdult = true
+ * @param events - Array of events to filter
+ * @param categories - Array of all categories (needed to check isAdult flag)
+ * @param userIsAdult - Whether the current user is an adult
+ * @returns Filtered array of events
+ */
+export const filterEventsByAdultCategories = (
+  events: EventRow[],
+  categories: CategoryData[],
+  userIsAdult: boolean
+): EventRow[] => {
+  console.log('[filterEventsByAdultCategories] Starting filter:', {
+    eventsCount: events.length,
+    categoriesCount: categories.length,
+    userIsAdult,
+  });
+
+  // If user is an adult, return all events
+  if (userIsAdult) {
+    console.log('[filterEventsByAdultCategories] User is adult, returning all events');
+    return events;
+  }
+
+  // Create a Set of adult category IDs for quick lookup
+  const adultCategories = categories.filter((cat) => cat.isAdult === true);
+  const adultCategoryIds = new Set(adultCategories.map((cat) => cat.$id));
+  
+  console.log('[filterEventsByAdultCategories] Adult categories:', {
+    count: adultCategories.length,
+    names: adultCategories.map(c => c.name),
+    ids: Array.from(adultCategoryIds),
+  });
+
+  // If there are no adult categories, return all events
+  if (adultCategoryIds.size === 0) {
+    console.log('[filterEventsByAdultCategories] No adult categories found, returning all events');
+    return events;
+  }
+
+  // Log event categories for debugging
+  events.forEach((event, index) => {
+    console.log(`[filterEventsByAdultCategories] Event ${index} (${event.name}):`, {
+      categories: event.categories,
+      categoriesType: typeof event.categories,
+      isArray: Array.isArray(event.categories),
+    });
+  });
+
+  // Filter out events that have any adult category
+  const filteredEvents = events.filter((event) => {
+    // Normalize event categories to an array
+    let eventCategories: any[] = [];
+    
+    if (Array.isArray(event.categories)) {
+      eventCategories = event.categories;
+    } else if (typeof event.categories === 'string') {
+      // Single category ID as string
+      eventCategories = [event.categories];
+    } else if (event.categories && typeof event.categories === 'object') {
+      // Single category object or other object format
+      eventCategories = [event.categories];
+    }
+    
+    // Handle both category ID strings and category objects
+    const hasAdultCategory = eventCategories.some((cat: any) => {
+      // If cat is an object with $id, use that
+      const catId = typeof cat === 'object' && cat?.$id ? cat.$id : cat;
+      return adultCategoryIds.has(catId);
+    });
+    
+    if (hasAdultCategory) {
+      console.log(`[filterEventsByAdultCategories] Filtering out event: ${event.name} (has adult category)`);
+    }
+    
+    return !hasAdultCategory;
+  });
+
+  console.log('[filterEventsByAdultCategories] Filtering complete:', {
+    before: events.length,
+    after: filteredEvents.length,
+    removed: events.length - filteredEvents.length,
+  });
+
+  return filteredEvents;
+};
 
 /**
  * Converts EventRow + ClientData to BrandDetailsData format
@@ -50,6 +138,8 @@ export const convertEventToBrandDetails = (
     products,
     eventInfo: event.eventInfo || '',
     discountMessage: undefined, // Will be populated from database when available
+    discount: event.discount ?? null,
+    discountImageURL: event.discountImageURL || null,
   };
   
   return brandDetails;
@@ -70,19 +160,21 @@ export const convertEventToCalendarEventDetail = (
   // Get location name from client, fallback to event address
   const location = client?.name || client?.title || event.address || 'Location TBD';
   
-  // Calculate distance if user location is provided
+  // Calculate distance if user location is provided (location is now on event, not client)
   const distance = formatEventDistance({
     userLocation,
-    eventCoordinates: client?.location 
+    eventCoordinates: event.location 
       ? { 
-          latitude: client.location[1],
-          longitude: client.location[0]
+          latitude: event.location[1],
+          longitude: event.location[0]
         }
       : undefined
   });
   
-  // Generate logo from brand name
+  // Brand name comes from event.name (event title/brand)
   const brandName = event.name || 'Brand';
+  
+  // Generate logo from brand name
   const logoText = brandName
     .split(' ')
     .map((word) => word.substring(0, 4).toUpperCase())
@@ -113,18 +205,15 @@ export const convertEventToCalendarEventDetail = (
     textColor: backgroundColor === Colors.white ? Colors.brandBlueBright : undefined,
   };
   
-  // Get brand/client name (for display as subtitle)
-  const displayBrandName = client?.name || client?.title || brandName;
-  
-  // Get logo URL - prioritize discountImageURL over client.logoURL
-  const logoURL = event.discountImageURL || client?.logoURL || null;
+  // Get logo URL - use brand logo from client
+  const logoURL = client?.logoURL || null;
 
   return {
     id: event.$id,
     date: new Date(event.date),
     name: brandName,
-    brandName: displayBrandName,
-    location,
+    brandName: brandName, // Use event name as brand name (not client name)
+    location,             // Location is client/store name
     distance,
     time: formattedTime,
     logoURL,

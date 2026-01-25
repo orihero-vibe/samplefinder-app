@@ -8,10 +8,11 @@ import * as Location from 'expo-location';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
-import { fetchAllEvents, fetchClients, EventRow, ClientData } from '@/lib/database';
-import { convertEventToCalendarEventDetail, extractClientFromEvent } from '@/utils/brandUtils';
+import { fetchAllEvents, fetchClients, EventRow, ClientData, fetchCategories, CategoryData, getUserProfile } from '@/lib/database';
+import { convertEventToCalendarEventDetail, extractClientFromEvent, filterEventsByAdultCategories } from '@/utils/brandUtils';
 import { CalendarEvent, CalendarEventDetail } from './components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
+import { getCurrentUser } from '@/lib/auth';
 
 type CalendarScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>,
@@ -26,13 +27,41 @@ export const useCalendarScreen = () => {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [detailedEvents, setDetailedEvents] = useState<CalendarEventDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [categories, setCategories] = useState<CategoryData[] | null>(null); // null = not loaded yet
+  const [userIsAdult, setUserIsAdult] = useState<boolean>(false);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   
   // Subscribe to saved events from store to trigger re-renders
   const savedEvents = useCalendarEventsStore((state) => state.savedEvents);
+
+  // Load user profile and categories for adult filtering
+  useEffect(() => {
+    const loadUserAndCategories = async () => {
+      try {
+        // Load user profile to check isAdult status
+        const user = await getCurrentUser();
+        if (user?.$id) {
+          const profile = await getUserProfile(user.$id);
+          setUserIsAdult(profile?.isAdult || false);
+        }
+        
+        // Load all categories (we need all to check which are adult)
+        const allCategories = await fetchCategories(true); // Pass true to get all categories including adult ones
+        setCategories(allCategories);
+      } catch (error) {
+        console.error('Error loading user profile or categories:', error);
+        setUserIsAdult(false);
+        setCategories([]); // Empty array means loaded but no categories
+      }
+    };
+
+    loadUserAndCategories();
+  }, []);
 
   useEffect(() => {
     const getCurrentLocation = async () => {
@@ -59,9 +88,16 @@ export const useCalendarScreen = () => {
   }, []);
 
   useEffect(() => {
+    // Wait until categories are loaded before fetching events
+    if (categories === null) {
+      return;
+    }
+
     const loadEvents = async () => {
       try {
-        setIsLoading(true);
+        if (!isRefreshing) {
+          setIsLoading(true);
+        }
         setError(null);
 
         const [eventRows, allClients] = await Promise.all([
@@ -69,11 +105,14 @@ export const useCalendarScreen = () => {
           fetchClients(),
         ]);
 
+        // Filter events based on user's adult status and category adult flags
+        const eventsFilteredByAdult = filterEventsByAdultCategories(eventRows, categories, userIsAdult);
+
         // Get user's saved event IDs from store
         const savedEventIds = useCalendarEventsStore.getState().savedEvents.map((e) => e.eventId);
 
-        // Filter to only include events the user has saved
-        const userSavedEventRows = eventRows.filter((event) => savedEventIds.includes(event.$id));
+        // Filter to only include events the user has saved (and that pass adult filter)
+        const userSavedEventRows = eventsFilteredByAdult.filter((event) => savedEventIds.includes(event.$id));
 
         const simpleEvents: CalendarEvent[] = userSavedEventRows.map((event) => ({
           id: event.$id,
@@ -81,9 +120,10 @@ export const useCalendarScreen = () => {
         }));
 
         const detailed: CalendarEventDetail[] = userSavedEventRows.map((event) => {
+          // Extract client for display purposes (brand name, logo, etc.)
           let client = extractClientFromEvent(event);
           
-          if (!client || !client.location) {
+          if (!client) {
             const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
             if (clientId) {
               const fullClient = allClients.find((c) => c.$id === clientId);
@@ -93,6 +133,7 @@ export const useCalendarScreen = () => {
             }
           }
           
+          // Location is now on event, used in convertEventToCalendarEventDetail
           return convertEventToCalendarEventDetail(event, client, userLocation || undefined);
         });
 
@@ -105,11 +146,12 @@ export const useCalendarScreen = () => {
         setError(err.message || 'Failed to load events');
       } finally {
         setIsLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     loadEvents();
-  }, [userLocation, savedEvents]);
+  }, [userLocation, savedEvents, refreshTrigger, categories, userIsAdult]);
 
   const handlePreviousMonth = () => {
     if (viewType === 'list') {
@@ -193,6 +235,11 @@ export const useCalendarScreen = () => {
     navigation.navigate('DiscoverEvents');
   };
 
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
   const selectedDateEvents = detailedEvents.filter((event) => {
     if (!selectedDate) return false;
     const eventDate = new Date(event.date);
@@ -237,6 +284,7 @@ export const useCalendarScreen = () => {
     calendarEvents,
     detailedEvents,
     isLoading,
+    isRefreshing,
     error,
     selectedDateEvents,
     monthName,
@@ -251,6 +299,7 @@ export const useCalendarScreen = () => {
     handleViewToggle,
     handleDiscoverPress,
     handleBackToCalendar,
+    handleRefresh,
   };
 };
 

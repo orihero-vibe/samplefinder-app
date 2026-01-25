@@ -41,6 +41,8 @@ export interface BrandDetailsData {
   products: string[];
   eventInfo: string;
   discountMessage?: string;
+  discount?: number | null; // Discount percentage/amount
+  discountImageURL?: string | null; // Discount barcode/coupon image
 }
 
 // BrandDetailsScreen can be accessed from either HomeStack or CalendarStack
@@ -140,8 +142,9 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
           }
         }
         
-        if (client?.location) {
-          setEventLocation(client.location);
+        // Use event.location for check-in validation (location moved from brand to event)
+        if (event.location) {
+          setEventLocation(event.location);
         }
         
         if (event.startTime) {

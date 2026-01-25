@@ -1,8 +1,8 @@
 import { useMemo, useEffect, useState } from 'react';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { NewBrandData } from './components';
-import { fetchClients, fetchAllEvents, getUserProfile, addFavoriteBrand, removeFavoriteBrand } from '@/lib/database';
-import { convertClientsToBrands } from '@/utils/brandUtils';
+import { fetchClients, fetchAllEvents, getUserProfile, addFavoriteBrand, removeFavoriteBrand, fetchCategories, CategoryData } from '@/lib/database';
+import { convertClientsToBrands, filterEventsByAdultCategories } from '@/utils/brandUtils';
 import { ClientData, EventRow } from '@/lib/database';
 import { formatEventDate, formatEventTime } from '@/utils/formatters';
 import type { EventData } from './components/BrandUpcomingEvents';
@@ -26,57 +26,79 @@ export const useFavoritesScreen = () => {
   const [allBrands, setAllBrands] = useState<Omit<NewBrandData, 'isFavorited'>[]>([]);
   const [allClients, setAllClients] = useState<ClientData[]>([]);
   const [allEvents, setAllEvents] = useState<EventRow[]>([]);
+  const [categories, setCategories] = useState<CategoryData[]>([]);
+  const [userIsAdult, setUserIsAdult] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Load user's favorite IDs from database and fetch all brands/events
-  useEffect(() => {
-    const loadData = async () => {
-      try {
+  const loadData = async (isRefresh = false) => {
+    try {
+      if (!isRefresh) {
         setIsLoading(true);
-        
-        // Get current user and their favorites from database
-        const authUser = await getCurrentUser();
-        if (authUser) {
-          const userProfile = await getUserProfile(authUser.$id);
-          if (userProfile && userProfile.favoriteIds) {
+      }
+      
+      // Get current user and their favorites from database
+      const authUser = await getCurrentUser();
+      let isAdult = false;
+      if (authUser) {
+        const userProfile = await getUserProfile(authUser.$id);
+        if (userProfile) {
+          if (userProfile.favoriteIds) {
             // Sync favorites from database to store
             setFavorites(userProfile.favoriteIds);
           }
+          isAdult = userProfile.isAdult || false;
+          setUserIsAdult(isAdult);
         }
-        
-        // Fetch clients and events in parallel
-        const [clients, events] = await Promise.all([
-          fetchClients(),
-          fetchAllEvents(),
-        ]);
-        
-        setAllClients(clients);
-        setAllEvents(events);
-        
-        // Convert clients to brand data with product types from events
-        const brands = convertClientsToBrands(clients, events);
-        
-        // Format description from product types
-        const brandsWithDescription = brands.map((brand) => ({
-          ...brand,
-          description: brand.productTypes.length > 0
-            ? brand.productTypes.join(', ')
-            : 'No products listed',
-        }));
-        
-        setAllBrands(brandsWithDescription);
-      } catch (error) {
-        console.error('[useFavoritesScreen] Error loading data:', error);
-        setAllBrands([]);
-        setAllClients([]);
-        setAllEvents([]);
-      } finally {
-        setIsLoading(false);
       }
-    };
+      
+      // Fetch clients, events, and categories in parallel
+      const [clients, events, allCategories] = await Promise.all([
+        fetchClients(),
+        fetchAllEvents(),
+        fetchCategories(true), // Get all categories including adult ones for filtering
+      ]);
+      
+      setCategories(allCategories);
+      
+      // Filter events based on user's adult status and category adult flags
+      const filteredEvents = filterEventsByAdultCategories(events, allCategories, isAdult);
+      
+      setAllClients(clients);
+      setAllEvents(filteredEvents);
+      
+      // Convert clients to brand data with product types from filtered events
+      const brands = convertClientsToBrands(clients, filteredEvents);
+      
+      // Format description from product types
+      const brandsWithDescription = brands.map((brand) => ({
+        ...brand,
+        description: brand.productTypes.length > 0
+          ? brand.productTypes.join(', ')
+          : 'No products listed',
+      }));
+      
+      setAllBrands(brandsWithDescription);
+    } catch (error) {
+      console.error('[useFavoritesScreen] Error loading data:', error);
+      setAllBrands([]);
+      setAllClients([]);
+      setAllEvents([]);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
+  // Load user's favorite IDs from database and fetch all brands/events
+  useEffect(() => {
     loadData();
   }, [setFavorites]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadData(true);
+  };
 
   // Get favorite brands with their details and events
   const favoriteBrands = useMemo<FavoriteBrandData[]>(() => {
@@ -119,7 +141,7 @@ export const useFavoritesScreen = () => {
             distance: city && state ? `${city}, ${state}` : (city || state || ''), // Use distance field for city, state
             date: formatEventDate(event.date),
             time: formatEventTime(event.startTime, event.endTime),
-            logoURL: event.discountImageURL || client.logoURL || null,
+            logoURL: client.logoURL || null, // Brand logo from client
           };
         });
       
@@ -199,8 +221,10 @@ export const useFavoritesScreen = () => {
     favorites: favoriteBrands,
     newBrands,
     isLoading,
+    isRefreshing,
     handleToggleFavorite,
     handleToggleNewFavorite,
+    handleRefresh,
   };
 };
 

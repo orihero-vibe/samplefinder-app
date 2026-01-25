@@ -30,7 +30,12 @@ const HistorySection: React.FC<HistorySectionProps> = ({ historyItems }) => {
         ) : (
           <View style={styles.itemsContainer}>
             {historyItems.map((item, index) => (
-              <HistoryItem key={item.id} item={item} defaultExpanded={index === 0 && !!item.review} />
+              <HistoryItem 
+                key={item.id} 
+                item={item} 
+                defaultExpanded={index === 0 && !!item.review}
+                isLastItem={index === historyItems.length - 1}
+              />
             ))}
           </View>
         )}
@@ -41,13 +46,10 @@ const HistorySection: React.FC<HistorySectionProps> = ({ historyItems }) => {
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
     marginTop: 20,
   },
   container: {
     backgroundColor: Colors.white,
-    borderRadius: 16,
     padding: 20,
   },
   header: {

@@ -67,6 +67,7 @@ export interface ClientData {
   city?: string;
   state?: string;
   zip?: string;
+  logoURL?: string | null; // Brand logo URL
   $createdAt?: string;
   $updatedAt?: string;
   [key: string]: any; // Allow for additional fields
@@ -104,8 +105,11 @@ export interface EventRow {
   checkInPoints: number;
   reviewPoints: number;
   eventInfo: string;
+  discount?: number | null; // Discount percentage/amount
   discountImageURL?: string | null;
   radius?: number; // Check-in radius in meters
+  categories?: string[]; // Array of category IDs
+  location?: [number, number]; // Point type: [longitude, latitude]
   isArchived?: boolean;
   isHidder?: boolean;
   $createdAt?: string;
@@ -126,17 +130,13 @@ export interface EventsByLocationResponse {
     state: string;
     zipCode: string;
     products: string;
+    discount?: number | null;
     discountImageURL?: string | null;
     distance: number; // in meters (from backend calculation)
     client: {
       $id: string;
       name: string;
       logoURL?: string;
-      city: string;
-      address: string;
-      state: string;
-      zip: string;
-      location: [number, number]; // [longitude, latitude]
     } | null;
   }>;
   pagination?: {

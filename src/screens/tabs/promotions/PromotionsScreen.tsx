@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { ScrollView, View, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, View, ActivityIndicator, Text, TouchableOpacity, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
@@ -37,9 +37,11 @@ const PromotionsScreen = () => {
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
     isLoading,
+    isRefreshing,
     totalPoints,
     isAmbassador,
     isInfluencer,
+    handleRefresh,
     setActiveTab,
     handleBackPress,
     handleSharePress,
@@ -92,6 +94,14 @@ const PromotionsScreen = () => {
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.white}
+                colors={[Colors.white]}
+              />
+            }
           >
             <PromotionsHeader totalPoints={totalPoints} />
             <PromotionsTabs activeTab={activeTab} onTabChange={setActiveTab} />

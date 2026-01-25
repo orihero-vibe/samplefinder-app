@@ -16,9 +16,10 @@ export interface HistoryItemData {
 interface HistoryItemProps {
   item: HistoryItemData;
   defaultExpanded?: boolean;
+  isLastItem?: boolean;
 }
 
-const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false }) => {
+const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false, isLastItem = false }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const toggleExpand = () => {
@@ -26,7 +27,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isLastItem && styles.lastItem]}>
       <View style={styles.content}>
         {/* Icon and Main Info */}
         <View style={styles.mainRow}>
@@ -90,20 +91,15 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E8E8',
+    paddingVertical: 16,
+  },
+  lastItem: {
+    borderBottomWidth: 0,
   },
   content: {
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: 'transparent',
   },
   mainRow: {
     flexDirection: 'row',
@@ -187,10 +183,8 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   reviewContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
+    marginTop: 6,
+    paddingLeft: 62
   },
   reviewText: {
     fontSize: 14,

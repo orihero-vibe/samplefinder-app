@@ -55,6 +55,8 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
                 source={{ uri: event.logoURL }}
                 style={styles.logoImage}
                 resizeMode="cover"
+                onError={(e) => console.log('[EventCard] Image load error:', e.nativeEvent.error, 'URL:', event.logoURL)}
+                onLoad={() => console.log('[EventCard] Image loaded successfully:', event.logoURL?.substring(0, 50))}
               />
             ) : (
               <Image
