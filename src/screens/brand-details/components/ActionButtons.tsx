@@ -1,11 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import SmallHeartIcon from '@/icons/SmallHeartIcon';
 import HeartOutlineIcon from '@/icons/HeartOutlineIcon';
-import CalendarIcon from '@/icons/CalendarIcon';
-import { CalendarAddedIcon } from '@/icons';
+import { CalendarAddedIcon, CalendarAddIcon } from '@/icons';
 
 interface ActionButtonsProps {
   onAddToCalendar: () => void;
@@ -27,7 +25,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onAddToCalendar}
         activeOpacity={0.7}
       >
-        {isAddedToCalendar ? <CalendarAddedIcon size={20} /> : <CalendarIcon size={20} />} 
+        {isAddedToCalendar ? <CalendarAddedIcon size={20} /> : <CalendarAddIcon size={20} />} 
         <Text style={styles.actionButtonText}>
           {isAddedToCalendar ? 'Added to Calendar' : 'Add to Calendar'}
         </Text>

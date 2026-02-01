@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
+    paddingBottom: 120,
   },
   inputsContainer: {
     paddingHorizontal: 20,

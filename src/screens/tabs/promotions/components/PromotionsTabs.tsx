@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { memo, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 type TabType = 'inProgress' | 'earned';
@@ -10,35 +10,45 @@ interface PromotionsTabsProps {
 }
 
 const PromotionsTabs: React.FC<PromotionsTabsProps> = ({ activeTab, onTabChange }) => {
+  const handleInProgressPress = useCallback(() => {
+    onTabChange('inProgress');
+  }, [onTabChange]);
+
+  const handleEarnedPress = useCallback(() => {
+    onTabChange('earned');
+  }, [onTabChange]);
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
-        <TouchableOpacity
+        <Pressable
           style={[styles.tab, activeTab === 'inProgress' && styles.activeTab]}
-          onPress={() => onTabChange('inProgress')}
+          onPress={handleInProgressPress}
         >
           <Text
             style={[
               styles.tabText,
               activeTab === 'inProgress' ? styles.activeTabText : styles.inactiveTabText,
             ]}
+            numberOfLines={1}
           >
             In Progress
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </Pressable>
+        <Pressable
           style={[styles.tab, activeTab === 'earned' && styles.activeTab]}
-          onPress={() => onTabChange('earned')}
+          onPress={handleEarnedPress}
         >
           <Text
             style={[
               styles.tabText,
               activeTab === 'earned' ? styles.activeTabText : styles.inactiveTabText,
             ]}
+            numberOfLines={1}
           >
             Earned
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
@@ -59,8 +69,9 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 6,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.white,
   },
   activeTab: {
@@ -78,5 +89,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PromotionsTabs;
+export default memo(PromotionsTabs);
 

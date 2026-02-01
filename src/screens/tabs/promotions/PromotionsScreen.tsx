@@ -106,7 +106,8 @@ const PromotionsScreen = () => {
             <PromotionsHeader totalPoints={totalPoints} />
             <PromotionsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-            {activeTab === 'inProgress' && (
+            {/* In Progress Tab Content - always mounted, visibility controlled */}
+            <View style={activeTab !== 'inProgress' && styles.hiddenTab}>
               <View style={styles.inProgressContainer}>
                 <BadgesSection
                   eventCheckIns={eventCheckIns}
@@ -118,32 +119,31 @@ const PromotionsScreen = () => {
                 />
                 <TiersSection tiers={tiers} />
               </View>
-            )}
+            </View>
 
-            {activeTab === 'earned' && (
-              <>
-                <EarnedSection
-                  eventBadges={eventBadges}
-                  reviewBadges={reviewBadges}
-                  tiers={tiers}
-                  totalPoints={totalPoints}
-                  onTierPress={handleTierPress}
-                  onPointsPress={handlePointsPress}
-                  isAmbassador={isAmbassador}
-                  isInfluencer={isInfluencer}
-                />
-                
-                {/* View History Button */}
-                <TouchableOpacity style={styles.viewHistoryButton} onPress={handleViewHistory}>
-                  <Monicon name="mdi:refresh" size={20} color={Colors.white} />
-                  <Text style={styles.viewHistoryText}>View History</Text>
-                </TouchableOpacity>
-                
-                <View ref={historyRef} collapsable={false}>
-                  <HistorySection historyItems={historyItems} />
-                </View>
-              </>
-            )}
+            {/* Earned Tab Content - always mounted, visibility controlled */}
+            <View style={activeTab !== 'earned' && styles.hiddenTab}>
+              <EarnedSection
+                eventBadges={eventBadges}
+                reviewBadges={reviewBadges}
+                tiers={tiers}
+                totalPoints={totalPoints}
+                onTierPress={handleTierPress}
+                onPointsPress={handlePointsPress}
+                isAmbassador={isAmbassador}
+                isInfluencer={isInfluencer}
+              />
+              
+              {/* View History Button */}
+              <TouchableOpacity style={styles.viewHistoryButton} onPress={handleViewHistory}>
+                <Monicon name="mdi:refresh" size={20} color={Colors.white} />
+                <Text style={styles.viewHistoryText}>View History</Text>
+              </TouchableOpacity>
+              
+              <View ref={historyRef} collapsable={false}>
+                <HistorySection historyItems={historyItems} />
+              </View>
+            </View>
           </ScrollView>
         )}
       </LinearGradient>

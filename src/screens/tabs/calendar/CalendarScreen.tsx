@@ -98,57 +98,60 @@ const CalendarScreen = () => {
       />
 
       <View style={styles.contentWrapper}>
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={Colors.brandBlueBright}
-              colors={[Colors.brandBlueBright]}
-            />
-          }
-        >
-          <ViewToggle selectedView={viewType} onViewChange={handleViewToggle} />
-
-          {viewType === 'calendar' ? (
-            selectedDate ? (
-              // Week View - when a date is selected in calendar mode
-              <WeekView
-                selectedDate={selectedDate}
-                events={detailedEvents}
-                onBackToCalendar={handleBackToCalendar}
-              />
-            ) : (
-              // Calendar Grid - monthly view
-              <CalendarGrid
-                currentDate={currentDate}
-                selectedDate={selectedDate}
-                events={calendarEvents}
-                onDateSelect={handleDateSelect}
-              />
-            )
-          ) : (
-            // List View - shows upcoming events or day-specific events
-            <EventList 
-              events={detailedEvents} 
+        {viewType === 'calendar' && selectedDate ? (
+          // Week View - rendered outside ScrollView for fixed buttons
+          <>
+            <ViewToggle selectedView={viewType} onViewChange={handleViewToggle} />
+            <WeekView
               selectedDate={selectedDate}
-              showUpcoming={!selectedDate}
+              events={detailedEvents}
+              onBackToCalendar={handleBackToCalendar}
             />
-          )}
+          </>
+        ) : (
+          <>
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={Colors.brandBlueBright}
+                  colors={[Colors.brandBlueBright]}
+                />
+              }
+            >
+              <ViewToggle selectedView={viewType} onViewChange={handleViewToggle} />
 
-          {/* Spacer for fixed button */}
-          <View style={styles.spacer} />
-        </ScrollView>
+              {viewType === 'calendar' ? (
+                // Calendar Grid - monthly view
+                <CalendarGrid
+                  currentDate={currentDate}
+                  selectedDate={selectedDate}
+                  events={calendarEvents}
+                  onDateSelect={handleDateSelect}
+                />
+              ) : (
+                // List View - shows upcoming events or day-specific events
+                <EventList 
+                  events={detailedEvents} 
+                  selectedDate={selectedDate}
+                  showUpcoming={!selectedDate}
+                />
+              )}
 
-        {/* Fixed Discover Button - only show in calendar grid and list views */}
-        {(viewType === 'list' || !selectedDate) && (
-          <View style={styles.fixedButtonContainer}>
-            <DiscoverButton onPress={handleDiscoverPress} />
-          </View>
+              {/* Spacer for fixed button */}
+              <View style={styles.spacer} />
+            </ScrollView>
+
+            {/* Fixed Discover Button - only show in calendar grid and list views */}
+            <View style={styles.fixedButtonContainer}>
+              <DiscoverButton onPress={handleDiscoverPress} />
+            </View>
+          </>
         )}
       </View>
 

@@ -23,6 +23,7 @@ export interface EventData {
   date: Date | string; // Can be Date object or formatted string
   time: string;
   logoURL?: string | null;
+  productTypes?: string[]; // Brand's product types from client.productType
 }
 
 interface UpcomingEventsProps {

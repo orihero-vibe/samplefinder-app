@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -203,11 +203,12 @@ const WeekView: React.FC<WeekViewProps> = ({ selectedDate, events, onBackToCalen
             <Text style={styles.emptyText}>No events on this day</Text>
           </View>
         )}
-        
-        {/* Back to Calendar Button */}
+      </ScrollView>
 
+      {/* Fixed Bottom Buttons */}
+      <View style={styles.fixedButtonContainer}>
         <TouchableOpacity 
-          style={[styles.backButton, styles.discoverButton]}
+          style={styles.backButton}
           onPress={handleDiscoverPress}
           activeOpacity={0.7}
         >
@@ -220,7 +221,7 @@ const WeekView: React.FC<WeekViewProps> = ({ selectedDate, events, onBackToCalen
         >
           <Text style={styles.backButtonText}>Back To Full Calendar</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -230,8 +231,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   weekContainer: {
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: Colors.white,
+  },
+  fixedButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    paddingTop: 10,
     backgroundColor: Colors.white,
   },
   separator: {
@@ -261,17 +272,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   dateContainer: {
-    width: 40,
-    height: 56,
+    width: 36,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop:4,
+    paddingTop: 4,
   },
   selectedDateContainer: {
     backgroundColor: Colors.blueColorMode,
   },
   todayDateContainer: {
-    // backgroundColor: Colors.blueColorMode,
   },
   dateText: {
     fontSize: 16,
@@ -281,8 +291,7 @@ const styles = StyleSheet.create({
   selectedDateText: {
     color: Colors.white,
   },
-  todayDateText: {
-    // color: Colors.white,
+  todayDateText: {  
   },
   pastDateText: {
     color: Colors.gray,
@@ -299,8 +308,7 @@ const styles = StyleSheet.create({
   selectedEventDot: {
     backgroundColor: Colors.white,
   },
-  todayEventDot: {
-    // backgroundColor: Colors.white,
+  todayEventDot: {   
   },
   pastEventDot: {
     backgroundColor: Colors.gray,
@@ -311,7 +319,7 @@ const styles = StyleSheet.create({
   },
   eventsContent: {
     paddingTop: 10,
-    paddingBottom: 20,
+    paddingBottom: 120,
   },
   emptyContainer: {
     paddingVertical: 40,
@@ -322,15 +330,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_400Regular',
     color: '#666',
   },
-  discoverButton: {
-    marginTop: 50,
-  },
   backButton: {
     backgroundColor: Colors.blueColorMode,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    marginTop: 10,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',

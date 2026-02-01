@@ -24,6 +24,7 @@ import { useFavoritesStore } from '@/stores/favoritesStore';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
 import { calculateDistance, parseEventDateTime } from '@/utils/formatters';
+import { scheduleEventReminders, cancelEventReminders } from '@/lib/notifications/eventReminders';
 
 export interface BrandDetailsData {
   id: string; // Event ID
@@ -105,6 +106,13 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const [hasReviewed, setHasReviewed] = useState(false);
   const [checkInPoints, setCheckInPoints] = useState(0);
   const [reviewPoints, setReviewPoints] = useState(0);
+  
+  // Calendar alert modal state
+  const [calendarAlertVisible, setCalendarAlertVisible] = useState(false);
+  const [calendarAlertType, setCalendarAlertType] = useState<'added' | 'removed'>('added');
+  
+  // Remove from calendar confirmation modal state
+  const [removeConfirmVisible, setRemoveConfirmVisible] = useState(false);
   
   // Initialize calendar state from store
   useEffect(() => {
@@ -239,16 +247,9 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     if (!brand?.id) return;
 
     try {
-      // If already added, remove it from calendar
+      // If already added, show confirmation before removing
       if (isAddedToCalendar) {
-        await removeSavedEventFromStore(brand.id);
-        setIsAddedToCalendar(false);
-        
-        Alert.alert(
-          'Removed',
-          'Event removed from your calendar.',
-          [{ text: 'OK' }]
-        );
+        setRemoveConfirmVisible(true);
         return;
       }
 
@@ -256,11 +257,27 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
       await addSavedEventToStore(brand.id);
       setIsAddedToCalendar(true);
       
-      Alert.alert(
-        'Success',
-        'Event added to your calendar!',
-        [{ text: 'OK' }]
-      );
+      // Schedule push notification reminders (24h and 1h before event)
+      if (eventData?.startTime) {
+        const eventStartDate = new Date(eventData.startTime);
+        const eventTitle = eventData.name || brand.brandName;
+        const eventLocation = eventData.city ? `${eventData.address}, ${eventData.city}` : undefined;
+        
+        const scheduledReminders = await scheduleEventReminders(
+          brand.id,
+          eventStartDate,
+          eventTitle,
+          eventLocation
+        );
+        
+        if (scheduledReminders && Object.keys(scheduledReminders).length > 0) {
+          console.log('[handleAddToCalendar] Scheduled reminders:', scheduledReminders);
+        }
+      }
+      
+      // Show custom calendar alert modal
+      setCalendarAlertType('added');
+      setCalendarAlertVisible(true);
     } catch (error) {
       console.error('Error updating calendar:', error);
       Alert.alert(
@@ -459,6 +476,38 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     setPointsModalVisible(false);
   };
 
+  const handleCloseCalendarAlert = () => {
+    setCalendarAlertVisible(false);
+  };
+
+  const handleConfirmRemoveFromCalendar = async () => {
+    if (!brand?.id) return;
+    
+    try {
+      setRemoveConfirmVisible(false);
+      await removeSavedEventFromStore(brand.id);
+      setIsAddedToCalendar(false);
+      
+      // Cancel scheduled reminders for this event
+      await cancelEventReminders(brand.id);
+      
+      // Show custom calendar alert modal
+      setCalendarAlertType('removed');
+      setCalendarAlertVisible(true);
+    } catch (error) {
+      console.error('Error removing from calendar:', error);
+      Alert.alert(
+        'Error',
+        'Failed to remove from calendar. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleCancelRemoveFromCalendar = () => {
+    setRemoveConfirmVisible(false);
+  };
+
   const handleViewRewards = () => {
     setPointsModalVisible(false);
     const parent = navigation.getParent();
@@ -544,6 +593,9 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     hasReviewed,
     checkInPoints,
     totalEarnedPoints,
+    calendarAlertVisible,
+    calendarAlertType,
+    removeConfirmVisible,
     handleBack,
     handleShare,
     handleAddToCalendar,
@@ -554,6 +606,9 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     handleSubmitReview,
     handleClosePointsModal,
     handleViewRewards,
+    handleCloseCalendarAlert,
+    handleConfirmRemoveFromCalendar,
+    handleCancelRemoveFromCalendar,
   };
 };
 

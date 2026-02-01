@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: 'Quicksand_700Bold',
-    color: Colors.pinDarkBlue,
+    fontFamily: 'Poppins_500Medium',
+    color: Colors.blueColorMode,
     marginBottom: 16,
     lineHeight: 32,
   },
@@ -208,13 +208,13 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.pinDarkBlue,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.blueColorMode,
   },
   cancelText: {
     fontSize: 14,
     fontFamily: 'Quicksand_500Medium',
-    color: Colors.pinDarkBlue,
+    color: Colors.blueColorMode,
   },
   loadingContainer: {
     width: '100%',

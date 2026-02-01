@@ -100,18 +100,19 @@ const styles = StyleSheet.create({
   },
   eventLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
-    minHeight: 80,
+    minHeight: 70,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
     borderRadius: 8,
     marginRight: 12,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   logoContainerWithBg: {
     backgroundColor: Colors.orangeBA,
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
   },
   eventDetails: {
     flex: 1,
+    flexShrink: 1,
     justifyContent: 'center',
     gap: 4,
     paddingRight: 8,
@@ -153,8 +155,9 @@ const styles = StyleSheet.create({
   eventRight: {
     alignItems: 'flex-end',
     justifyContent: 'center',
-    marginLeft: 12,
+    marginLeft: 8,
     flexShrink: 0,
+    minWidth: 100,
     gap: 4,
   },
   dateText: {
