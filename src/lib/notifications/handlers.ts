@@ -60,6 +60,15 @@ const handleNotificationTap = (notification: Notifications.Notification) => {
             params: { eventId: params.eventId },
           },
         });
+      } else if (screenName === 'BrandDetails' && params.eventId) {
+        // Handle event reminder notifications (with eventId)
+        nav.navigate('MainTabs', {
+          screen: 'Home',
+          params: {
+            screen: 'BrandDetails',
+            params: { eventId: params.eventId },
+          },
+        });
       } else if (screenName === 'BrandDetails' && params.clientId) {
         nav.navigate('MainTabs', {
           screen: 'Home',

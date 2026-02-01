@@ -26,8 +26,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
   },
   loadingContainer: {
     flex: 1,

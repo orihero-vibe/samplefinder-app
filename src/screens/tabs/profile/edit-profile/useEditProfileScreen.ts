@@ -21,6 +21,7 @@ export const useEditProfileScreen = () => {
   const [username, setUsername] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,6 +29,14 @@ export const useEditProfileScreen = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{
+    password?: string;
+    phoneNumber?: string;
+  }>({});
 
   const loadProfile = async () => {
     try {
@@ -85,34 +94,82 @@ export const useEditProfileScreen = () => {
       const hasUsernameChange = username !== (profile.username || '');
       const hasPhoneChange = phoneNumber !== (profile.phoneNumber || '');
       const hasEmailChange = email !== (authUser.email || '');
-      const hasPasswordChange = password.length > 0 || newPassword.length > 0 || confirmPassword.length > 0;
+      const hasPasswordChange = currentPassword.length > 0 || password.length > 0;
       
       setHasChanges(hasUsernameChange || hasPhoneChange || hasEmailChange || hasPasswordChange);
     }
-  }, [username, phoneNumber, email, password, newPassword, confirmPassword, profile, authUser]);
+  }, [username, phoneNumber, email, currentPassword, password, profile, authUser]);
 
   const handleBackPress = () => {
     if (hasChanges) {
-      Alert.alert(
-        'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to go back?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
-        ]
-      );
+      setShowUnsavedChangesModal(true);
     } else {
       navigation.goBack();
     }
   };
 
+  const handleConfirmDiscard = () => {
+    setShowUnsavedChangesModal(false);
+    navigation.goBack();
+  };
+
+  const handleCancelDiscard = () => {
+    setShowUnsavedChangesModal(false);
+  };
+
+  // Helper function to extract digits from phone number
+  const getPhoneDigits = (phone: string): string => {
+    return phone.replace(/\D/g, '');
+  };
+
+  // Helper function to validate password requirements
+  const validatePassword = (pwd: string): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    // Check for spaces
+    if (/\s/.test(pwd)) {
+      errors.push('No spaces allowed');
+    }
+    if (pwd.length < 8) {
+      errors.push('At least 8 characters');
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      errors.push('At least one uppercase letter');
+    }
+    if (!/[a-z]/.test(pwd)) {
+      errors.push('At least one lowercase letter');
+    }
+    if (!/[0-9]/.test(pwd)) {
+      errors.push('At least one number');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
+      errors.push('At least one special character (!@#$%^&*...)');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  };
+
   const validateForm = (): string | null => {
+    const newValidationErrors: { password?: string; phoneNumber?: string } = {};
+    
     if (!username.trim()) {
       return 'Username is required';
     }
     if (!phoneNumber.trim()) {
       return 'Phone number is required';
     }
+    
+    // Phone number validation - at least 10 digits
+    const phoneDigits = getPhoneDigits(phoneNumber);
+    if (phoneDigits.length < 10) {
+      newValidationErrors.phoneNumber = 'Phone number must be at least 10 digits';
+      setValidationErrors(newValidationErrors);
+      return 'Phone number must be at least 10 digits';
+    }
+    
     if (!email.trim()) {
       return 'Email is required';
     }
@@ -125,33 +182,36 @@ export const useEditProfileScreen = () => {
     // Check if email is changing
     const emailChanged = authUser && email !== authUser.email;
     
-    // If email is changing, password is required
-    if (emailChanged && !password) {
+    // If email is changing, current password is required
+    if (emailChanged && !currentPassword) {
       return 'Current password is required to update email';
     }
     
-    // Password validation (if any password fields are filled)
-    if (password || newPassword || confirmPassword) {
-      if (!password) {
-        return 'Current password is required to change password';
+    // Password validation - validate the new password field if user is updating password
+    if (password) {
+      // Require current password when setting new password
+      if (!currentPassword) {
+        return 'Current password is required to update password';
       }
-      if (newPassword && !confirmPassword) {
-        return 'Please confirm your new password';
-      }
-      if (newPassword && newPassword.length < 8) {
-        return 'New password must be at least 8 characters';
-      }
-      if (newPassword && confirmPassword && newPassword !== confirmPassword) {
-        return 'New passwords do not match';
+      
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        const errorMessage = `New password must contain:\n• ${passwordValidation.errors.join('\n• ')}`;
+        newValidationErrors.password = errorMessage;
+        setValidationErrors(newValidationErrors);
+        return errorMessage;
       }
     }
+    
+    setValidationErrors({});
     return null;
   };
 
   const handleSaveUpdates = async () => {
     const validationError = validateForm();
     if (validationError) {
-      Alert.alert('Validation Error', validationError);
+      setErrorModalMessage(validationError);
+      setShowErrorModal(true);
       return;
     }
 
@@ -185,26 +245,23 @@ export const useEditProfileScreen = () => {
       // Update email if changed
       if (email !== authUser.email) {
         console.log('[EditProfileScreen] Updating email');
-        // For email update, we need the current password
-        if (!password) {
+        if (!currentPassword) {
           throw new Error('Current password is required to update email');
         }
-        await updateEmail(email.trim(), password);
+        await updateEmail(email.trim(), currentPassword);
       }
 
       // Update password if provided
-      if (password && newPassword) {
+      if (password && currentPassword) {
         console.log('[EditProfileScreen] Updating password');
-        await updatePassword(password, newPassword, confirmPassword);
+        await updatePassword(currentPassword, password, password);
         // Clear password fields after successful update
+        setCurrentPassword('');
         setPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
       }
 
-      Alert.alert('Success', 'Profile updated successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      // Show custom success modal instead of generic Alert
+      setShowSuccessModal(true);
     } catch (err: any) {
       console.error('[EditProfileScreen] Error saving profile:', err);
       const errorMessage = err?.message || 'Failed to update profile. Please try again.';
@@ -422,34 +479,51 @@ export const useEditProfileScreen = () => {
     setShowDeleteModal(false);
   };
 
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
+  };
+
+  const handleCloseErrorModal = () => {
+    setShowErrorModal(false);
+    setErrorModalMessage('');
+  };
+
   return {
     isLoading,
     isSaving,
     isDeleting,
     showDeleteModal,
+    showSuccessModal,
+    showErrorModal,
+    errorModalMessage,
+    showUnsavedChangesModal,
     error,
+    validationErrors,
     profile,
     username,
     phoneNumber,
     email,
+    currentPassword,
     password,
-    newPassword,
-    confirmPassword,
     hasChanges,
     avatarUri,
     isUploadingAvatar,
     setUsername,
     setPhoneNumber,
     setEmail,
+    setCurrentPassword,
     setPassword,
-    setNewPassword,
-    setConfirmPassword,
     handleBackPress,
     handleSaveUpdates,
     handleChangeProfilePicture,
     handleDeleteAccountPress,
     handleConfirmDelete,
     handleCancelDelete,
+    handleCloseSuccessModal,
+    handleCloseErrorModal,
+    handleConfirmDiscard,
+    handleCancelDiscard,
     loadProfile,
   };
 };

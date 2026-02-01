@@ -7,6 +7,11 @@ import {
   getUserSavedEventIds 
 } from '@/lib/database';
 import { getCurrentUser } from '@/lib/auth';
+import { 
+  scheduleEventReminders, 
+  getEventReminders, 
+  cancelEventReminders 
+} from '@/lib/notifications/eventReminders';
 
 interface SavedCalendarEvent {
   eventId: string;
@@ -75,6 +80,9 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
           // Remove from database
           await removeEventFromUserCalendar(user.$id, eventId);
           
+          // Cancel any scheduled reminders for this event
+          await cancelEventReminders(eventId);
+          
           // Update local store
           set((state) => ({
             savedEvents: state.savedEvents.filter((e) => e.eventId !== eventId),
@@ -100,7 +108,7 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
           }
 
           // Fetch full user profile to get savedEventIds with timestamps
-          const { getUserProfile } = await import('@/lib/database');
+          const { getUserProfile, fetchEventById } = await import('@/lib/database');
           const profile = await getUserProfile(user.$id);
           
           if (!profile) {
@@ -113,6 +121,45 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
           
           set({ savedEvents, isInitialized: true });
           console.log('[calendarEventsStore] Synced events from user profile:', savedEvents.length);
+
+          // Schedule reminders for saved events that don't have reminders yet
+          // This ensures reminders work across devices
+          for (const savedEvent of savedEvents) {
+            try {
+              // Check if reminders already exist for this event
+              const existingReminders = await getEventReminders(savedEvent.eventId);
+              if (existingReminders && (existingReminders.reminder24h || existingReminders.reminder1h)) {
+                // Reminders already scheduled, skip
+                continue;
+              }
+
+              // Fetch event details to get start time
+              const eventData = await fetchEventById(savedEvent.eventId);
+              if (!eventData || !eventData.startTime) {
+                continue;
+              }
+
+              const eventStartDate = new Date(eventData.startTime);
+              const now = new Date();
+
+              // Only schedule if event is in the future
+              if (eventStartDate > now) {
+                const eventTitle = eventData.name || 'Event';
+                const eventLocation = eventData.city ? `${eventData.address}, ${eventData.city}` : undefined;
+
+                await scheduleEventReminders(
+                  savedEvent.eventId,
+                  eventStartDate,
+                  eventTitle,
+                  eventLocation
+                );
+                console.log('[calendarEventsStore] Scheduled reminders for event:', savedEvent.eventId);
+              }
+            } catch (reminderError) {
+              console.warn('[calendarEventsStore] Failed to schedule reminder for event:', savedEvent.eventId, reminderError);
+              // Continue with other events even if one fails
+            }
+          }
         } catch (error) {
           console.error('[calendarEventsStore] Error syncing with user profile:', error);
           set({ isInitialized: true });

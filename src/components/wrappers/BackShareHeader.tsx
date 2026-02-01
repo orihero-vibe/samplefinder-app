@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 15,
+    gap: 20,
   },
   iconButton: {
   },

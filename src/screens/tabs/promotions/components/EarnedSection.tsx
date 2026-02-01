@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { SparkleIcon, CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon } from '@/icons';
@@ -40,95 +41,105 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
     : tiers[0]; // Default to first tier if none earned
 
   return (
-    <View style={styles.card}>
-      {/* Header with Sparkle Icon */}
-      <View style={styles.headerContainer}>
-        <SparkleIcon size={32} color={Colors.brandPurpleBright} circleColor="transparent" />
-        <Text style={styles.headerTitle}>ACHIEVEMENTS</Text>
-      </View>
-
-      {/* Description Text */}
-      <Text style={styles.descriptionText}>
-        Keep Sampling, Keep Earning Badges & Points! Come Back To Track Your Progress.
-      </Text>
-
-      {/* Current Achievement Badge */}
-      {currentTier && (
-        <TouchableOpacity
-          style={styles.badgeContainer}
-          onPress={() => onTierPress?.(currentTier, totalPoints)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.badgeIconContainer}>
-            {currentTier.imageURL && !imageError ? (
-              <Image
-                source={{ uri: currentTier.imageURL }}
-                style={styles.tierImage}
-                resizeMode="contain"
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <Monicon name="ph:seal-fill" size={100} color={Colors.pinDarkBlue} />
-            )}
-          </View>
-          <Text style={styles.tierName}>{currentTier.name}</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Points Earned */}
-      <TouchableOpacity
-        style={styles.pointsContainer}
-        onPress={() => onPointsPress?.(totalPoints, currentTier || undefined)}
-        activeOpacity={0.7}
+    <View style={styles.cardWrapper}>
+      <LinearGradient
+        colors={[Colors.badgePurpleLight, Colors.badgePurpleLight, Colors.blueColorMode, Colors.blueColorMode]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBorderContainer}
       >
-        <Text style={styles.pointsValue}>{totalPoints.toLocaleString()}</Text>
-        <Text style={styles.pointsLabel}>Points Earned</Text>
-      </TouchableOpacity>
+        <View style={styles.card}>
+          {/* Header with Sparkle Icon */}
+          <View style={styles.headerContainer}>
+            <SparkleIcon size={32} color={Colors.brandPurpleBright} circleColor="transparent" />
+            <Text style={styles.headerTitle}>ACHIEVEMENTS</Text>
+          </View>
 
-      {/* Certifications */}
-      {(isAmbassador || isInfluencer) && (
-        <View style={styles.certificationsContainer}>
-          {isAmbassador && (
-            <View style={styles.certificationRow}>
-              <CertifiedBrandAmbassadorIcon size={50} disabled={false} />
-              <Text style={styles.certificationText}>
-                Certified Brand Ambassador
-              </Text>
+          {/* Description Text */}
+          <Text style={styles.descriptionText}>
+            Keep Sampling, Keep Earning Badges & Points! Come Back To Track Your Progress.
+          </Text>
+
+          {/* Current Achievement Badge */}
+          {currentTier && (
+            <TouchableOpacity
+              style={styles.badgeContainer}
+              onPress={() => onTierPress?.(currentTier, totalPoints)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.badgeIconContainer}>
+                {currentTier.imageURL && !imageError ? (
+                  <Image
+                    source={{ uri: currentTier.imageURL }}
+                    style={styles.tierImage}
+                    resizeMode="contain"
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <Monicon name="ph:seal-fill" size={100} color={Colors.pinDarkBlue} />
+                )}
+              </View>
+              <Text style={styles.tierName}>{currentTier.name}</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Points Earned */}
+          <TouchableOpacity
+            style={styles.pointsContainer}
+            onPress={() => onPointsPress?.(totalPoints, currentTier || undefined)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pointsValue}>{totalPoints.toLocaleString()}</Text>
+            <Text style={styles.pointsLabel}>Points Earned</Text>
+          </TouchableOpacity>
+
+          {/* Certifications */}
+          {(isAmbassador || isInfluencer) && (
+            <View style={styles.certificationsContainer}>
+              {isAmbassador && (
+                <View style={styles.certificationRow}>
+                  <CertifiedBrandAmbassadorIcon size={50} disabled={false} />
+                  <Text style={styles.certificationText}>
+                    Certified Brand Ambassador
+                  </Text>
+                </View>
+              )}
+              {isInfluencer && (
+                <View style={styles.certificationRow}>
+                  <CertifiedInfluencerIcon size={50} disabled={false} />
+                  <Text style={styles.certificationText}>
+                    Certified Influencer
+                  </Text>
+                </View>
+              )}
             </View>
           )}
-          {isInfluencer && (
-            <View style={styles.certificationRow}>
-              <CertifiedInfluencerIcon size={50} disabled={false} />
-              <Text style={styles.certificationText}>
-                Certified Influencer
-              </Text>
-            </View>
-          )}
+
+          {/* Activity Badges */}
+          <View style={styles.activityBadgesContainer}>
+            {earnedEventBadges.map((badge) => (
+              <BadgeItem key={badge.id} badge={badge} />
+            ))}
+          </View>
+          <View style={styles.activityBadgesContainer}>
+            {earnedReviewBadges.map((badge) => (
+              <BadgeItem key={badge.id} badge={badge} color={Colors.pinDarkBlue} />
+            ))}
+          </View>
         </View>
-      )}
-
-      {/* Activity Badges */}
-      <View style={styles.activityBadgesContainer}>
-        {earnedEventBadges.map((badge) => (
-          <BadgeItem key={badge.id} badge={badge} />
-        ))}
-      </View>
-      <View style={styles.activityBadgesContainer}>
-        {earnedReviewBadges.map((badge) => (
-          <BadgeItem key={badge.id} badge={badge} color={Colors.pinDarkBlue} />
-        ))}
-      </View>
+      </LinearGradient>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 24,
+  cardWrapper: {
     marginHorizontal: 20,
     marginBottom: 20,
+  },
+  gradientBorderContainer: {
+    borderRadius: 16,
+    padding: 4,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -137,6 +148,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
   },
   headerContainer: {
@@ -217,5 +233,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EarnedSection;
+export default memo(EarnedSection);
 

@@ -22,6 +22,8 @@ import SampleFinderIcon from '@/icons/SampleFinderIcon';
 import TopLinks from './profile/components/TopLinks';
 import { useProfileScreen } from './profile/useProfileScreen';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
+import SuccessModal from '@/components/shared/SuccessModal';
+import ErrorModal from '@/components/shared/ErrorModal';
 
 const EditProfileScreen = () => {
   const insets = useSafeAreaInsets();
@@ -32,29 +34,35 @@ const EditProfileScreen = () => {
     isSaving,
     isDeleting,
     showDeleteModal,
+    showSuccessModal,
+    showErrorModal,
+    errorModalMessage,
+    showUnsavedChangesModal,
     error,
     profile,
     username,
     phoneNumber,
     email,
+    currentPassword,
     password,
-    newPassword,
-    confirmPassword,
     hasChanges,
     avatarUri,
     isUploadingAvatar,
     setUsername,
     setPhoneNumber,
     setEmail,
+    setCurrentPassword,
     setPassword,
-    setNewPassword,
-    setConfirmPassword,
     handleBackPress,
     handleSaveUpdates,
     handleChangeProfilePicture,
     handleDeleteAccountPress,
     handleConfirmDelete,
     handleCancelDelete,
+    handleCloseSuccessModal,
+    handleCloseErrorModal,
+    handleConfirmDiscard,
+    handleCancelDiscard,
     loadProfile,
   } = useEditProfileScreen();
 
@@ -200,11 +208,21 @@ const EditProfileScreen = () => {
               inputBorderColor={Colors.blueColorMode}
             />
             <CustomInput
+              label="Current Password"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              type="password"
+              placeholder="Enter current password"
+              labelColor={Colors.blueColorMode}
+              inputBorderColor={Colors.blueColorMode}
+              showPasswordToggle={true}
+            />
+            <CustomInput
               label="Update Password"
               value={password}
               onChangeText={setPassword}
               type="password"
-              placeholder="Enter password"
+              placeholder="Enter new password"
               labelColor={Colors.blueColorMode}
               inputBorderColor={Colors.blueColorMode}
               showPasswordToggle={true}
@@ -257,6 +275,33 @@ const EditProfileScreen = () => {
         onCancel={handleCancelDelete}
         isLoading={isDeleting}
         loadingText="Deleting account..."
+      />
+
+      {/* Profile Update Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Profile Updated"
+        message="Your profile has been updated successfully!"
+        onClose={handleCloseSuccessModal}
+      />
+
+      {/* Validation Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        title="Validation Error"
+        message={errorModalMessage}
+        onClose={handleCloseErrorModal}
+      />
+
+      {/* Unsaved Changes Confirmation Modal */}
+      <ConfirmationModal
+        visible={showUnsavedChangesModal}
+        title="Unsaved Changes"
+        description="You have unsaved changes. Are you sure you want to go back?"
+        confirmText="Discard Changes"
+        cancelText="Keep Editing"
+        onConfirm={handleConfirmDiscard}
+        onCancel={handleCancelDiscard}
       />
     </View>
   );

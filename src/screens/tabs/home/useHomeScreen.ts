@@ -656,6 +656,8 @@ export const useHomeScreen = () => {
     } else {
       // Toggle filter modal - if same filter is pressed, close it
       setSelectedFilter(selectedFilter === filter ? null : filter);
+      // Expand the bottom sheet to show Upcoming Events when a filter is pressed
+      bottomSheetRef.current?.snapToIndex(1);
     }
   };
 
@@ -743,6 +745,9 @@ export const useHomeScreen = () => {
               })
             : 'Distance unknown';
 
+          // Get product types from client
+          const productTypes = clientObj?.productType || [];
+          
           return {
             id: event.$id,
             name: productName,
@@ -752,6 +757,7 @@ export const useHomeScreen = () => {
             date: new Date(event.date),
             time: formattedTime,
             logoURL: clientObj?.logoURL || null,
+            productTypes: Array.isArray(productTypes) ? productTypes : [],
           };
         });
 

@@ -85,7 +85,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
 
   const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-  // Generate calendar days
+  // Generate calendar days grouped into weeks
   const calendarDays: (number | null)[] = [];
   
   // Add empty cells for days before the first day of the month
@@ -96,6 +96,18 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   // Add days of the month
   for (let day = 1; day <= daysInMonth; day++) {
     calendarDays.push(day);
+  }
+
+  // Group days into weeks (7 days per week)
+  const weeks: (number | null)[][] = [];
+  for (let i = 0; i < calendarDays.length; i += 7) {
+    weeks.push(calendarDays.slice(i, i + 7));
+  }
+
+  // Pad the last week if needed
+  const lastWeek = weeks[weeks.length - 1];
+  while (lastWeek && lastWeek.length < 7) {
+    lastWeek.push(null);
   }
 
   return (
@@ -109,56 +121,64 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
         ))}
       </View>
 
-      {/* Calendar grid */}
+      {/* Calendar grid with week rows */}
       <View style={styles.grid}>
-        {calendarDays.map((day, index) => {
-          if (day === null) {
-            return <View key={`empty-${index}`} style={styles.dayCell} />;
-          }
+        {weeks.map((week, weekIndex) => (
+          <View key={`week-${weekIndex}`}>
+            <View style={styles.weekRow}>
+              {week.map((day, dayIndex) => {
+                if (day === null) {
+                  return <View key={`empty-${weekIndex}-${dayIndex}`} style={styles.dayCell} />;
+                }
 
-          const selected = isSelected(day);
-          const hasEventDot = hasEvent(day);
-          const pastDate = isPastDate(day);
-          const today = isToday(day);
+                const selected = isSelected(day);
+                const hasEventDot = hasEvent(day);
+                const pastDate = isPastDate(day);
+                const today = isToday(day);
 
-          return (
-            <TouchableOpacity
-              key={day}
-              style={styles.dayCell}
-              onPress={() => handleDatePress(day)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.dateContainer,
-                  today && !selected && styles.todayDateContainer,
-                  selected && styles.selectedDateContainer,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.dateText,
-                    today && !selected && styles.todayDateText,
-                    selected && styles.selectedDateText,
-                    pastDate && !selected && !today && styles.pastDateText,
-                  ]}
-                >
-                  {day}
-                </Text>
-                {hasEventDot && (
-                  <View
-                    style={[
-                      styles.eventDot,
-                      selected && styles.selectedEventDot,
-                      today && !selected && styles.todayEventDot,
-                      pastDate && !selected && !today && styles.pastEventDot,
-                    ]}
-                  />
-                )}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+                return (
+                  <TouchableOpacity
+                    key={day}
+                    style={styles.dayCell}
+                    onPress={() => handleDatePress(day)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.dateContainer,
+                        today && !selected && styles.todayDateContainer,
+                        selected && styles.selectedDateContainer,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dateText,
+                          today && !selected && styles.todayDateText,
+                          selected && styles.selectedDateText,
+                          pastDate && !selected && !today && styles.pastDateText,
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                      {hasEventDot && (
+                        <View
+                          style={[
+                            styles.eventDot,
+                            selected && styles.selectedEventDot,
+                            today && !selected && styles.todayEventDot,
+                            pastDate && !selected && !today && styles.pastEventDot,
+                          ]}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {/* Separator line after each week row */}
+            <View style={styles.weekSeparator} />
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -183,22 +203,28 @@ const styles = StyleSheet.create({
     color: Colors.blueColorMode,
   },
   grid: {
+    // Grid now contains week rows
+  },
+  weekRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+  },
+  weekSeparator: {
+    height: 1,
+    backgroundColor: '#E7E7E7',
+    marginHorizontal: 10,
   },
   dayCell: {
     width: '14.28%',
-    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
   },
   dateContainer: {
-    width: 40,
-    height: 56,
+    width: 36,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop:4,
+    paddingTop: 4,
   },
   selectedDateContainer: {
     backgroundColor: Colors.blueColorMode,

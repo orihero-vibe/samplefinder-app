@@ -24,7 +24,7 @@ import { TriviaModal } from '@/components/trivia';
 import type { TriviaQuestion } from '@/lib/database/trivia';
 import { getActiveTrivia, submitTriviaAnswer } from '@/lib/database';
 import { getUserProfile } from '@/lib/database';
-import { setupTokenRefreshListener, initializePushNotifications } from '@/lib/notifications';
+import { setupTokenRefreshListener, initializePushNotifications, cleanupPastEventReminders } from '@/lib/notifications';
 import { getCurrentUser } from '@/lib/auth';
 import { CustomSplashScreen } from '@/components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
@@ -84,6 +84,13 @@ export default function App() {
               await useCalendarEventsStore.getState().syncWithUserProfile();
             } catch (syncError) {
               console.warn('[App] Failed to sync calendar events:', syncError);
+            }
+
+            // Cleanup past event reminders (remove notifications for events that have passed)
+            try {
+              await cleanupPastEventReminders();
+            } catch (cleanupError) {
+              console.warn('[App] Failed to cleanup past event reminders:', cleanupError);
             }
           }
         } catch (error) {

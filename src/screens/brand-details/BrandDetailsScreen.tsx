@@ -14,6 +14,8 @@ import {
 import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import ReviewModal from '@/components/shared/ReviewModal';
 import PointsEarnedModal from '@/components/shared/PointsEarnedModal';
+import CalendarAlertModal from '@/components/shared/CalendarAlertModal';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 import { useBrandDetailsScreen, BrandDetailsData } from './useBrandDetailsScreen';
 import styles from './styles';
 
@@ -43,6 +45,9 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     hasReviewed,
     checkInPoints,
     totalEarnedPoints,
+    calendarAlertVisible,
+    calendarAlertType,
+    removeConfirmVisible,
     handleBack,
     handleShare,
     handleAddToCalendar,
@@ -53,6 +58,9 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     handleSubmitReview,
     handleClosePointsModal,
     handleViewRewards,
+    handleCloseCalendarAlert,
+    handleConfirmRemoveFromCalendar,
+    handleCancelRemoveFromCalendar,
   } = useBrandDetailsScreen({ route });
 
   // Show loading state
@@ -144,6 +152,22 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         title={pointsModalTitle}
         onClose={handleClosePointsModal}
         onViewRewards={handleViewRewards}
+      />
+
+      <CalendarAlertModal
+        visible={calendarAlertVisible}
+        type={calendarAlertType}
+        onClose={handleCloseCalendarAlert}
+      />
+
+      <ConfirmationModal
+        visible={removeConfirmVisible}
+        title="Remove Event"
+        description="Are you sure you want to remove this event from your calendar? You will no longer receive reminders."
+        confirmText="Yes, Remove"
+        cancelText="Cancel"
+        onConfirm={handleConfirmRemoveFromCalendar}
+        onCancel={handleCancelRemoveFromCalendar}
       />
     </View>
   );

@@ -17,6 +17,9 @@ const styles = StyleSheet.create({
   },
   inProgressContainer: {
   },
+  hiddenTab: {
+    display: 'none',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
