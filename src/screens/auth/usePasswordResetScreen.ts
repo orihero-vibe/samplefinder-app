@@ -2,29 +2,49 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Alert } from 'react-native';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { updatePasswordRecovery, createPasswordRecovery } from '@/lib/auth';
+import { sendPasswordRecoveryOTP } from '@/lib/auth';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 
 type PasswordResetScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PasswordReset'>;
 type PasswordResetScreenRouteProp = RouteProp<RootStackParamList, 'PasswordReset'>;
+
+// Utility function to mask email for privacy
+const maskEmail = (email: string): string => {
+  if (!email) return '***@***.***';
+  
+  const [localPart, domain] = email.split('@');
+  if (!localPart || !domain) return '***@***.***';
+  
+  // Show first 2-3 characters of local part
+  const visibleLocal = localPart.slice(0, Math.min(3, localPart.length));
+  const maskedLocal = visibleLocal + '***';
+  
+  // Show domain with masking
+  const domainParts = domain.split('.');
+  const maskedDomain = domainParts.length > 1 
+    ? `***${domainParts[domainParts.length - 1]}` 
+    : '***';
+  
+  return `${maskedLocal}@${maskedDomain}`;
+};
 
 export const usePasswordResetScreen = () => {
   const navigation = useNavigation<PasswordResetScreenNavigationProp>();
   const route = useRoute<PasswordResetScreenRouteProp>();
   const email = route?.params?.email || '';
   const userId = route?.params?.userId;
+  const maskedEmail = maskEmail(email);
   
   const [step, setStep] = useState<'code' | 'password'>('code'); // Two steps: code verification, then password
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordAgain, setPasswordAgain] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordAgain, setShowPasswordAgain] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState('');
+  const [resendTimer, setResendTimer] = useState(60); // 60 seconds countdown
+  const [canResend, setCanResend] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const codeInputRef = useRef<CodeInputRef>(null);
 
   useEffect(() => {
@@ -36,6 +56,22 @@ export const usePasswordResetScreen = () => {
       return () => clearTimeout(timer);
     }
   }, [step]);
+
+  // Countdown timer for resend button
+  useEffect(() => {
+    if (resendTimer > 0 && step === 'code') {
+      const interval = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [resendTimer, step]);
 
   // Password validation
   const validatePassword = (pwd: string): string | null => {
@@ -57,8 +93,11 @@ export const usePasswordResetScreen = () => {
     return null;
   };
 
-  const handleVerifyCode = async () => {
-    if (code.length !== 6) {
+  const handleVerifyCode = async (codeToVerify?: string) => {
+    // Use the provided code or fall back to state
+    const verificationCode = codeToVerify || code;
+    
+    if (verificationCode.length !== 6) {
       setError('Please enter the complete 6-digit code');
       return;
     }
@@ -66,7 +105,7 @@ export const usePasswordResetScreen = () => {
     if (!email) {
       setError('Email address is missing. Please start over.');
       setTimeout(() => {
-        navigation.replace('ForgotPassword');
+        navigation.replace('ForgotPassword', {});
       }, 2000);
       return;
     }
@@ -97,15 +136,24 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
+    if (!canResend) {
+      return; // Don't allow resend if timer hasn't expired
+    }
+
     setIsResending(true);
     setError('');
     setCode('');
 
     try {
       console.log('[PasswordReset] Resending recovery email...');
-      const newUserId = await createPasswordRecovery(email);
-      console.log('[PasswordReset] Recovery email resent successfully');
+      const newUserId = await sendPasswordRecoveryOTP(email);
+      console.log('[PasswordReset] Recovery email resent successfully, userId:', newUserId);
       setError(''); // Clear any previous errors
+      
+      // Reset timer after successful resend
+      setResendTimer(60);
+      setCanResend(false);
+      
       // Update userId if we got a new one
       if (newUserId && !userId) {
         // Note: We can't update route params, but we can store it in state
@@ -121,7 +169,7 @@ export const usePasswordResetScreen = () => {
   };
 
   const handleCreatePassword = async () => {
-    // Validate passwords
+    // Validate password
     if (!password) {
       setError('Please enter a password');
       return;
@@ -133,15 +181,10 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
-    if (password !== passwordAgain) {
-      setError('Passwords do not match. Please try again.');
-      return;
-    }
-
     if (!email) {
       setError('Email address is missing. Please start over.');
       setTimeout(() => {
-        navigation.replace('ForgotPassword');
+        navigation.replace('ForgotPassword', {});
       }, 2000);
       return;
     }
@@ -150,34 +193,36 @@ export const usePasswordResetScreen = () => {
     setError('');
 
     try {
-      console.log('[PasswordReset] Updating password with recovery code...');
-      await updatePasswordRecovery(code, password, passwordAgain, userId);
-      console.log('[PasswordReset] Password updated successfully');
+      if (!userId) {
+        throw new Error('User ID is missing. Please start over.');
+      }
+
+      console.log('[PasswordReset] Resetting password with OTP verification...');
+      console.log('[PasswordReset] UserId:', userId);
+      console.log('[PasswordReset] Code length:', code.length);
       
-      // Navigate to login screen
-      Alert.alert(
-        'Success',
-        'Your password has been reset successfully. Please log in with your new password.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.replace('Login');
-            },
-          },
-        ]
-      );
+      // Import auth function
+      const { verifyEmailAndResetPassword } = await import('@/lib/auth');
+
+      // Verify OTP and reset password using backend function
+      // The backend handles OTP verification and password update with server-side permissions
+      // No client-side session is created, avoiding permission issues
+      console.log('[PasswordReset] Verifying OTP and resetting password...');
+      await verifyEmailAndResetPassword(userId, code, password);
+      console.log('[PasswordReset] Password reset successfully');
+      
+      // Show success modal
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('[PasswordReset] Password update error:', error);
       const errorMsg = error?.message || 'Failed to reset password. Please try again.';
       setError(errorMsg);
       
       // If the code is invalid/expired, go back to code step
-      if (errorMsg.includes('Invalid') || errorMsg.includes('expired')) {
+      if (errorMsg.includes('Invalid') || errorMsg.includes('expired') || errorMsg.includes('token')) {
         setStep('code');
         setCode('');
         setPassword('');
-        setPasswordAgain('');
       }
     } finally {
       setIsLoading(false);
@@ -191,10 +236,10 @@ export const usePasswordResetScreen = () => {
 
   const handleCodeComplete = (completedCode: string) => {
     console.log('Code completed:', completedCode);
-    // Auto-submit when code is complete
-    if (completedCode.length === 6 && !isLoading) {
-      handleVerifyCode();
-    }
+    // Clear any previous errors when code is complete
+    setError('');
+    // Don't auto-submit - user should manually tap Verify button
+    // This gives them time to review the code before submitting
   };
 
   const handlePasswordChange = (text: string) => {
@@ -202,40 +247,38 @@ export const usePasswordResetScreen = () => {
     setError(''); // Clear error when user types
   };
 
-  const handlePasswordAgainChange = (text: string) => {
-    setPasswordAgain(text);
-    setError(''); // Clear error when user types
-  };
-
   const handleBackToCode = () => {
     setStep('code');
     setPassword('');
-    setPasswordAgain('');
     setError('');
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    navigation.replace('Login', undefined);
   };
 
   return {
     email,
+    maskedEmail,
     step,
     code,
     password,
-    passwordAgain,
-    showPassword,
-    showPasswordAgain,
     isLoading,
     isResending,
     error,
+    resendTimer,
+    canResend,
+    showSuccessModal,
     codeInputRef,
     handleCodeChange,
     handleCodeComplete,
     handlePasswordChange,
-    handlePasswordAgainChange,
-    handleTogglePassword: () => setShowPassword(!showPassword),
-    handleTogglePasswordAgain: () => setShowPasswordAgain(!showPasswordAgain),
     handleVerifyCode,
     handleResendCode,
     handleCreatePassword,
     handleBackToCode,
+    handleSuccessModalClose,
   };
 };
 

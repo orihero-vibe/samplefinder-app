@@ -69,6 +69,62 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 4,
   },
+  didntGetCodeContainer: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  didntGetCodeTitle: {
+    fontSize: 16,
+    fontFamily: 'Quicksand_500Medium',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  didntGetCodeText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_400Regular',
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  resendButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#2D1B69',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resendButtonDisabled: {
+    borderColor: '#CCC',
+    opacity: 0.6,
+  },
+  resendButtonText: {
+    fontSize: 16,
+    fontFamily: 'Quicksand_600SemiBold',
+    color: '#2D1B69',
+    textAlign: 'center',
+  },
+  resendButtonTextDisabled: {
+    color: '#999',
+  },
+  resendLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  needHelpContainer: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  needHelpText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_500Medium',
+    color: '#999',
+    textAlign: 'center',
+  },
   resendContainer: {
     marginTop: 8,
   },
@@ -77,12 +133,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_500Medium',
     color: '#999',
     textAlign: 'center',
-  },
-  resendLoadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
   },
   resendLoadingText: {
     marginLeft: 8,

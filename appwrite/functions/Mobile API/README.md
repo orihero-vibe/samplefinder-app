@@ -42,7 +42,50 @@ Sample `200` Response:
 | Build Commands    | `npm install`                                                                          |
 | Permissions       | `any`                                                                                  |
 | Timeout (Seconds) | 15                                                                                     |
-| Endpoints         | `/ping`, `/get-events-by-location`, `/get-active-trivia`, `/submit-answer`, `/delete-account` |
+| Endpoints         | `/ping`, `/get-events-by-location`, `/get-active-trivia`, `/submit-answer`, `/delete-account`, `/update-user-status`, `/get-user-by-email` |
+
+### POST /get-user-by-email
+
+Get user ID and information by email address.
+
+**Request Body**
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response**
+
+Sample `200` Response:
+
+```json
+{
+  "success": true,
+  "userId": "5f7a1b2c3d4e5f6a7b8c9d0e",
+  "name": "John Doe",
+  "emailVerification": true
+}
+```
+
+Sample `404` Response (User not found):
+
+```json
+{
+  "success": false,
+  "error": "User not found with this email address"
+}
+```
+
+Sample `400` Response (Missing email):
+
+```json
+{
+  "success": false,
+  "error": "email is required"
+}
+```
 
 ## 🔒 Environment Variables
 

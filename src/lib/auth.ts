@@ -460,7 +460,115 @@ export const resendVerificationEmail = async (userId: string, email: string): Pr
 };
 
 /**
- * Create password recovery token
+ * Get user ID from email using the Appwrite function
+ * This uses the server-side function to look up a user by their email address
+ */
+export const getUserIdFromEmail = async (email: string): Promise<string> => {
+  console.log('[auth.getUserIdFromEmail] Looking up userId for email:', email);
+  
+  try {
+    const trimmedEmail = email.trim();
+    const functionId = APPWRITE_EVENTS_FUNCTION_ID;
+    
+    if (!functionId) {
+      throw new Error('Function ID not configured');
+    }
+    
+    const requestBody = {
+      email: trimmedEmail,
+    };
+    
+    console.log('[auth.getUserIdFromEmail] Calling get-user-by-email function...');
+    const execution = await functions.createExecution({
+      functionId,
+      body: JSON.stringify(requestBody),
+      method: ExecutionMethod.POST,
+      xpath: '/get-user-by-email',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      async: false,
+    });
+    
+    console.log('[auth.getUserIdFromEmail] Function execution status:', execution.status);
+    
+    if (execution.status === 'failed') {
+      let errorMessage = 'Failed to look up user';
+      if (execution.responseBody) {
+        try {
+          const errorResponse = JSON.parse(execution.responseBody);
+          errorMessage = errorResponse.error || errorResponse.message || execution.responseBody;
+        } catch {
+          errorMessage = execution.responseBody;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+    
+    if (execution.responseBody) {
+      const result = JSON.parse(execution.responseBody);
+      if (!result.success) {
+        throw new Error(result.error || 'User not found');
+      }
+      console.log('[auth.getUserIdFromEmail] User found:', result.userId);
+      return result.userId;
+    }
+    
+    throw new Error('No response from function');
+  } catch (error: any) {
+    console.error('[auth.getUserIdFromEmail] Error:', error);
+    console.error('[auth.getUserIdFromEmail] Error message:', error?.message);
+    
+    // Provide user-friendly error messages
+    if (error?.message?.includes('not found') || error?.message?.includes('User not found')) {
+      throw new Error('No account found with this email address.');
+    }
+    
+    throw new Error(error.message || 'Failed to look up user. Please try again.');
+  }
+};
+
+/**
+ * Send password recovery OTP via email
+ * This is the new flow that:
+ * 1. Gets userId from email using the function
+ * 2. Sends Email OTP using createEmailToken (no link needed)
+ * Returns the userId for use in the password reset flow
+ */
+export const sendPasswordRecoveryOTP = async (email: string): Promise<string> => {
+  console.log('[auth.sendPasswordRecoveryOTP] Starting password recovery OTP flow');
+  console.log('[auth.sendPasswordRecoveryOTP] Email:', email);
+  
+  try {
+    const trimmedEmail = email.trim();
+    
+    // Step 1: Get userId from email using the function
+    console.log('[auth.sendPasswordRecoveryOTP] Step 1: Getting userId from email...');
+    const userId = await getUserIdFromEmail(trimmedEmail);
+    console.log('[auth.sendPasswordRecoveryOTP] UserId retrieved:', userId);
+    
+    // Step 2: Send Email OTP using createEmailToken (reusing sendEmailOTP logic)
+    console.log('[auth.sendPasswordRecoveryOTP] Step 2: Sending Email OTP...');
+    await account.createEmailToken(userId, trimmedEmail);
+    console.log('[auth.sendPasswordRecoveryOTP] Email OTP sent successfully');
+    
+    return userId;
+  } catch (error: any) {
+    console.error('[auth.sendPasswordRecoveryOTP] Error:', error);
+    console.error('[auth.sendPasswordRecoveryOTP] Error message:', error?.message);
+    console.error('[auth.sendPasswordRecoveryOTP] Error code:', error?.code);
+    
+    // Provide user-friendly error messages
+    if (error?.message?.includes('not found') || error?.message?.includes('No account found')) {
+      throw new Error('No account found with this email address.');
+    }
+    
+    throw new Error(error.message || 'Failed to send password recovery email. Please try again.');
+  }
+};
+
+/**
+ * Create password recovery token (DEPRECATED - Use sendPasswordRecoveryOTP instead)
  * Sends a recovery email to the user with a secret code
  * Returns the userId if available (Appwrite may include it in the response)
  */
@@ -559,6 +667,127 @@ export const updatePassword = async (oldPassword: string, newPassword: string, n
 };
 
 /**
+ * Verify Email OTP and reset password using backend function
+ * The backend verifies the OTP and updates the password using server-side permissions
+ * This approach doesn't create a client-side session, avoiding permission issues
+ */
+export const verifyEmailAndResetPassword = async (userId: string, otp: string, newPassword: string): Promise<void> => {
+  console.log('[auth.verifyEmailAndResetPassword] Starting OTP verification and password reset');
+  console.log('[auth.verifyEmailAndResetPassword] UserId:', userId);
+  console.log('[auth.verifyEmailAndResetPassword] OTP length:', otp.length);
+  
+  try {
+    // Call backend function to verify OTP and update password using server-side permissions
+    // This doesn't create a client-side session, avoiding permission issues
+    const requestBody = {
+      userId,
+      otp,
+      newPassword,
+    };
+    
+    console.log('[auth.verifyEmailAndResetPassword] Calling backend to verify OTP and reset password...');
+    const execution = await functions.createExecution({
+      functionId: APPWRITE_EVENTS_FUNCTION_ID,
+      body: JSON.stringify(requestBody),
+      method: ExecutionMethod.POST,
+      xpath: '/reset-password-after-otp',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      async: false,
+    });
+
+    console.log('[auth.verifyEmailAndResetPassword] Function execution status:', execution.status);
+    console.log('[auth.verifyEmailAndResetPassword] Function response:', execution.responseBody);
+
+    // Check if function execution was successful
+    if (execution.status !== 'completed') {
+      throw new Error('Function execution failed');
+    }
+
+    // Parse response
+    const response = JSON.parse(execution.responseBody);
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to reset password');
+    }
+
+    console.log('[auth.verifyEmailAndResetPassword] Password reset successfully');
+  } catch (error: any) {
+    console.error('[auth.verifyEmailAndResetPassword] Error:', error);
+    
+    // Provide user-friendly error messages
+    if (error?.message?.includes('Invalid') || error?.message?.includes('invalid') || error?.message?.includes('expired')) {
+      throw new Error('Invalid or expired code. Please request a new password reset.');
+    }
+    
+    if (error?.message?.includes('weak') || error?.message?.includes('requirements') || error?.message?.includes('8 characters')) {
+      throw new Error('Password does not meet security requirements. Please choose a stronger password.');
+    }
+    
+    throw new Error(error.message || 'Failed to reset password. Please try again.');
+  }
+};
+
+/**
+ * Reset password after Email OTP verification
+ * This is used in the password reset flow where the user is authenticated via Email OTP
+ * and doesn't have their old password
+ * Uses a backend function to update the password with server-side permissions
+ */
+export const resetPasswordAfterOTPVerification = async (userId: string, newPassword: string): Promise<void> => {
+  console.log('[auth.resetPasswordAfterOTPVerification] Resetting password after OTP verification');
+  console.log('[auth.resetPasswordAfterOTPVerification] UserId:', userId);
+  
+  try {
+    // Call backend function to update password using server-side permissions
+    // This doesn't require the old password
+    const requestBody = {
+      userId,
+      newPassword,
+    };
+    
+    const execution = await functions.createExecution({
+      functionId: APPWRITE_EVENTS_FUNCTION_ID,
+      body: JSON.stringify(requestBody),
+      method: ExecutionMethod.POST,
+      xpath: '/reset-password-after-otp',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      async: false,
+    });
+
+    console.log('[auth.resetPasswordAfterOTPVerification] Function execution status:', execution.status);
+    console.log('[auth.resetPasswordAfterOTPVerification] Function response:', execution.responseBody);
+
+    // Check if function execution was successful
+    if (execution.status !== 'completed') {
+      throw new Error('Function execution failed');
+    }
+
+    // Parse response
+    const response = JSON.parse(execution.responseBody);
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to reset password');
+    }
+
+    console.log('[auth.resetPasswordAfterOTPVerification] Password reset successfully');
+  } catch (error: any) {
+    console.error('[auth.resetPasswordAfterOTPVerification] Error resetting password:', error);
+    console.error('[auth.resetPasswordAfterOTPVerification] Error message:', error?.message);
+    
+    // Provide user-friendly error messages
+    if (error?.message?.includes('weak') || error?.message?.includes('requirements') || error?.message?.includes('8 characters')) {
+      throw new Error('Password does not meet security requirements. Please choose a stronger password.');
+    }
+    
+    throw new Error(error.message || 'Failed to reset password. Please try again.');
+  }
+};
+
+/**
  * Update password using recovery secret
  * This is called after the user verifies the recovery code
  * Note: If userId is not provided, Appwrite might extract it from the secret
@@ -588,7 +817,8 @@ export const updatePasswordRecovery = async (
       throw new Error('User ID is required for password recovery. Please request a new password reset.');
     }
     
-    await account.updateRecovery(userId, secret, password, passwordAgain);
+    // Appwrite updateRecovery only takes userId, secret, and password (no passwordAgain)
+    await account.updateRecovery(userId, secret, password);
     console.log('[auth.updatePasswordRecovery] Password updated successfully');
   } catch (error: any) {
     console.error('[auth.updatePasswordRecovery] Error:', error);
@@ -715,7 +945,11 @@ export default {
   sendVerificationEmail,
   sendEmailOTP,
   verifyEmail,
+  verifyEmailAndResetPassword,
   resendVerificationEmail,
+  getUserIdFromEmail,
+  sendPasswordRecoveryOTP,
+  resetPasswordAfterOTPVerification,
   createPasswordRecovery,
   updatePasswordRecovery,
   updateEmail,

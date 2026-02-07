@@ -163,6 +163,7 @@ const SignUpScreen = () => {
           inputBorderColor={Colors.blueColorMode}
           inputBorderWidth={3}
           error={!!fieldErrors.password}
+          errorMessage={fieldErrors.password}
         />
 
         {showError && (

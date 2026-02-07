@@ -4,6 +4,57 @@ import type { UserProfileData, UserProfileRow } from './types';
 import type { NotificationPreferences } from '../notifications/types';
 
 /**
+ * Generate a unique referral code for a user
+ * Format: 6 uppercase alphanumeric characters
+ */
+const generateReferralCode = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars: I, O, 0, 1
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
+/**
+ * Check if a referral code already exists in the database
+ */
+const checkReferralCodeExists = async (code: string): Promise<boolean> => {
+  try {
+    const result = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      queries: [Query.equal('referralCode', code)],
+    });
+    return result.rows && result.rows.length > 0;
+  } catch (error) {
+    console.error('[checkReferralCodeExists] Error:', error);
+    return false;
+  }
+};
+
+/**
+ * Generate a unique referral code that doesn't exist in the database
+ */
+const generateUniqueReferralCode = async (): Promise<string> => {
+  let code = generateReferralCode();
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (await checkReferralCodeExists(code) && attempts < maxAttempts) {
+    code = generateReferralCode();
+    attempts++;
+  }
+
+  if (attempts >= maxAttempts) {
+    // Fallback: append timestamp to ensure uniqueness
+    code = generateReferralCode() + Date.now().toString(36).slice(-2).toUpperCase();
+  }
+
+  return code;
+};
+
+/**
  * Helper function to parse savedEventIds from Appwrite (can be string or array)
  */
 const parseSavedEventIds = (savedEventIds: any): Array<{ eventId: string; addedAt: string }> => {
@@ -81,6 +132,11 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
     
     console.log('[database.createUserProfile] Converted DOB to ISO:', dobISO);
 
+    // Generate a unique referral code for the new user
+    console.log('[database.createUserProfile] Generating unique referral code...');
+    const referralCode = await generateUniqueReferralCode();
+    console.log('[database.createUserProfile] Generated referral code:', referralCode);
+
     const rowData: any = {
       authID: profileData.authID,
       firstname: profileData.firstname,
@@ -91,6 +147,7 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
       username: profileData.username,
       role: profileData.role || 'user',
       idAdult: profileData.isAdult ?? false, // Use 'idAdult' to match Appwrite column name
+      referralCode: referralCode,
     };
 
     console.log('[database.createUserProfile] Creating row with data:', {
@@ -136,6 +193,7 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
     console.log('[database.createUserProfile] User profile created successfully:', {
       rowId: result.$id,
       authID: profileData.authID,
+      referralCode: referralCode,
       fullResult: result,
     });
     

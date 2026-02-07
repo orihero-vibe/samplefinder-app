@@ -37,6 +37,7 @@ const ForgotPasswordScreen = () => {
             value={email}
             onChangeText={handleEmailChange}
             placeholder="name@gmail.com"
+            type='email'
             keyboardType="email-address"
             labelColor="#333"
             inputBorderColor="#2D1B69"

@@ -3,7 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { createPasswordRecovery } from '@/lib/auth';
+import { sendPasswordRecoveryOTP } from '@/lib/auth';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
 type ForgotPasswordScreenRouteProp = RouteProp<RootStackParamList, 'ForgotPassword'>;
@@ -77,12 +77,16 @@ export const useForgotPasswordScreen = () => {
     setError('');
 
     try {
-      const userId = await createPasswordRecovery(email.trim());
+      // Use the new flow: get userId from email, then send Email OTP
+      console.log('[ForgotPassword] Sending password recovery OTP...');
+      const userId = await sendPasswordRecoveryOTP(email.trim());
+      console.log('[ForgotPassword] Password recovery OTP sent, userId:', userId);
       
-      // Navigate to password reset screen with email and userId (if available)
+      // Navigate to password reset screen with email and userId
+      // The user will verify the OTP and then set a new password
       navigation.navigate('PasswordReset', { 
         email: email.trim(),
-        userId: userId || undefined,
+        userId: userId,
       });
     } catch (error: any) {
       console.error('[ForgotPassword] Error sending recovery email:', error);

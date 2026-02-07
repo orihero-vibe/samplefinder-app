@@ -10,32 +10,32 @@ import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomButton from '@/components/shared/CustomButton';
 import CustomInput from '@/components/shared/CustomInput';
 import CodeInput from '@/components/shared/CodeInput';
+import SuccessModal from '@/components/modals/SuccessModal';
 import { usePasswordResetScreen } from './usePasswordResetScreen';
 import styles from './password-reset/styles';
 
 const PasswordResetScreen = () => {
   const {
     email,
+    maskedEmail,
     step,
     code,
     password,
-    passwordAgain,
-    showPassword,
-    showPasswordAgain,
     isLoading,
     isResending,
     error,
+    resendTimer,
+    canResend,
+    showSuccessModal,
     codeInputRef,
     handleCodeChange,
     handleCodeComplete,
     handlePasswordChange,
-    handlePasswordAgainChange,
-    handleTogglePassword,
-    handleTogglePasswordAgain,
     handleVerifyCode,
     handleResendCode,
     handleCreatePassword,
     handleBackToCode,
+    handleSuccessModalClose,
   } = usePasswordResetScreen();
 
   return (
@@ -49,21 +49,10 @@ const PasswordResetScreen = () => {
         
         {step === 'code' ? (
           <>
-            {email ? (
-              <>
-                <Text style={styles.instruction}>
-                  We've sent a recovery code to:
-                </Text>
-                <Text style={styles.emailText}>{email}</Text>
-                <Text style={styles.instruction}>
-                  Enter the code below:
-                </Text>
-              </>
-            ) : (
-              <Text style={styles.instruction}>
-                Please enter the recovery code sent to your email:
-              </Text>
-            )}
+            <Text style={styles.instruction}>
+              We've sent your code to {maskedEmail}.{'\n'}
+              Enter your code below:
+            </Text>
 
             {error ? (
               <View style={styles.errorContainer}>
@@ -81,32 +70,52 @@ const PasswordResetScreen = () => {
 
             <View style={styles.buttonContainer}>
               <CustomButton
-                title={isLoading ? 'Verifying...' : 'Verify Code'}
-                onPress={handleVerifyCode}
+                title={isLoading ? 'Verifying...' : 'Verify'}
+                onPress={() => handleVerifyCode(code)}
                 variant="dark"
                 disabled={code.length !== 6 || isLoading || !email}
               />
             </View>
 
+            <View style={styles.didntGetCodeContainer}>
+              <Text style={styles.didntGetCodeTitle}>Didn't get a code?</Text>
+              <Text style={styles.didntGetCodeText}>
+                Please check your SMS messages before{'\n'}requesting another code.
+              </Text>
+            </View>
+
             <TouchableOpacity 
               onPress={handleResendCode} 
-              style={styles.resendContainer}
-              disabled={isResending || isLoading}
+              style={[
+                styles.resendButton,
+                (!canResend || isResending || isLoading) && styles.resendButtonDisabled
+              ]}
+              disabled={!canResend || isResending || isLoading}
             >
               {isResending ? (
                 <View style={styles.resendLoadingContainer}>
-                  <ActivityIndicator size="small" color="#999" />
-                  <Text style={[styles.resendText, styles.resendLoadingText]}>Sending...</Text>
+                  <ActivityIndicator size="small" color="#2D1B69" />
+                  <Text style={[styles.resendButtonText, { marginLeft: 8 }]}>Sending...</Text>
                 </View>
               ) : (
-                <Text style={styles.resendText}>Resend code</Text>
+                <Text style={[
+                  styles.resendButtonText,
+                  (!canResend && !isResending) && styles.resendButtonTextDisabled
+                ]}>
+                  {canResend ? 'Resend Code' : `Resend Code (${resendTimer}s)`}
+                </Text>
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.needHelpContainer}>
+              <Text style={styles.needHelpText}>Need help?</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <Text style={styles.instruction}>
-              Almost there! For your security, please change your password to something you haven't used before.
+              Almost there!{'\n'}
+              For your security, please change your password to something you haven't used before.
             </Text>
 
             {error ? (
@@ -121,26 +130,10 @@ const PasswordResetScreen = () => {
                 value={password}
                 onChangeText={handlePasswordChange}
                 placeholder=""
-                secureTextEntry={!showPassword}
+                secureTextEntry={true}
                 showPasswordToggle={true}
-                onTogglePassword={handleTogglePassword}
-                variant="underline"
                 labelColor="#666"
                 editable={!isLoading}
-              />
-
-              <CustomInput
-                label="Confirm Password"
-                value={passwordAgain}
-                onChangeText={handlePasswordAgainChange}
-                placeholder=""
-                secureTextEntry={!showPasswordAgain}
-                showPasswordToggle={true}
-                onTogglePassword={handleTogglePasswordAgain}
-                variant="underline"
-                labelColor="#666"
-                editable={!isLoading}
-                style={styles.confirmPasswordInput}
               />
 
               <View style={styles.requirementsContainer}>
@@ -157,21 +150,21 @@ const PasswordResetScreen = () => {
                   title={isLoading ? 'Resetting...' : 'Create Password'}
                   onPress={handleCreatePassword}
                   variant="dark"
-                  disabled={isLoading || !password || !passwordAgain}
+                  disabled={isLoading || !password}
                 />
               </View>
-
-              <TouchableOpacity 
-                onPress={handleBackToCode}
-                style={styles.backButton}
-                disabled={isLoading}
-              >
-                <Text style={styles.backButtonText}>← Back to code entry</Text>
-              </TouchableOpacity>
             </View>
           </>
         )}
       </View>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Password Reset Complete!"
+        message="Your password has been reset successfully. Please log in with your new password."
+        buttonText="Go to Login"
+        onClose={handleSuccessModalClose}
+      />
     </ScreenWrapper>
   );
 };
