@@ -11,6 +11,7 @@
     "prebuild": "expo prebuild"
   },
   "dependencies": {
+    "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo-google-fonts/poppins": "^0.4.1",
     "@expo-google-fonts/quicksand": "^0.4.1",
     "@gorhom/bottom-sheet": "^5.2.6",

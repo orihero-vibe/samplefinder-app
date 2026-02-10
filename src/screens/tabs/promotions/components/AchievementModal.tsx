@@ -7,33 +7,39 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  Image,
 } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { SparkleIcon } from '@/icons';
+import { SmallBlueStarIcon, SmallStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
+import { Tier } from './TierItem';
+import { CloseIcon } from '@/components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface AchievementModalProps {
   visible: boolean;
-  tierName?: string;
+  tier?: Tier | null;
   points?: number;
   message?: string;
   onClose: () => void;
   onShare?: () => void;
+  onViewMoreEvents?: () => void;
 }
 
 const AchievementModal: React.FC<AchievementModalProps> = ({
   visible,
-  tierName = 'NewbieSampler',
+  tier,
   points = 100,
   message,
   onClose,
   onShare,
+  onViewMoreEvents,
 }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -70,7 +76,67 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     }
   };
 
-  const defaultMessage = message || `You earned ${points} points with SampleFinder, just for signing up!`;
+  const handleViewMoreEvents = () => {
+    if (onViewMoreEvents) {
+      onViewMoreEvents();
+    }
+    onClose();
+  };
+
+  // Determine if tier is earned
+  const isEarned = tier?.badgeEarned ?? false;
+  const tierNumber = tier?.order ?? 1;
+  const tierName = tier?.name ?? 'NewbieSampler';
+  const currentPoints = tier?.currentPoints ?? 0;
+  const requiredPoints = tier?.requiredPoints ?? 100;
+  const progress = Math.min((currentPoints / requiredPoints) * 100, 100);
+
+  // Get tier badge colors based on tier number
+  const getTierBadgeColors = (tierNum: number) => {
+    switch (tierNum) {
+      case 1:
+        return { primary: '#1E3A5F', secondary: '#4A5F7F' }; // Dark blue/purple
+      case 2:
+        return { primary: '#E91E63', secondary: '#F06292' }; // Pink/purple
+      case 3:
+        return { primary: '#FF9800', secondary: '#FFB74D' }; // Golden yellow/orange
+      case 4:
+        return { primary: '#9C27B0', secondary: '#BA68C8' }; // Purple
+      case 5:
+        return { primary: '#4CAF50', secondary: '#81C784' }; // Green
+      default:
+        return { primary: Colors.pinDarkBlue, secondary: Colors.blueColorMode };
+    }
+  };
+
+  const badgeColors = getTierBadgeColors(tierNumber);
+
+  // Get main message based on tier state
+  const getMainMessage = () => {
+    if (!isEarned) {
+      return "You're On Your Way!";
+    }
+    if (tierNumber === 1) {
+      return "Thanks for Joining!";
+    }
+    return "You've Leveled Up!";
+  };
+
+  // Get points message
+  const getPointsMessage = () => {
+    if (message) return message;
+    
+    if (isEarned) {
+      if (tierNumber === 1) {
+        return `You earned ${points} points with SampleFinder, just for signing up!`;
+      }
+      return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, advancing you to the next Tier!`;
+    }
+    return `${currentPoints} / ${requiredPoints.toLocaleString()} points`;
+  };
+
+  const mainMessage = getMainMessage();
+  const pointsMessage = getPointsMessage();
 
   return (
     <Modal
@@ -92,42 +158,67 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
           {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <View style={styles.closeButtonCircle}>
-              <Monicon name="mdi:close" size={20} color={Colors.pinDarkBlue} />
+             <CloseIcon/>
             </View>
           </TouchableOpacity>
 
-          {/* Badge Icon */}
+          {/* Badge with Tier Logo */}
           <View style={styles.badgeContainer}>
-            <View style={styles.badgeIcon}>
-              <Monicon name="ph:seal-fill" size={120} color={Colors.pinDarkBlue} />
-              <View style={styles.checkmarkContainer}>
-                <Monicon name="mdi:check" size={60} color={Colors.white} />
+            {tier?.imageURL && !imageError ? (
+              <Image
+                source={{ uri: tier.imageURL }}
+                style={styles.tierImage}
+                resizeMode="contain"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <View style={[styles.fallbackBadge, { backgroundColor: badgeColors.primary }]}>
+                <Monicon name="ph:seal-fill" size={120} color={Colors.white} />
               </View>
-            </View>
+            )}
           </View>
 
           {/* Tier Name */}
           <Text style={styles.tierName}>{tierName}</Text>
 
-          {/* Thanks Message */}
-          <Text style={styles.thanksMessage}>Thanks for Joining!</Text>
+          {/* Main Message */}
+          <Text style={styles.mainMessage}>{mainMessage}</Text>
 
           {/* Points Message */}
-          <Text style={styles.pointsMessage}>{defaultMessage}</Text>
+          <Text style={styles.pointsMessage}>
+            {pointsMessage.split('**').map((part, index) => 
+              index % 2 === 1 ? (
+                <Text key={index} style={styles.boldText}>{part}</Text>
+              ) : (
+                part
+              )
+            )}
+          </Text>
 
-          {/* You Earned Points Badge */}
-          <View style={styles.earnedPointsContainer}>
-            <SparkleIcon size={16} color={Colors.pinDarkBlue} circleColor="transparent" />
-            <Text style={styles.earnedPointsText}>You earned points!</Text>
+          {/* Progress Bar (for in-progress state) */}
+          {!isEarned && (
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBar, { width: `${progress}%` }]} />
+              </View>
+            </View>
+          )}
+
+          {/* Points Indicator */}
+          <View style={styles.pointsIndicatorContainer}>
+            <SmallBlueStarIcon />
+            <Text style={styles.pointsIndicatorText}>
+              {isEarned ? 'You earned points!' : 'Keep earning points!'}
+            </Text>
           </View>
 
-          {/* Share Button */}
+          {/* Action Button */}
           <CustomButton
-            title="Share"
-            onPress={handleShare}
+            title={isEarned ? 'Share' : 'View More Events'}
+            onPress={isEarned ? handleShare : handleViewMoreEvents}
             variant="dark"
             size="medium"
-            style={styles.shareButton}
+            style={styles.actionButton}
           />
         </Animated.View>
       </View>
@@ -171,21 +262,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeIcon: {
-    position: 'relative',
-    width: 120,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
+  tierImage: {
+    width: 200,
+    height: 200,
   },
-  checkmarkContainer: {
-    position: 'absolute',
-    top: 30,
-    left: 30,
+  fallbackBadge: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 60,
-    height: 60,
   },
   tierName: {
     fontSize: 20,
@@ -194,7 +280,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  thanksMessage: {
+  mainMessage: {
     fontSize: 28,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinDarkBlue,
@@ -210,18 +296,37 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 8,
   },
-  earnedPointsContainer: {
+  boldText: {
+    fontFamily: 'Quicksand_700Bold',
+  },
+  progressContainer: {
+    width: '100%',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: '#E8E8E8',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#D0D0D0',
+    borderRadius: 4,
+  },
+  pointsIndicatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 24,
   },
-  earnedPointsText: {
+  pointsIndicatorText: {
     fontSize: 14,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.pinDarkBlue,
   },
-  shareButton: {
+  actionButton: {
     width: '100%',
     marginTop: 8,
   },

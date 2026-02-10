@@ -67,8 +67,8 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
             )}
           </View>
           <View style={styles.eventDetails}>
-            <Text style={styles.brandName}>{displayBrandName}</Text>
-            <Text style={styles.locationText}>{event.location}</Text>
+            <Text style={styles.brandName}>{event.location}</Text>
+            <Text style={styles.locationText}>{displayBrandName.length > 50 ? displayBrandName.substring(0, 50) + '...' : displayBrandName}</Text>
             <Text style={styles.distanceText}>{event.distance}</Text>
           </View>
         </View>

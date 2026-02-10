@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { HeartIcon } from '@/icons';
 import BrandUpcomingEvents from './BrandUpcomingEvents';
 import type { EventData } from './BrandUpcomingEvents';
 import SmallHeartIcon from '@/icons/SmallHeartIcon';
+import { TabParamList } from '@/navigation/TabNavigator';
+import { CalendarStackParamList } from '@/navigation/CalendarStack';
+import { getNavigationRef } from '@/lib/notifications/handlers';
+
+type FavoriteBrandItemNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<CalendarStackParamList>,
+  BottomTabNavigationProp<TabParamList, 'Favorites'>
+>;
 
 export interface FavoriteBrandData {
   id: string;
@@ -22,9 +34,26 @@ interface FavoriteBrandItemProps {
 
 const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFavorite }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const navigation = useNavigation<FavoriteBrandItemNavigationProp>();
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
+  };
+
+  const handleEventPress = (eventId: string) => {
+    // Navigate to BrandDetails in HomeStack through root navigator
+    // Since FavoritesScreen is directly in TabNavigator, we use the root navigation ref
+    const rootNav = getNavigationRef();
+    if (rootNav) {
+      // Navigate through MainTabs -> Home -> BrandDetails (same pattern as notification handlers)
+      (rootNav as any).navigate('MainTabs', {
+        screen: 'Home',
+        params: {
+          screen: 'BrandDetails',
+          params: { eventId },
+        },
+      });
+    }
   };
 
   return (
@@ -72,14 +101,14 @@ const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFa
         <View style={styles.expandedContent}>
           <Text style={styles.description}>{brand.description}</Text>
           {brand.events && brand.events.length > 0 && (
-            <BrandUpcomingEvents events={brand.events} />
+            <BrandUpcomingEvents events={brand.events} onEventPress={handleEventPress} />
           )}
         </View>
       )}
 
       {!isExpanded && brand.events && brand.events.length > 0 && (
         <View style={styles.collapsedEvents}>
-          <BrandUpcomingEvents events={brand.events} />
+          <BrandUpcomingEvents events={brand.events} onEventPress={handleEventPress} />
         </View>
       )}
 

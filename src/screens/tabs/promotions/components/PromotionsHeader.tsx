@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/Colors';
+import { AchievementStartIcon, SmallStarIcon, SparkleIcon, ViewStarIcon } from '@/icons';
 import { Monicon } from '@monicon/native';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -11,7 +12,7 @@ const PromotionsHeader: React.FC<PromotionsHeaderProps> = ({ totalPoints = 0 }) 
   return (
     <View style={styles.container}>
       <View style={styles.starIconContainer}>
-        <Monicon name="mage:stars-a" size={80} color={Colors.blueColorMode} />
+        <AchievementStartIcon width={60} height={60} />
       </View>
       <Text style={styles.title}>ACHIEVEMENTS</Text>
       <Text style={styles.motivationalText}>

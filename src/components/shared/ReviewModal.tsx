@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
-  Modal,
   TouchableOpacity,
-  TextInput,
   StyleSheet,
-  Dimensions,
-  Animated,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
+import BottomSheet, {
+  BottomSheetScrollView,
+  BottomSheetBackdrop,
+  BottomSheetTextInput,
+} from '@gorhom/bottom-sheet';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import ReviewStarFilledIcon from '@/icons/ReviewStarFilledIcon';
+import ReviewStarOutlineIcon from '@/icons/ReviewStarOutlineIcon';
+import CloseIcon from './CloseIcon';
 
 // Rating descriptions
 const RATING_DESCRIPTIONS: { [key: number]: string } = {
@@ -27,28 +26,21 @@ const RATING_DESCRIPTIONS: { [key: number]: string } = {
   5: 'Perfect!',
 };
 
-// Feedback tags
-const FEEDBACK_TAGS = [
-  'Staff',
-  'Swag',
-  'Sample',
-  'Presentation',
-  'Experience',
-  'Professionalism',
-  'Other',
-];
+// Feedback tags arranged in rows matching approved design
+const FEEDBACK_TAGS_ROW_1 = ['Staff', 'Swag', 'Sample', 'Presentation','Experience', 'Professionalism', 'Other'];
+// const FEEDBACK_TAGS_ROW_2 = [];
 
 interface ReviewModalProps {
-  visible: boolean;
+  bottomSheetRef: React.RefObject<BottomSheet | null>;
   eventName?: string;
   brandName?: string;
   isSubmitting?: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   onSubmit: (reviewText: string, rating: number, tags?: string[], purchased?: boolean) => void;
 }
 
 const ReviewModal: React.FC<ReviewModalProps> = ({
-  visible,
+  bottomSheetRef,
   isSubmitting = false,
   onClose,
   onSubmit,
@@ -57,35 +49,38 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const [reviewText, setReviewText] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [purchased, setPurchased] = useState<boolean | null>(null);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.9));
 
-  useEffect(() => {
-    if (visible) {
-      // Reset state when modal opens
-      setRating(0);
-      setReviewText('');
-      setSelectedTags([]);
-      setPurchased(null);
-      
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      fadeAnim.setValue(0);
-      scaleAnim.setValue(0.9);
-    }
-  }, [visible]);
+  const snapPoints = useMemo(() => ['85%'], []);
+
+  const resetState = useCallback(() => {
+    setRating(0);
+    setReviewText('');
+    setSelectedTags([]);
+    setPurchased(null);
+  }, []);
+
+  const handleSheetChanges = useCallback(
+    (index: number) => {
+      if (index === -1) {
+        resetState();
+        onClose?.();
+      }
+    },
+    [onClose, resetState]
+  );
+
+  const renderBackdrop = useMemo(
+    () => (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.6}
+        style={[props.style, { backgroundColor: 'rgba(75, 31, 86, 0.7)' }]}
+      />
+    ),
+    []
+  );
 
   const handleStarPress = (starIndex: number) => {
     setRating(starIndex + 1);
@@ -98,239 +93,195 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   };
 
   const handleSubmit = () => {
-    if (rating === 0 || isSubmitting) {
-      return;
-    }
-    
+    if (rating === 0 || isSubmitting) return;
     onSubmit(reviewText, rating, selectedTags, purchased ?? undefined);
   };
 
   const handleClose = () => {
-    setRating(0);
-    setReviewText('');
-    setSelectedTags([]);
-    setPurchased(null);
-    onClose();
+    bottomSheetRef.current?.close();
   };
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={handleClose}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
-      >
-        <TouchableOpacity 
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={handleClose}
-        />
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
+  const renderTagRow = (tags: string[]) => (
+    <View style={styles.tagsRow}>
+      {tags.map((tag) => (
+        <TouchableOpacity
+          key={tag}
+          style={[styles.tag, selectedTags.includes(tag) && styles.tagSelected]}
+          onPress={() => handleTagPress(tag)}
+          activeOpacity={0.7}
         >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-            contentContainerStyle={styles.scrollContent}
-          >
-            {/* Close Button */}
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <View style={styles.closeButtonCircle}>
-                <Monicon name="mdi:close" size={16} color={Colors.pinDarkBlue} />
-              </View>
-            </TouchableOpacity>
+          <Text style={[styles.tagText, selectedTags.includes(tag) && styles.tagTextSelected]}>
+            {tag}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>How Did Sampling Go?</Text>
-            </View>
+  return (
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={-1}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onChange={handleSheetChanges}
+      backgroundStyle={styles.sheetBackground}
+      handleIndicatorStyle={styles.handleIndicator}
+      backdropComponent={renderBackdrop}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+    >
+      <BottomSheetScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Close Button */}
+        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <CloseIcon/>
+        </TouchableOpacity>
 
-            {/* Star Rating */}
-            <View style={styles.ratingContainer}>
-              <View style={styles.starsContainer}>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => handleStarPress(index)}
-                    style={styles.starButton}
-                  >
-                    <Monicon
-                      name={index < rating ? 'mdi:star' : 'mdi:star-outline'}
-                      size={36}
-                      color={Colors.pinDarkBlue}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {rating > 0 && (
-                <Text style={styles.ratingDescription}>
-                  {RATING_DESCRIPTIONS[rating]}
-                </Text>
-              )}
-            </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>How Did Sampling Go?</Text>
+        </View>
 
-            {/* Divider */}
-            <View style={styles.divider} />
+        {/* Star Rating */}
+        <View style={styles.ratingContainer}>
+          <View style={styles.starsContainer}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => handleStarPress(index)}
+                style={styles.starButton}
+              >
+                {index < rating ? (
+                  <ReviewStarFilledIcon width={37} height={37} />
+                ) : (
+                  <ReviewStarOutlineIcon width={37} height={37} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          {rating > 0 && (
+            <Text style={styles.ratingDescription}>
+              {RATING_DESCRIPTIONS[rating]}
+            </Text>
+          )}
+        </View>
 
-            {/* What Did You Like? */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>What Did You Like?</Text>
-              <View style={styles.tagsContainer}>
-                {FEEDBACK_TAGS.map((tag) => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[
-                      styles.tag,
-                      selectedTags.includes(tag) && styles.tagSelected,
-                    ]}
-                    onPress={() => handleTagPress(tag)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.tagText,
-                        selectedTags.includes(tag) && styles.tagTextSelected,
-                      ]}
-                    >
-                      {tag}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+        {/* Divider */}
+        <View style={styles.divider} />
 
-            {/* Divider */}
-            <View style={styles.divider} />
+        {/* What Did You Like? */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitleCenter}>What Did You Like?</Text>
+          <View style={styles.tagsContainer}>
+            {renderTagRow(FEEDBACK_TAGS_ROW_1)}
+          </View>
+        </View>
 
-            {/* Did You Purchase The Product? */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Did You Purchase The Product?</Text>
-              <View style={styles.purchaseContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.purchaseButton,
-                    purchased === true && styles.purchaseButtonSelected,
-                  ]}
-                  onPress={() => setPurchased(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.purchaseButtonText,
-                      purchased === true && styles.purchaseButtonTextSelected,
-                    ]}
-                  >
-                    Yes
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.purchaseButton,
-                    purchased === false && styles.purchaseButtonSelected,
-                  ]}
-                  onPress={() => setPurchased(false)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.purchaseButtonText,
-                      purchased === false && styles.purchaseButtonTextSelected,
-                    ]}
-                  >
-                    No
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+        {/* Divider */}
+        <View style={styles.divider} />
 
-            {/* Divider */}
-            <View style={styles.divider} />
-
-            {/* Add Details */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Add Details:</Text>
-              <TextInput
-                style={styles.reviewInput}
-                multiline
-                numberOfLines={4}
-                placeholder="Expandable field for user to fill out with their review."
-                placeholderTextColor="#999"
-                value={reviewText}
-                onChangeText={setReviewText}
-                maxLength={500}
-                textAlignVertical="top"
-              />
-            </View>
-
-            {/* Submit Button */}
+        {/* Did You Purchase The Product? */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitleCenter}>Did You Purchase The Product?</Text>
+          <View style={styles.purchaseContainer}>
             <TouchableOpacity
-              style={[
-                styles.submitButton,
-                (rating === 0 || isSubmitting) && styles.submitButtonDisabled,
-              ]}
-              onPress={handleSubmit}
+              style={[styles.purchaseButton, purchased === true && styles.purchaseButtonSelected]}
+              onPress={() => setPurchased(true)}
               activeOpacity={0.7}
-              disabled={rating === 0 || isSubmitting}
             >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={Colors.white} />
-              ) : (
-                <Text style={styles.submitButtonText}>Submit</Text>
-              )}
+              <Text style={[styles.purchaseButtonText, purchased === true && styles.purchaseButtonTextSelected]}>
+                Yes
+              </Text>
             </TouchableOpacity>
-          </ScrollView>
-        </Animated.View>
-      </KeyboardAvoidingView>
-    </Modal>
+            <TouchableOpacity
+              style={[styles.purchaseButton, purchased === false && styles.purchaseButtonSelected]}
+              onPress={() => setPurchased(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.purchaseButtonText, purchased === false && styles.purchaseButtonTextSelected]}>
+                No
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Add Details */}
+        <View style={[styles.section, styles.reviewInputSection]}>
+          <Text style={styles.sectionTitleLeft}>Add Details:</Text>
+          <BottomSheetTextInput
+            style={styles.reviewInput}
+            multiline
+            numberOfLines={4}
+            placeholder="Tell us about your experience..."
+            placeholderTextColor="#999"
+            value={reviewText}
+            onChangeText={setReviewText}
+            maxLength={500}
+            textAlignVertical="top"
+          />
+        </View>
+        <View style={styles.divider} />
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={[styles.submitButton, (rating === 0 || isSubmitting) && styles.submitButtonDisabled]}
+          onPress={handleSubmit}
+          activeOpacity={0.7}
+          disabled={rating === 0 || isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <Text style={styles.submitButtonText}>Submit</Text>
+          )}
+        </TouchableOpacity>
+      </BottomSheetScrollView>
+    </BottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(75, 31, 86, 0.7)',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 80,
-  },
-  modalContainer: {
-    width: SCREEN_WIDTH * 0.92,
-    maxWidth: 400,
+  sheetBackground: {
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    maxHeight: '85%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  handleIndicator: {
+    display: 'none',
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   closeButton: {
     position: 'absolute',
     top: 0,
-    right: 0,
+    right: 5,
     zIndex: 10,
+    padding: 4,
   },
   closeButtonCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#E5E5E5',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: Colors.pinDarkBlue,
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    marginTop: 4,
   },
   title: {
     fontSize: 22,
@@ -339,12 +290,12 @@ const styles = StyleSheet.create({
   },
   ratingContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   starsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
   },
   starButton: {
     padding: 2,
@@ -357,30 +308,43 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: '#D0D0D0',
     marginVertical: 16,
+    marginHorizontal: -20,
   },
   section: {
     marginBottom: 0,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_600SemiBold',
+  sectionTitleCenter: {
+    fontSize: 15,
+    fontFamily: 'Quicksand_700Bold',
     color: Colors.pinDarkBlue,
     textAlign: 'center',
     marginBottom: 12,
   },
+  sectionTitleLeft: {
+    fontSize: 15,
+    fontFamily: 'Quicksand_700Bold',
+    color: Colors.pinDarkBlue,
+    textAlign: 'left',
+    marginBottom: 12,
+  },
   tagsContainer: {
+    gap: 8,
+ 
+  },
+  tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    justifyContent:"center",
+    alignItems:"center",
     gap: 8,
   },
   tag: {
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 10,
+    borderWidth: 2,
     borderColor: Colors.pinDarkBlue,
     backgroundColor: Colors.white,
   },
@@ -389,7 +353,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 13,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Quicksand_600SemiBold',
     color: Colors.pinDarkBlue,
   },
   tagTextSelected: {
@@ -398,16 +362,16 @@ const styles = StyleSheet.create({
   purchaseContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
+    gap: 12,
   },
   purchaseButton: {
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 24,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 10,
+    borderWidth: 2,
     borderColor: Colors.pinDarkBlue,
     backgroundColor: Colors.white,
-    minWidth: 60,
+    minWidth: 56,
     alignItems: 'center',
   },
   purchaseButtonSelected: {
@@ -415,39 +379,44 @@ const styles = StyleSheet.create({
   },
   purchaseButtonText: {
     fontSize: 13,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Quicksand_600SemiBold',
     color: Colors.pinDarkBlue,
   },
   purchaseButtonTextSelected: {
     color: Colors.white,
   },
+  reviewInputSection:{
+    paddingHorizontal: 20
+  },
   reviewInput: {
     backgroundColor: Colors.white,
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
     fontSize: 14,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_500Medium',
     color: Colors.pinDarkBlue,
     minHeight: 80,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderWidth: 1.5,
+    borderColor: Colors.pinDarkBlue,
+    textAlign: 'left',
   },
   submitButton: {
     backgroundColor: Colors.blueColorMode,
-    paddingVertical: 14,
-    borderRadius: 25,
+    paddingVertical: 12,
+    borderRadius: 16,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 5,
+    marginHorizontal:20,
   },
   submitButtonDisabled: {
     opacity: 0.5,
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.white,
+    letterSpacing: 0.5,
   },
 });
 
 export default ReviewModal;
-

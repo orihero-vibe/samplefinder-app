@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, deleteAccount } from '@/lib/auth';
 import { getUserProfile, updateUserProfile, UserProfileRow } from '@/lib/database';
@@ -273,6 +273,31 @@ export const useEditProfileScreen = () => {
   };
 
   const requestImagePickerPermissions = async (): Promise<boolean> => {
+    // First check current permission status
+    const { status: currentStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    
+    // If already granted, return true
+    if (currentStatus === 'granted') {
+      return true;
+    }
+    
+    // If denied, guide user to settings
+    if (currentStatus === 'denied') {
+      Alert.alert(
+        'Permission Required',
+        'We need access to your photo library to upload a profile picture. Please enable it in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Open Settings', 
+            onPress: () => Linking.openSettings() 
+          }
+        ]
+      );
+      return false;
+    }
+    
+    // If undetermined, request permission
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
@@ -316,15 +341,37 @@ export const useEditProfileScreen = () => {
       let result: ImagePicker.ImagePickerResult;
 
       if (source === 'camera') {
-        // Check camera permissions
-        const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-        if (cameraStatus !== 'granted') {
+        // First check current camera permission status
+        const { status: currentCameraStatus } = await ImagePicker.getCameraPermissionsAsync();
+        
+        // If already granted, proceed
+        if (currentCameraStatus === 'granted') {
+          // Permission already granted, continue with camera
+        } else if (currentCameraStatus === 'denied') {
+          // If denied, guide user to settings
           Alert.alert(
             'Permission Required',
-            'We need access to your camera to take a photo.',
-            [{ text: 'OK' }]
+            'We need access to your camera to take a photo. Please enable it in Settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Open Settings', 
+                onPress: () => Linking.openSettings() 
+              }
+            ]
           );
           return;
+        } else {
+          // If undetermined, request permission
+          const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+          if (cameraStatus !== 'granted') {
+            Alert.alert(
+              'Permission Required',
+              'We need access to your camera to take a photo.',
+              [{ text: 'OK' }]
+            );
+            return;
+          }
         }
 
         result = await ImagePicker.launchCameraAsync({

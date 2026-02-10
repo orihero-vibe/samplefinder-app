@@ -48,7 +48,6 @@ const styles = StyleSheet.create({
   iconTitleContainer: {
     alignItems: 'center',
     paddingTop: 32,
-    paddingBottom: 10,
     gap: 16,
   },
   notificationsTitle: {
@@ -60,7 +59,7 @@ const styles = StyleSheet.create({
   // Push notifications toggle section
   pushNotificationsSection: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 10,
     paddingHorizontal: 24,
   },
   pushNotificationsLabel: {
@@ -77,7 +76,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   toggleButton: {
-    paddingVertical: 10,
+    paddingVertical: 4,
     paddingHorizontal: 40,
     backgroundColor: Colors.white,
   },
@@ -109,9 +108,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Quicksand_700Bold',
     color: '#1D0A74',
-    paddingHorizontal: 24,
-    paddingTop: 10,
-    paddingBottom: 12,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   // Empty state
   emptyStateContainer: {

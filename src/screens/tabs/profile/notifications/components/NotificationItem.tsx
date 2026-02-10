@@ -47,13 +47,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: 20,
-    paddingHorizontal: 24,
+    // paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#E8E8E8',
     position: 'relative',
+    marginHorizontal:30
   },
   unreadContainer: {
-    backgroundColor: '#F8F5FF',
+    // backgroundColor: '#F8F5FF',
   },
   unreadIndicator: {
     position: 'absolute',

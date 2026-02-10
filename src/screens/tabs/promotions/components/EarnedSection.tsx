@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { SparkleIcon, CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon } from '@/icons';
+import { CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon, AchievementStartIcon, HistoryIcon } from '@/icons';
 import { Badge, Tier } from './index';
 import BadgeItem from './BadgeItem';
 
@@ -51,7 +51,7 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
         <View style={styles.card}>
           {/* Header with Sparkle Icon */}
           <View style={styles.headerContainer}>
-            <SparkleIcon size={32} color={Colors.brandPurpleBright} circleColor="transparent" />
+            <HistoryIcon size={40} />
             <Text style={styles.headerTitle}>ACHIEVEMENTS</Text>
           </View>
 

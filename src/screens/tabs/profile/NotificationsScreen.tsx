@@ -5,13 +5,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ImageBackground,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { useNotificationsScreen } from './notifications/useNotificationsScreen';
 import { NotificationItem } from './notifications/components';
-import { BellNotificationIcon } from '@/icons/BellNotificationIcon';
 import styles from './notifications/styles';
 import SampleFinderIcon from '@/icons/SampleFinderIcon';
 
@@ -54,7 +54,11 @@ const NotificationsScreen = () => {
       >
         {/* Bell Icon and Title */}
         <View style={styles.iconTitleContainer}>
-          <BellNotificationIcon size={70} />
+          <Image 
+            source={require('@/assets/bell.png')} 
+            style={{ width: 70, height: 70 }}
+            resizeMode="contain"
+          />
           <Text style={styles.notificationsTitle}>NOTIFICATIONS</Text>
         </View>
 

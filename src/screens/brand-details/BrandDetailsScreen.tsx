@@ -36,7 +36,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     brandLogoUrl,
     isFavorite,
     isAddedToCalendar,
-    reviewModalVisible,
+    reviewBottomSheetRef,
     isSubmittingCheckIn,
     isSubmittingReview,
     pointsModalVisible,
@@ -138,7 +138,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
       </ScrollView>
 
       <ReviewModal
-        visible={reviewModalVisible}
+        bottomSheetRef={reviewBottomSheetRef}
         eventName={brand?.storeName}
         brandName={brand?.brandName}
         isSubmitting={isSubmittingReview}

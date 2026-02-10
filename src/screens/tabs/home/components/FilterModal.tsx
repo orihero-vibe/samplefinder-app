@@ -7,6 +7,7 @@ export interface FilterOption {
   id: string;
   label: string;
   value: string;
+  isAdult?: boolean;
 }
 
 interface FilterModalProps {
@@ -16,6 +17,7 @@ interface FilterModalProps {
   selectedValues: string[];
   onToggle: (value: string) => void;
   onClose: () => void;
+  userIsAdult?: boolean;
 }
 
 const FilterModal: React.FC<FilterModalProps> = ({
@@ -25,6 +27,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
   selectedValues,
   onToggle,
   onClose,
+  userIsAdult = true,
 }) => {
   if (!visible) return null;
 
@@ -54,6 +57,10 @@ const FilterModal: React.FC<FilterModalProps> = ({
             const isSelected = isViewAll 
               ? selectedValues.length === 0 
               : selectedValues.includes(option.value);
+            
+            // Grey out 21+ categories for under-21 users
+            const isAdultCategory = option.isAdult === true;
+            const shouldGreyOut = isAdultCategory && !userIsAdult;
 
             return (
               <TouchableOpacity
@@ -61,13 +68,14 @@ const FilterModal: React.FC<FilterModalProps> = ({
                 style={styles.optionRow}
                 onPress={() => onToggle(option.value)}
                 activeOpacity={0.7}
+                disabled={shouldGreyOut}
               >
-                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                <View style={[styles.checkbox, isSelected && styles.checkboxSelected, shouldGreyOut && styles.checkboxDisabled]}>
                   {isSelected && (
                     <Monicon name="mdi:check" size={18} color={Colors.white} />
                   )}
                 </View>
-                <Text style={[styles.optionText, !isSelected && styles.optionTextDisabled]}>
+                <Text style={[styles.optionText, shouldGreyOut && styles.optionTextDisabled]}>
                   {option.label}
                 </Text>
               </TouchableOpacity>
@@ -148,6 +156,10 @@ const styles = StyleSheet.create({
   checkboxSelected: {
     backgroundColor: Colors.blueColorMode,
     borderColor: Colors.blueColorMode,
+  },
+  checkboxDisabled: {
+    borderColor: '#9E9E9E',
+    backgroundColor: Colors.white,
   },
   optionText: {
     fontSize: 15,

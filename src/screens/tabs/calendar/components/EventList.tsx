@@ -24,6 +24,22 @@ interface EventListProps {
 const EventList: React.FC<EventListProps> = ({ events, selectedDate, showUpcoming = false }) => {
   const navigation = useNavigation<EventListNavigationProp>();
   
+  // Helper function to parse distance string to numeric value for sorting
+  const parseDistance = (distanceStr: string): number => {
+    if (distanceStr === 'Distance unknown') {
+      return 999999; // Put unknown distances at the end
+    }
+    // Extract numeric value from strings like "2.5 mi away" or "450 ft away"
+    const numericValue = parseFloat(distanceStr.replace(/[^\d.]/g, '')) || 999999;
+    
+    // Convert feet to miles for consistent comparison (5280 ft = 1 mile)
+    if (distanceStr.includes('ft')) {
+      return numericValue / 5280;
+    }
+    
+    return numericValue;
+  };
+  
   // Filter events based on mode
   const filteredEvents = showUpcoming
     ? events.filter((event) => {
@@ -31,7 +47,21 @@ const EventList: React.FC<EventListProps> = ({ events, selectedDate, showUpcomin
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return eventDate >= today;
-      }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      }).sort((a, b) => {
+        // First sort by date (ascending)
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        const dateDiff = dateA - dateB;
+        
+        // If dates are the same, sort by distance (closest first)
+        if (dateDiff === 0) {
+          const distA = parseDistance(a.distance);
+          const distB = parseDistance(b.distance);
+          return distA - distB;
+        }
+        
+        return dateDiff;
+      })
     : selectedDate
     ? events.filter((event) => {
         const eventDate = new Date(event.date);

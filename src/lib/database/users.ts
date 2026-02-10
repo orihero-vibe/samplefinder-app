@@ -148,6 +148,7 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
       role: profileData.role || 'user',
       idAdult: profileData.isAdult ?? false, // Use 'idAdult' to match Appwrite column name
       referralCode: referralCode,
+      totalPoints: 100, // Sign up credit points for new users
     };
 
     console.log('[database.createUserProfile] Creating row with data:', {
@@ -388,37 +389,81 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
   try {
     // Query for profiles - we'll check both exact match and case-insensitive
     // First try exact match (most common case)
-    const exactResult = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: USER_PROFILES_TABLE_ID,
-      queries: [Query.equal('username', trimmedUsername)],
-    });
+    let exactResult;
+    let exactQueryHadBlobError = false;
+    try {
+      exactResult = await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: USER_PROFILES_TABLE_ID,
+        queries: [Query.equal('username', trimmedUsername)],
+      });
 
-    if (exactResult.rows && exactResult.rows.length > 0) {
-      console.log('[database.checkUsernameExists] Username exists (exact match)');
-      return true;
+      if (exactResult.rows && exactResult.rows.length > 0) {
+        console.log('[database.checkUsernameExists] Username exists (exact match)');
+        return true;
+      }
+    } catch (exactError: any) {
+      // Handle blob resolution errors gracefully
+      if (exactError?.message?.includes('blob') || exactError?.message?.includes('Unable to resolve data')) {
+        exactQueryHadBlobError = true;
+        // If exact match query fails with blob error, it likely means a row with this username exists
+        // but has an invalid blob reference. We should treat this as "username exists" to be safe.
+        // However, it's also possible the error is from a different row. Let's try case-insensitive check first.
+        console.warn('[database.checkUsernameExists] Blob resolution error in exact match query. Will try case-insensitive check:', exactError?.message);
+        // Don't return yet - try case-insensitive check first
+      } else {
+        // Re-throw non-blob errors
+        throw exactError;
+      }
     }
 
     // If exact match not found, check case-insensitive by querying a range
     // and filtering in JavaScript (for case-insensitive comparison)
     // Note: This is a fallback - ideally usernames should be stored in lowercase
-    const allResults = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: USER_PROFILES_TABLE_ID,
-      queries: [
-        // Get usernames that might match (we'll filter in code)
-        // Since we can't do case-insensitive query directly, we'll check a sample
-        Query.limit(1000), // Reasonable limit for username checking
-      ],
-    });
+    let allResults;
+    try {
+      // Try with smaller batches to potentially avoid problematic rows
+      allResults = await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: USER_PROFILES_TABLE_ID,
+        queries: [
+          Query.limit(1000), // Reasonable limit for username checking
+        ],
+      });
 
-    // Do case-insensitive comparison
-    if (allResults.rows && allResults.rows.length > 0) {
-      const exists = allResults.rows.some((row: any) => 
-        row.username && row.username.toLowerCase() === lowerUsername
-      );
-      console.log('[database.checkUsernameExists] Username exists (case-insensitive):', exists);
-      return exists;
+      // Do case-insensitive comparison
+      if (allResults.rows && allResults.rows.length > 0) {
+        const exists = allResults.rows.some((row: any) => 
+          row.username && row.username.toLowerCase() === lowerUsername
+        );
+        console.log('[database.checkUsernameExists] Username exists (case-insensitive):', exists);
+        return exists;
+      }
+    } catch (caseInsensitiveError: any) {
+      // Handle blob resolution errors gracefully
+      if (caseInsensitiveError?.message?.includes('blob') || caseInsensitiveError?.message?.includes('Unable to resolve data')) {
+        console.warn('[database.checkUsernameExists] Blob resolution error in case-insensitive query. Some rows may have invalid blob references:', caseInsensitiveError?.message);
+        
+        // If exact match query succeeded with no results, we can be reasonably confident username doesn't exist
+        if (!exactQueryHadBlobError && exactResult && exactResult.rows && exactResult.rows.length === 0) {
+          console.log('[database.checkUsernameExists] Exact match found no results, case-insensitive check failed due to blob error. Username likely available.');
+          return false;
+        }
+        
+        // If exact match query also had blob error, we can't verify properly
+        // In this case, we'll allow signup - if username is duplicate, the createUserProfile will fail
+        // This is better than blocking legitimate signups due to data integrity issues
+        if (exactQueryHadBlobError) {
+          console.warn('[database.checkUsernameExists] Both queries failed due to blob errors. Cannot verify username. Allowing signup (will fail if duplicate).');
+          return false; // Allow signup - duplicate check will happen during profile creation
+        }
+        
+        // If exact match succeeded but case-insensitive failed, and exact found no results, username is available
+        return false;
+      } else {
+        // Re-throw non-blob errors
+        throw caseInsensitiveError;
+      }
     }
 
     console.log('[database.checkUsernameExists] Username does not exist');
@@ -427,7 +472,9 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
     console.error('[database.checkUsernameExists] Error checking username:', error);
     console.error('[database.checkUsernameExists] Error message:', error?.message);
     // If there's an error, return false to avoid blocking signup
-    // The actual signup will fail if username is truly duplicate
+    // The actual signup will fail if username is truly duplicate during profile creation
+    // This prevents blocking legitimate signups due to transient errors
+    console.warn('[database.checkUsernameExists] Error occurred, allowing signup (will fail if duplicate).');
     return false;
   }
 };

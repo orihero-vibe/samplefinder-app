@@ -53,6 +53,8 @@ const PromotionsScreen = () => {
     handlePointsPress,
     handleCloseAchievementModal,
     handleShareAchievement,
+    handleViewMoreEvents,
+    handleHistoryEventPress,
   } = usePromotionsScreen();
 
   const handleViewHistory = () => {
@@ -141,7 +143,7 @@ const PromotionsScreen = () => {
               </TouchableOpacity>
               
               <View ref={historyRef} collapsable={false}>
-                <HistorySection historyItems={historyItems} />
+                <HistorySection historyItems={historyItems} onEventPress={handleHistoryEventPress} />
               </View>
             </View>
           </ScrollView>
@@ -162,10 +164,11 @@ const PromotionsScreen = () => {
 
       <AchievementModal
         visible={achievementModalVisible}
-        tierName={selectedTier?.name || 'NewbieSampler'}
+        tier={selectedTier}
         points={selectedPoints}
         onClose={handleCloseAchievementModal}
         onShare={handleShareAchievement}
+        onViewMoreEvents={handleViewMoreEvents}
       />
     </View>
   );

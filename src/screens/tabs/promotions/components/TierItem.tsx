@@ -10,6 +10,7 @@ export interface Tier {
   requiredPoints: number;
   badgeEarned: boolean;
   imageURL?: string | null;
+  order?: number; // Tier order/level (1, 2, 3, etc.)
 }
 
 interface TierItemProps {

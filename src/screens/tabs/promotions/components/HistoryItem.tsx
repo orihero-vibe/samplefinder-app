@@ -5,6 +5,7 @@ import { Colors } from '@/constants/Colors';
 
 export interface HistoryItemData {
   id: string;
+  eventId: string;
   brandProduct: string;
   storeName: string;
   date: string; // Format: "Aug 1, 2025"
@@ -17,17 +18,28 @@ interface HistoryItemProps {
   item: HistoryItemData;
   defaultExpanded?: boolean;
   isLastItem?: boolean;
+  onPress?: (eventId: string) => void;
 }
 
-const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false, isLastItem = false }) => {
+const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false, isLastItem = false, onPress }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
 
+  const handlePress = () => {
+    if (onPress && item.eventId) {
+      onPress(item.eventId);
+    }
+  };
+
   return (
-    <View style={[styles.container, isLastItem && styles.lastItem]}>
+    <TouchableOpacity 
+      style={[styles.container, isLastItem && styles.lastItem]} 
+      onPress={handlePress}
+      activeOpacity={0.7}
+    >
       <View style={styles.content}>
         {/* Icon and Main Info */}
         <View style={styles.mainRow}>
@@ -56,7 +68,10 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
                   <Text style={styles.separator}>|</Text>
                   <Text style={styles.points}>{item.points} Points</Text>
                   <Text style={styles.separator}>|</Text>
-                  <TouchableOpacity style={styles.reviewToggleInline} onPress={toggleExpand}>
+                  <TouchableOpacity 
+                    style={styles.reviewToggleInline} 
+                    onPress={toggleExpand}
+                  >
                     <Text style={styles.reviewToggleText}>
                       {isExpanded ? 'Close review' : 'See review'}
                     </Text>
@@ -85,7 +100,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
           </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

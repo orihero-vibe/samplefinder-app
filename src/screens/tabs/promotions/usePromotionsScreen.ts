@@ -4,6 +4,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
 import { getCurrentUser } from '@/lib/auth';
+import { getNavigationRef } from '@/lib/notifications/handlers';
 import { 
   getUserCheckIns,
   getUserReviews,
@@ -136,6 +137,7 @@ export const usePromotionsScreen = () => {
         items.push({
           item: {
             id: checkIn.$id,
+            eventId: checkIn.eventID,
             brandProduct: event.name || 'Event',
             storeName: event.address || 'Store',
             date: new Date(checkIn.$createdAt).toLocaleDateString('en-US', {
@@ -225,6 +227,27 @@ export const usePromotionsScreen = () => {
     }
   };
 
+  const handleViewMoreEvents = () => {
+    // Navigate to Home tab
+    (navigation as any).navigate('Home');
+  };
+
+  const handleHistoryEventPress = (eventId: string) => {
+    // Navigate to BrandDetails in HomeStack through root navigator
+    // Since PromotionsScreen is directly in TabNavigator, we use the root navigation ref
+    const rootNav = getNavigationRef();
+    if (rootNav) {
+      // Navigate through MainTabs -> Home -> BrandDetails (same pattern as notification handlers)
+      (rootNav as any).navigate('MainTabs', {
+        screen: 'Home',
+        params: {
+          screen: 'BrandDetails',
+          params: { eventId },
+        },
+      });
+    }
+  };
+
   const eventBadges: Badge[] = [
     { id: '1', label: 'EVENTS', achieved: eventCheckInsCount >= 10, count: 10 },
     { id: '2', label: 'EVENTS', achieved: eventCheckInsCount >= 25, count: 25 },
@@ -242,23 +265,18 @@ export const usePromotionsScreen = () => {
   ];
 
   // Map Appwrite tiers to UI Tier format
-  const tiers: Tier[] = tiersData.map((tier, index) => {
-    const prevTierPoints = index > 0 ? tiersData[index - 1].requiredPoints : 0;
-    const pointsInTier = Math.max(0, totalPoints - prevTierPoints);
-    const tierRange = tier.requiredPoints - prevTierPoints;
-    
+  const tiers: Tier[] = tiersData.map((tier) => {
     // Remove mode=admin from URL to allow public access
     const cleanImageURL = tier.imageURL?.replace('&mode=admin', '') ?? null;
     
     return {
       id: tier.$id,
       name: tier.name,
-      currentPoints: totalPoints >= tier.requiredPoints 
-        ? tierRange 
-        : Math.min(pointsInTier, tierRange),
+      currentPoints: Math.min(totalPoints, tier.requiredPoints),
       requiredPoints: tier.requiredPoints,
       badgeEarned: totalPoints >= tier.requiredPoints,
       imageURL: cleanImageURL,
+      order: tier.order,
     };
   });
 
@@ -292,6 +310,8 @@ export const usePromotionsScreen = () => {
     handlePointsPress,
     handleCloseAchievementModal,
     handleShareAchievement,
+    handleViewMoreEvents,
+    handleHistoryEventPress,
   };
 };
 

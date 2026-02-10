@@ -26,6 +26,8 @@ const HomeScreen = () => {
     datesValues,
     categoriesValues,
     categories,
+    allCategoriesForFilter,
+    userIsAdult,
     selectedStore,
     isModalVisible,
     isLoadingEvents,
@@ -90,7 +92,8 @@ const HomeScreen = () => {
             selectedValues={categoriesValues}
             onToggle={handleCategoriesToggle}
             onClose={handleCloseFilter}
-            categories={categories}
+            categories={allCategoriesForFilter || categories}
+            userIsAdult={userIsAdult}
           />
         );
       default:
@@ -133,6 +136,7 @@ const HomeScreen = () => {
           extent={512}
           nodeSize={64}
           renderCluster={renderClusterComponent}
+          onPress={handleMapPress}
         >
           {markers.map((marker) => (
             <MapMarker key={marker.id} marker={marker} onPress={handleMarkerPress} />

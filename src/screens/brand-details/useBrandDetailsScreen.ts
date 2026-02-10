@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Share, Alert, Linking } from 'react-native';
+import BottomSheet from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
 import { getCurrentUser } from '@/lib/auth';
 import {
@@ -99,7 +100,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const [hasSubmittedCode, setHasSubmittedCode] = useState(false);
   const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false); // Prevent duplicate submissions
   const [isSubmittingReview, setIsSubmittingReview] = useState(false); // Prevent duplicate review submissions
-  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const reviewBottomSheetRef = useRef<BottomSheet>(null);
   const [pointsModalVisible, setPointsModalVisible] = useState(false);
   const [pointsModalTitle, setPointsModalTitle] = useState('Nice Work!');
   const [pointsModalAmount, setPointsModalAmount] = useState(0);
@@ -465,11 +466,11 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   };
 
   const handleLeaveReview = () => {
-    setReviewModalVisible(true);
+    reviewBottomSheetRef.current?.expand();
   };
 
   const handleCloseReviewModal = () => {
-    setReviewModalVisible(false);
+    reviewBottomSheetRef.current?.close();
   };
 
   const handleClosePointsModal = () => {
@@ -543,7 +544,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
       if (existingReview) {
         Alert.alert('Already Reviewed', 'You have already reviewed this event');
         setIsSubmittingReview(false);
-        setReviewModalVisible(false);
+        reviewBottomSheetRef.current?.close();
         return;
       }
 
@@ -558,7 +559,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
       await createReview(reviewData);
 
       setHasReviewed(true);
-      setReviewModalVisible(false);
+      reviewBottomSheetRef.current?.close();
       
       // Show points earned modal for review
       const earnedPoints = eventData?.reviewPoints || 0;
@@ -584,7 +585,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     brandLogoUrl,
     isFavorite,
     isAddedToCalendar,
-    reviewModalVisible,
+    reviewBottomSheetRef,
     isSubmittingCheckIn,
     isSubmittingReview,
     pointsModalVisible,

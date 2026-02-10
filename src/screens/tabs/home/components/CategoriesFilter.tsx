@@ -6,7 +6,8 @@ interface CategoriesFilterProps {
   selectedValues: string[];
   onToggle: (value: string) => void;
   onClose: () => void;
-  categories: Array<{ $id: string; name: string; slug?: string }>;
+  categories: Array<{ $id: string; name: string; slug?: string; isAdult?: boolean }>;
+  userIsAdult?: boolean;
 }
 
 const CategoriesFilter: React.FC<CategoriesFilterProps> = ({ 
@@ -15,6 +16,7 @@ const CategoriesFilter: React.FC<CategoriesFilterProps> = ({
   onToggle, 
   onClose,
   categories,
+  userIsAdult = true,
 }) => {
   // Convert categories to FilterOption format
   const categoriesOptions: FilterOption[] = [
@@ -22,6 +24,7 @@ const CategoriesFilter: React.FC<CategoriesFilterProps> = ({
       id: category.$id,
       label: category.name,
       value: category.slug || category.name.toLowerCase().replace(/\s+/g, '-'),
+      isAdult: category.isAdult,
     })),
     // Add "View All" option at the end
     { id: 'view-all', label: 'View All', value: 'all' },
@@ -35,6 +38,7 @@ const CategoriesFilter: React.FC<CategoriesFilterProps> = ({
       selectedValues={selectedValues}
       onToggle={onToggle}
       onClose={onClose}
+      userIsAdult={userIsAdult}
     />
   );
 };

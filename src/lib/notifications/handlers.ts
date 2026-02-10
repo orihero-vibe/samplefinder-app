@@ -12,6 +12,13 @@ export const setNavigationRef = (ref: NavigationContainerRef<any> | null) => {
 };
 
 /**
+ * Get navigation reference for navigation from anywhere in the app
+ */
+export const getNavigationRef = (): NavigationContainerRef<any> | null => {
+  return navigationRef;
+};
+
+/**
  * Handle notification tap and navigate to appropriate screen
  */
 const handleNotificationTap = (notification: Notifications.Notification) => {

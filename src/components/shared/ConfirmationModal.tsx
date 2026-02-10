@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     fontSize: 16,
-    fontFamily: 'Quicksand_500Medium',
+    fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
   },
   cancelText: {

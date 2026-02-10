@@ -21,8 +21,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   pointsValue: {
-    fontSize: 50,
-    fontFamily: 'Quicksand_700Bold',
+    fontSize: 56,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: Colors.brandPurpleBright,
   },
   pointsLabel: {

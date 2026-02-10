@@ -19,6 +19,7 @@ import {
   Poppins_800ExtraBold,
   Poppins_900Black,
 } from '@expo-google-fonts/poppins';
+import { PlusJakartaSans_800ExtraBold} from '@expo-google-fonts/plus-jakarta-sans'
 import AppNavigator from '@/navigation/AppNavigator';
 import { TriviaModal } from '@/components/trivia';
 import type { TriviaQuestion } from '@/lib/database/trivia';
@@ -56,6 +57,7 @@ export default function App() {
           Poppins_700Bold,
           Poppins_800ExtraBold,
           Poppins_900Black,
+          PlusJakartaSans_800ExtraBold
         });
 
         // Set up push notification token refresh listener

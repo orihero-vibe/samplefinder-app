@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { CertifiedInfluencerIcon, CertifiedBrandAmbassadorIcon } from '@/icons';
+import { CertifiedInfluencerIcon, CertifiedBrandAmbassadorIcon, BadgesIcon } from '@/icons';
 import BadgeItem, { Badge } from './BadgeItem';
 import BadgeRequirementsModal from './BadgeRequirementsModal';
 
@@ -46,9 +46,7 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
           {/* Section Header */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionIconContainer}>
-              <View style={styles.sectionIcon}>
-                <Monicon name="streamline:star-2-remix" size={24} color={Colors.pinDarkBlue} />
-              </View>
+              <BadgesIcon size={48}  />
               <Text style={styles.sectionTitle}>BADGES</Text>
             </View>
             <Text style={styles.sectionDescription}>
@@ -139,8 +137,8 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
-    paddingBottom: 10,
-    paddingHorizontal: 20,
+    paddingBottom: 15,
+    paddingHorizontal: 10,
     paddingTop: 20,
   },
   gradientBorder: {
@@ -155,16 +153,6 @@ const styles = StyleSheet.create({
     flex: 2,
     justifyContent: 'center',
     alignSelf: 'center',
-  },
-  sectionIcon: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.blueColorMode,
-    borderRadius: 50,
-    padding: 18,
   },
   sectionTitle: {
     fontSize: 18,
@@ -207,7 +195,7 @@ const styles = StyleSheet.create({
   identifierHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center', 
     gap: 8,
     marginBottom: 12,
   },
@@ -219,6 +207,7 @@ const styles = StyleSheet.create({
   identifierBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
     marginBottom: 12,
   },
@@ -226,7 +215,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.black,
-    flex: 1,
   },
   disabledText: {
     color: '#999999',

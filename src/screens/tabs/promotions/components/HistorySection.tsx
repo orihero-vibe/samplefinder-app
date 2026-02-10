@@ -6,9 +6,10 @@ import HistoryItem, { HistoryItemData } from './HistoryItem';
 
 interface HistorySectionProps {
   historyItems: HistoryItemData[];
+  onEventPress?: (eventId: string) => void;
 }
 
-const HistorySection: React.FC<HistorySectionProps> = ({ historyItems }) => {
+const HistorySection: React.FC<HistorySectionProps> = ({ historyItems, onEventPress }) => {
   return (
     <View style={styles.wrapper}>
       <View style={styles.container}>
@@ -35,6 +36,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({ historyItems }) => {
                 item={item} 
                 defaultExpanded={index === 0 && !!item.review}
                 isLastItem={index === historyItems.length - 1}
+                onPress={onEventPress}
               />
             ))}
           </View>

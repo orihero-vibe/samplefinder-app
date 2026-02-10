@@ -41,7 +41,7 @@ export const useHomeScreen = () => {
   const mapRef = useRef<ClusteredMapView>(null);
 
   // Snap points for the bottom sheet - collapsed shows only filters, expanded shows events + filters
-  const snapPoints = useMemo(() => ['12%', '86%'], []);
+  const snapPoints = useMemo(() => ['12%', '76%'], []);
 
   // Ensure bottom sheet opens at index 1 (expanded) on mount
   useEffect(() => {
@@ -597,11 +597,33 @@ export const useHomeScreen = () => {
           };
         });
 
-        // Sort by distance (closest first)
+        // Sort by date first (earliest upcoming first), then by distance (closest first)
         transformedEvents.sort((a, b) => {
-          const distA = parseFloat(a.distance.replace(/[^\d.]/g, '')) || 999999;
-          const distB = parseFloat(b.distance.replace(/[^\d.]/g, '')) || 999999;
-          return distA - distB;
+          // First sort by date (ascending - earliest first)
+          const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+          const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+          const dateDiff = dateA - dateB;
+          
+          // If dates are the same, sort by distance (closest first)
+          if (dateDiff === 0) {
+            const parseDistance = (distanceStr: string): number => {
+              if (distanceStr === 'Distance unknown') {
+                return 999999; // Put unknown distances at the end
+              }
+              const numericValue = parseFloat(distanceStr.replace(/[^\d.]/g, '')) || 999999;
+              // Convert feet to miles for consistent comparison (5280 ft = 1 mile)
+              if (distanceStr.includes('ft')) {
+                return numericValue / 5280;
+              }
+              return numericValue;
+            };
+            
+            const distA = parseDistance(a.distance);
+            const distB = parseDistance(b.distance);
+            return distA - distB;
+          }
+          
+          return dateDiff;
         });
 
         // Debug: Log final transformed events
@@ -843,6 +865,8 @@ export const useHomeScreen = () => {
     datesValues,
     categoriesValues,
     categories,
+    allCategoriesForFilter,
+    userIsAdult,
     isLoadingCategories,
     selectedStore,
     isModalVisible,

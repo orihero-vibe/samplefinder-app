@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   filterButtonText: {
     fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.brandPurpleDeep,
+    color: Colors.blueColorMode,
   },
   filterButtonTextSelected: {
     color: Colors.white,
