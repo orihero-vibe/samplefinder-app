@@ -207,11 +207,13 @@ async function getActiveTrivia(databases, userId, log) {
         }
     }
     log(`User has answered ${answeredTriviaIds.size} trivia questions`);
-    // Filter out trivia that the user has already answered
+    // Filter out trivia that the user has already answered or skipped
     // Also remove correctOptionIndex from the response for security
     const unansweredTrivia = [];
     for (const trivia of activeTriviaResponse.documents) {
-        if (!answeredTriviaIds.has(trivia.$id)) {
+        const wasAnswered = answeredTriviaIds.has(trivia.$id);
+        const wasSkipped = (trivia.skippedUsers || []).includes(userId);
+        if (!wasAnswered && !wasSkipped) {
             unansweredTrivia.push({
                 $id: trivia.$id,
                 question: trivia.question,
@@ -299,10 +301,44 @@ async function submitTriviaAnswer(databases, userId, triviaId, answerIndex, log)
     return {
         isCorrect,
         pointsAwarded,
+        correctAnswerIndex: trivia.correctOptionIndex,
         message: isCorrect
             ? `Correct! You earned ${pointsAwarded} points.`
             : 'Incorrect answer. Better luck next time!',
     };
+}
+/**
+ * Record that a user skipped/dismissed a trivia question (no answer submitted).
+ * Adds the user's profile ID to the trivia's skippedUsers array so it won't be shown again.
+ */
+async function dismissTrivia(databases, userId, triviaId, log) {
+    // 1. Validate user exists
+    try {
+        await databases.getDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, userId);
+    }
+    catch {
+        throw { code: 404, message: 'User not found' };
+    }
+    // 2. Get trivia document
+    let trivia;
+    try {
+        trivia = (await databases.getDocument(DATABASE_ID, TRIVIA_TABLE_ID, triviaId));
+    }
+    catch {
+        throw { code: 404, message: 'Trivia question not found' };
+    }
+    const skippedUsers = Array.isArray(trivia.skippedUsers) ? [...trivia.skippedUsers] : [];
+    if (skippedUsers.includes(userId)) {
+        log(`User ${userId} already in skippedUsers for trivia ${triviaId}, no update`);
+        return;
+    }
+    skippedUsers.push(userId);
+    const updatePayload = { skippedUsers };
+    if (typeof trivia.skips === 'number') {
+        updatePayload.skips = trivia.skips + 1;
+    }
+    await databases.updateDocument(DATABASE_ID, TRIVIA_TABLE_ID, triviaId, updatePayload);
+    log(`Added user ${userId} to skippedUsers for trivia ${triviaId}`);
 }
 // ============================================================================
 // USER STATUS MANAGEMENT FUNCTION
@@ -780,12 +816,34 @@ export default async function handler({ req, res, log, error }) {
                 throw err;
             }
         }
+        // DISMISS trivia (user skipped or missed)
+        if (req.path === '/dismiss-trivia' && req.method === 'POST') {
+            log('Processing dismiss-trivia request');
+            const body = req.body;
+            if (!body || !body.userId) {
+                return res.json({ success: false, error: 'userId is required' }, 400);
+            }
+            if (!body.triviaId) {
+                return res.json({ success: false, error: 'triviaId is required' }, 400);
+            }
+            try {
+                await dismissTrivia(databases, body.userId, body.triviaId, log);
+                return res.json({ success: true });
+            }
+            catch (err) {
+                const typedErr = err;
+                if (typedErr.code && typedErr.message) {
+                    return res.json({ success: false, error: typedErr.message }, typedErr.code);
+                }
+                throw err;
+            }
+        }
         // ========================================================================
         // DEFAULT RESPONSE
         // ========================================================================
         return res.json({
             success: false,
-            error: 'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /delete-account, POST /update-user-status, POST /get-user-by-email, POST /reset-password-after-otp, GET /ping',
+            error: 'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /dismiss-trivia, POST /delete-account, POST /update-user-status, POST /get-user-by-email, POST /reset-password-after-otp, GET /ping',
         });
     }
     catch (err) {

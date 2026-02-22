@@ -79,6 +79,11 @@ interface SubmitAnswerRequest {
   answerIndex: number;
 }
 
+interface DismissTriviaRequest {
+  userId: string;
+  triviaId: string;
+}
+
 // Account deletion types
 interface DeleteAccountRequest {
   userId: string;
@@ -118,6 +123,8 @@ interface TriviaDocument {
   endDate: string;
   points: number;
   client?: TriviaClientDocument;
+  skippedUsers?: string[];
+  skips?: number;
 }
 
 interface ActiveTriviaResponse {
@@ -442,12 +449,14 @@ async function getActiveTrivia(
 
   log(`User has answered ${answeredTriviaIds.size} trivia questions`);
 
-  // Filter out trivia that the user has already answered
+  // Filter out trivia that the user has already answered or skipped
   // Also remove correctOptionIndex from the response for security
   const unansweredTrivia: ActiveTriviaResponse[] = [];
 
   for (const trivia of activeTriviaResponse.documents as unknown as TriviaDocument[]) {
-    if (!answeredTriviaIds.has(trivia.$id)) {
+    const wasAnswered = answeredTriviaIds.has(trivia.$id);
+    const wasSkipped = (trivia.skippedUsers || []).includes(userId);
+    if (!wasAnswered && !wasSkipped) {
       unansweredTrivia.push({
         $id: trivia.$id,
         question: trivia.question,
@@ -475,7 +484,12 @@ async function submitTriviaAnswer(
   triviaId: string,
   answerIndex: number,
   log: (message: string) => void
-): Promise<{ isCorrect: boolean; pointsAwarded: number; message: string }> {
+): Promise<{
+  isCorrect: boolean;
+  pointsAwarded: number;
+  correctAnswerIndex: number;
+  message: string;
+}> {
   const now = new Date().toISOString();
 
   // 1. Get the trivia question and validate it exists
@@ -581,10 +595,57 @@ async function submitTriviaAnswer(
   return {
     isCorrect,
     pointsAwarded,
+    correctAnswerIndex: trivia.correctOptionIndex,
     message: isCorrect
       ? `Correct! You earned ${pointsAwarded} points.`
       : 'Incorrect answer. Better luck next time!',
   };
+}
+
+/**
+ * Record that a user skipped/dismissed a trivia question (no answer submitted).
+ * Adds the user's profile ID to the trivia's skippedUsers array so it won't be shown again.
+ */
+async function dismissTrivia(
+  databases: Databases,
+  userId: string,
+  triviaId: string,
+  log: (message: string) => void
+): Promise<void> {
+  // 1. Validate user exists
+  try {
+    await databases.getDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, userId);
+  } catch {
+    throw { code: 404, message: 'User not found' };
+  }
+
+  // 2. Get trivia document
+  let trivia: TriviaDocument;
+  try {
+    trivia = (await databases.getDocument(
+      DATABASE_ID,
+      TRIVIA_TABLE_ID,
+      triviaId
+    )) as unknown as TriviaDocument;
+  } catch {
+    throw { code: 404, message: 'Trivia question not found' };
+  }
+
+  const skippedUsers: string[] = Array.isArray(trivia.skippedUsers) ? [...trivia.skippedUsers] : [];
+  if (skippedUsers.includes(userId)) {
+    log(`User ${userId} already in skippedUsers for trivia ${triviaId}, no update`);
+    return;
+  }
+
+  skippedUsers.push(userId);
+
+  const updatePayload: { skippedUsers: string[]; skips?: number } = { skippedUsers };
+  if (typeof trivia.skips === 'number') {
+    updatePayload.skips = trivia.skips + 1;
+  }
+  await databases.updateDocument(DATABASE_ID, TRIVIA_TABLE_ID, triviaId, updatePayload);
+
+  log(`Added user ${userId} to skippedUsers for trivia ${triviaId}`);
 }
 
 // ============================================================================
@@ -1251,13 +1312,47 @@ export default async function handler({ req, res, log, error }: HandlerContext) 
       }
     }
 
+    // DISMISS trivia (user skipped or missed)
+    if (req.path === '/dismiss-trivia' && req.method === 'POST') {
+      log('Processing dismiss-trivia request');
+
+      const body = req.body as DismissTriviaRequest;
+
+      if (!body || !body.userId) {
+        return res.json(
+          { success: false, error: 'userId is required' },
+          400
+        );
+      }
+      if (!body.triviaId) {
+        return res.json(
+          { success: false, error: 'triviaId is required' },
+          400
+        );
+      }
+
+      try {
+        await dismissTrivia(databases, body.userId, body.triviaId, log);
+        return res.json({ success: true });
+      } catch (err: unknown) {
+        const typedErr = err as { code?: number; message?: string };
+        if (typedErr.code && typedErr.message) {
+          return res.json(
+            { success: false, error: typedErr.message },
+            typedErr.code
+          );
+        }
+        throw err;
+      }
+    }
+
     // ========================================================================
     // DEFAULT RESPONSE
     // ========================================================================
     return res.json({
       success: false,
       error:
-        'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /delete-account, POST /update-user-status, POST /get-user-by-email, POST /reset-password-after-otp, GET /ping',
+        'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /dismiss-trivia, POST /delete-account, POST /update-user-status, POST /get-user-by-email, POST /reset-password-after-otp, GET /ping',
     });
   } catch (err: unknown) {
     const errorMessage =
