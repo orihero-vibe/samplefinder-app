@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Platform, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Platform, ActivityIndicator } from 'react-native';
 import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -46,6 +46,7 @@ const HomeScreen = () => {
     hasAnyFilters,
     activeView,
     isRefreshingEvents,
+    filterButtonLayout,
     setBottomSheetIndex,
     handleFilterPress,
     handleCloseFilter,
@@ -74,6 +75,7 @@ const HomeScreen = () => {
             selectedValues={radiusValues}
             onToggle={handleRadiusToggle}
             onClose={handleCloseFilter}
+            buttonLayout={filterButtonLayout}
           />
         );
       case 'dates':
@@ -83,6 +85,7 @@ const HomeScreen = () => {
             selectedValues={datesValues}
             onToggle={handleDatesToggle}
             onClose={handleCloseFilter}
+            buttonLayout={filterButtonLayout}
           />
         );
       case 'categories':
@@ -94,6 +97,7 @@ const HomeScreen = () => {
             onClose={handleCloseFilter}
             categories={allCategoriesForFilter || categories}
             userIsAdult={userIsAdult}
+            buttonLayout={filterButtonLayout}
           />
         );
       default:
@@ -187,14 +191,8 @@ const HomeScreen = () => {
           <BottomSheetScrollView
             contentContainerStyle={styles.bottomSheetScrollContent}
             showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshingEvents}
-                onRefresh={handleRefreshEvents}
-                tintColor={Colors.brandBlueBright}
-                colors={[Colors.brandBlueBright]}
-              />
-            }
+            refreshing={isRefreshingEvents}
+            onRefresh={handleRefreshEvents}
           >
             <UpcomingEvents events={events} />
           </BottomSheetScrollView>

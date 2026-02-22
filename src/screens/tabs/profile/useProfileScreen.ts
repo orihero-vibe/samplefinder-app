@@ -3,7 +3,7 @@ import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/
 import { Alert, Linking, Share } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { logout, getCurrentUser } from '@/lib/auth';
-import { getUserProfile, calculateTierStatus, UserProfileRow } from '@/lib/database';
+import { getUserProfile, calculateTierStatus, fetchTiers, getUserCurrentTier, UserProfileRow, getUserCheckInsCount, getUserReviewsCount } from '@/lib/database';
 import { formatDateForDisplay } from '@/utils/formatters';
 import { countAchievedBadges } from '@/constants';
 
@@ -23,6 +23,7 @@ export const useProfileScreen = () => {
     samplingReviews: 0,
     badgeAchievements: 0,
   });
+  const [tierStatus, setTierStatus] = useState<string>('NewbieSampler');
 
   const loadProfile = useCallback(async () => {
     try {
@@ -41,22 +42,36 @@ export const useProfileScreen = () => {
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
       
-      // Use statistics directly from profile fields
+      // Use actual counts from database instead of cached profile fields
+      // This ensures consistency with the Achievements screen
       if (userProfile) {
-        const eventCheckIns = userProfile.totalEvents ?? 0;
-        const samplingReviews = userProfile.totalReviews ?? 0;
+        // Fetch actual counts from database in parallel
+        const [eventCheckIns, samplingReviews] = await Promise.all([
+          getUserCheckInsCount(userProfile.$id),
+          getUserReviewsCount(userProfile.$id),
+        ]);
         
         // Calculate badge achievements based on thresholds
         const eventBadges = countAchievedBadges(eventCheckIns);
         const reviewBadges = countAchievedBadges(samplingReviews);
         const totalBadges = eventBadges + reviewBadges;
         
+        const totalPoints = userProfile.totalPoints ?? 0;
         setStatistics({
-          totalPoints: userProfile.totalPoints ?? 0,
+          totalPoints,
           eventCheckIns,
           samplingReviews,
           badgeAchievements: totalBadges,
         });
+        try {
+          const tiers = await fetchTiers();
+          const currentTier = getUserCurrentTier(tiers, totalPoints);
+          setTierStatus(currentTier?.name ?? 'NewbieSampler');
+        } catch (tierErr) {
+          setTierStatus(calculateTierStatus(totalPoints));
+        }
+      } else {
+        setTierStatus('NewbieSampler');
       }
     } catch (err: any) {
       console.error('Error loading profile:', err);
@@ -81,8 +96,6 @@ export const useProfileScreen = () => {
   const handleSharePress = async () => {
     try {
       const username = profile?.username || authUser?.name || 'User';
-      const tierStatus = calculateTierStatus(statistics.totalPoints);
-      
       await Share.share({
         message: `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`,
       });
@@ -198,6 +211,7 @@ export const useProfileScreen = () => {
     profile,
     authUser,
     statistics,
+    tierStatus,
     isLoading,
     error,
     isLoggingOut,

@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -38,6 +38,13 @@ export const useCalendarScreen = () => {
   
   // Subscribe to saved events from store to trigger re-renders
   const savedEvents = useCalendarEventsStore((state) => state.savedEvents);
+
+  // Refetch events when Calendar tab gains focus so admin changes appear without app restart
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshTrigger((prev) => prev + 1);
+    }, [])
+  );
 
   // Load user profile and categories for adult filtering
   useEffect(() => {

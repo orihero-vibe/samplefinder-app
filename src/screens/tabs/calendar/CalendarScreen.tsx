@@ -95,6 +95,7 @@ const CalendarScreen = () => {
         year={getHeaderYear()}
         onPreviousMonth={handlePreviousMonth}
         onNextMonth={handleNextMonth}
+        showNavigation={!(viewType === 'list' && !selectedDate)}
       />
 
       <View style={styles.contentWrapper}>

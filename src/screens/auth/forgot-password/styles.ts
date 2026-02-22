@@ -1,10 +1,13 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
     paddingVertical: 40,
+    minHeight: screenHeight * 0.6,
   },
   title: {
     fontSize: 24,
@@ -26,7 +29,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   buttonContainer: {
-    marginTop: 8,
+    marginTop: 40,
   },
   errorContainer: {
     marginBottom: 16,

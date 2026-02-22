@@ -226,3 +226,56 @@ export const submitTriviaAnswer = async (
     throw new Error(error.message || 'Failed to submit trivia answer');
   }
 };
+
+/**
+ * Record that the user skipped or missed a trivia question (closed without answering).
+ * The backend adds the user to the trivia's skippedUsers so it won't be shown again.
+ * @param userId - The user's profile document ID
+ * @param triviaId - The trivia document ID that was dismissed
+ */
+export const dismissTrivia = async (
+  userId: string,
+  triviaId: string
+): Promise<void> => {
+  const functionId = APPWRITE_EVENTS_FUNCTION_ID || '';
+
+  if (!functionId) {
+    throw new Error('APPWRITE_EVENTS_FUNCTION_ID must be configured. Please check your .env file.');
+  }
+
+  if (!userId || !triviaId) {
+    return;
+  }
+
+  try {
+    const execution = await functions.createExecution({
+      functionId,
+      body: JSON.stringify({ userId, triviaId }),
+      method: ExecutionMethod.POST,
+      xpath: '/dismiss-trivia',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      async: false,
+    });
+
+    if (execution.status === 'failed' && execution.responseBody) {
+      console.warn('[trivia.dismissTrivia] Execution failed:', execution.responseBody);
+      return;
+    }
+
+    // Server may return 200 with { success: false, error: "..." } (e.g. Invalid endpoint if not deployed)
+    if (execution.responseBody) {
+      try {
+        const body = JSON.parse(execution.responseBody) as { success?: boolean; error?: string };
+        if (body.success === false) {
+          console.warn('[trivia.dismissTrivia] API returned error:', body.error || execution.responseBody);
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+  } catch (error) {
+    console.warn('[trivia.dismissTrivia] Error dismissing trivia:', error);
+  }
+};

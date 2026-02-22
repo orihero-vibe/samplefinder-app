@@ -31,7 +31,7 @@ const AuthHeader = () => {
 const styles = StyleSheet.create({
   headerBackground: {
     width: '100%',
-    paddingBottom: isSmallDevice ? 6 : 10,
+    paddingBottom: 20,
     height: isSmallDevice ? 100 : 120
   },
   headerContent: {

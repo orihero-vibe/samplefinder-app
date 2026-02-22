@@ -67,7 +67,10 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
             )}
           </View>
           <View style={styles.eventDetails}>
-            <Text style={styles.brandName}>{event.location}</Text>
+            <Text
+              style={styles.brandName}
+              {...(event.location.trim().split(/\s+/).length === 1 && { numberOfLines: 1, ellipsizeMode: 'tail' as const })}
+            >{event.location}</Text>
             <Text style={styles.locationText}>{displayBrandName.length > 50 ? displayBrandName.substring(0, 50) + '...' : displayBrandName}</Text>
             <Text style={styles.distanceText}>{event.distance}</Text>
           </View>
@@ -138,8 +141,8 @@ const styles = StyleSheet.create({
     color: Colors.brandBlueBright,
   },
   brandName: {
-    fontSize: 18,
-    fontFamily: 'Quicksand_700Bold',
+    fontSize: 17,
+    fontFamily: 'Quicksand_600SemiBold',
     color: Colors.brandBlueBright,
   },
   locationText: {
@@ -157,16 +160,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8,
     flexShrink: 0,
-    minWidth: 100,
     gap: 4,
   },
   dateText: {
-    fontSize: 15,
+    fontSize: 12,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.brandBlueBright,
   },
   timeText: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.brandBlueBright,
   },

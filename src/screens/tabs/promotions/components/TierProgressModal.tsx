@@ -12,30 +12,28 @@ import {
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { getTierDisplayParts } from '@/utils/formatters';
-import { SmallBlueStarIcon, SmallStarIcon } from '@/icons';
+import { SmallBlueStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
 import { Tier } from './TierItem';
 import { CloseIcon } from '@/components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-interface AchievementModalProps {
+interface TierProgressModalProps {
   visible: boolean;
   tier?: Tier | null;
-  points?: number;
-  message?: string;
+  totalPoints?: number;
+  nextTierRequiredPoints?: number;
   onClose: () => void;
-  onShare?: () => void;
   onViewMoreEvents?: () => void;
 }
 
-const AchievementModal: React.FC<AchievementModalProps> = ({
+const TierProgressModal: React.FC<TierProgressModalProps> = ({
   visible,
   tier,
-  points = 100,
-  message,
+  totalPoints,
+  nextTierRequiredPoints,
   onClose,
-  onShare,
   onViewMoreEvents,
 }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -60,22 +58,9 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     } else {
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.9);
+      setImageError(false);
     }
   }, [visible]);
-
-  const handleShare = async () => {
-    try {
-      if (onShare) {
-        await onShare();
-      }
-      // Close modal after sharing
-      onClose();
-    } catch (error) {
-      console.error('Error in handleShare:', error);
-      // Still close modal even if share fails
-      onClose();
-    }
-  };
 
   const handleViewMoreEvents = () => {
     if (onViewMoreEvents) {
@@ -84,60 +69,31 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     onClose();
   };
 
-  // Determine if tier is earned
-  const isEarned = tier?.badgeEarned ?? false;
   const tierNumber = tier?.order ?? 1;
   const tierDisplayParts = getTierDisplayParts(tier?.name ?? 'NewbieSampler');
-  const currentPoints = tier?.currentPoints ?? 0;
-  const requiredPoints = tier?.requiredPoints ?? 100;
-  const progress = Math.min((currentPoints / requiredPoints) * 100, 100);
+  const requiredPoints = nextTierRequiredPoints ?? tier?.requiredPoints ?? 100;
+  const userTotalPoints = totalPoints ?? tier?.currentPoints ?? 0;
+  const isMaxTier = !nextTierRequiredPoints && tier?.badgeEarned;
+  const progress = isMaxTier ? 100 : Math.min((userTotalPoints / requiredPoints) * 100, 100);
 
-  // Get tier badge colors based on tier number
   const getTierBadgeColors = (tierNum: number) => {
     switch (tierNum) {
       case 1:
-        return { primary: '#1E3A5F', secondary: '#4A5F7F' }; // Dark blue/purple
+        return { primary: '#1E3A5F', secondary: '#4A5F7F' };
       case 2:
-        return { primary: '#E91E63', secondary: '#F06292' }; // Pink/purple
+        return { primary: '#E91E63', secondary: '#F06292' };
       case 3:
-        return { primary: '#FF9800', secondary: '#FFB74D' }; // Golden yellow/orange
+        return { primary: '#FF9800', secondary: '#FFB74D' };
       case 4:
-        return { primary: '#9C27B0', secondary: '#BA68C8' }; // Purple
+        return { primary: '#9C27B0', secondary: '#BA68C8' };
       case 5:
-        return { primary: '#4CAF50', secondary: '#81C784' }; // Green
+        return { primary: '#4CAF50', secondary: '#81C784' };
       default:
         return { primary: Colors.pinDarkBlue, secondary: Colors.blueColorMode };
     }
   };
 
   const badgeColors = getTierBadgeColors(tierNumber);
-
-  // Get main message based on tier state
-  const getMainMessage = () => {
-    if (!isEarned) {
-      return "You're On Your Way!";
-    }
-    if (tierNumber === 1) {
-      return "Thanks for Joining!";
-    }
-    return "You've Leveled Up!";
-  };
-
-  // Get points message
-  const getPointsMessage = () => {
-    if (message) return message;
-    
-    if (isEarned) {
-      if (tierNumber === 1) {
-        return `You earned ${points} points with SampleFinder, just for signing up!`;
-      }
-      return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, advancing you to the next Tier!`;
-    }
-    return `${currentPoints} / ${requiredPoints.toLocaleString()} points`;
-  };
-
-  const mainMessage = getMainMessage();
-  const pointsMessage = getPointsMessage();
 
   return (
     <Modal
@@ -156,14 +112,12 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
             },
           ]}
         >
-          {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <View style={styles.closeButtonCircle}>
              <CloseIcon/>
             </View>
           </TouchableOpacity>
 
-          {/* Badge with Tier Logo */}
           <View style={styles.badgeContainer}>
             {tier?.imageURL && !imageError ? (
               <Image
@@ -179,7 +133,6 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
             )}
           </View>
 
-          {/* Tier Name */}
           <View style={styles.tierNameRow}>
             <Text style={styles.tierName}>{tierDisplayParts.main}</Text>
             {tierDisplayParts.subtitle ? (
@@ -187,41 +140,33 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
             ) : null}
           </View>
 
-          {/* Main Message */}
-          <Text style={styles.mainMessage}>{mainMessage}</Text>
-
-          {/* Points Message */}
-          <Text style={styles.pointsMessage}>
-            {pointsMessage.split('**').map((part, index) => 
-              index % 2 === 1 ? (
-                <Text key={index} style={styles.boldText}>{part}</Text>
-              ) : (
-                part
-              )
-            )}
+          <Text style={styles.mainMessage}>
+            {isMaxTier ? 'You\'re at the Top!' : 'You\'re On Your Way!'}
           </Text>
 
-          {/* Progress Bar (for in-progress state) */}
-          {!isEarned && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBar, { width: `${progress}%` }]} />
-              </View>
-            </View>
-          )}
+          <Text style={styles.pointsMessage}>
+            {isMaxTier 
+              ? `${userTotalPoints.toLocaleString()} points earned`
+              : `${userTotalPoints.toLocaleString()} / ${requiredPoints.toLocaleString()} points`
+            }
+          </Text>
 
-          {/* Points Indicator */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBar, { width: `${progress}%` }]} />
+            </View>
+          </View>
+
           <View style={styles.pointsIndicatorContainer}>
             <SmallBlueStarIcon />
             <Text style={styles.pointsIndicatorText}>
-              {isEarned ? 'You earned points!' : 'Keep earning points!'}
+              {isMaxTier ? 'Keep exploring new events!' : 'Keep earning points!'}
             </Text>
           </View>
 
-          {/* Action Button */}
           <CustomButton
-            title={isEarned ? 'Share' : 'View More Events'}
-            onPress={isEarned ? handleShare : handleViewMoreEvents}
+            title="View More Events"
+            onPress={handleViewMoreEvents}
             variant="dark"
             size="medium"
             style={styles.actionButton}
@@ -290,33 +235,30 @@ const styles = StyleSheet.create({
   tierName: {
     fontSize: 20,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.pinDarkBlue,
+    color: Colors.blueColorMode,
     textAlign: 'center',
   },
   tierNameSubtitle: {
     fontSize: 12,
     fontFamily: 'Quicksand_500Medium',
-    color: Colors.pinDarkBlue,
+    color: Colors.blueColorMode,
     textAlign: 'center',
   },
   mainMessage: {
     fontSize: 28,
     fontFamily: 'Quicksand_700Bold',
-    color: Colors.pinDarkBlue,
+    color: Colors.blueColorMode,
     marginBottom: 16,
     textAlign: 'center',
   },
   pointsMessage: {
     fontSize: 16,
     fontFamily: 'Quicksand_400Regular',
-    color: Colors.black,
+    color: Colors.pinBlueBlack,
     marginBottom: 16,
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 8,
-  },
-  boldText: {
-    fontFamily: 'Quicksand_700Bold',
   },
   progressContainer: {
     width: '100%',
@@ -343,7 +285,7 @@ const styles = StyleSheet.create({
   pointsIndicatorText: {
     fontSize: 14,
     fontFamily: 'Quicksand_600SemiBold',
-    color: Colors.pinDarkBlue,
+    color: Colors.black,
   },
   actionButton: {
     width: '100%',
@@ -351,5 +293,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AchievementModal;
-
+export default TierProgressModal;

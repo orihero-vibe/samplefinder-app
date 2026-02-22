@@ -50,10 +50,10 @@ const FindNewFavorites: React.FC<FindNewFavoritesProps> = ({ brands, onToggleFav
             </View>
             <View style={styles.brandInfo}>
               <Text style={styles.brandName}>{brand.brandName}</Text>
-              <Text style={styles.description} numberOfLines={2} ellipsizeMode="tail">
-                {brand.productTypes && brand.productTypes.length > 0
+              <Text style={styles.description} numberOfLines={1} ellipsizeMode="tail">
+                {brand.description || (brand.productTypes && brand.productTypes.length > 0
                   ? brand.productTypes.join(', ')
-                  : brand.description}
+                  : 'No description available')}
               </Text>
             </View>
           </View>

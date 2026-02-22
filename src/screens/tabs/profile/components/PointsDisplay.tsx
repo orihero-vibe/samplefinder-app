@@ -9,7 +9,7 @@ interface PointsDisplayProps {
 const PointsDisplay: React.FC<PointsDisplayProps> = ({ points = 4500 }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.pointsValue}>{points.toLocaleString()}</Text>
+      <Text style={styles.pointsValue}>{points}</Text>
       <Text style={styles.pointsLabel}>Points Earned</Text>
     </View>
   );
@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
   },
   pointsLabel: {
     fontSize: 16,
-    fontFamily: 'Quicksand_400Regular',
+    fontFamily: 'Quicksand_500Medium',
     color: Colors.pinBlueBlack,
   },
 });

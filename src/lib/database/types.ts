@@ -6,7 +6,7 @@ export interface UserProfileData {
   firstname: string;
   lastname: string;
   phoneNumber: string;
-  zipCode?: string;
+  zipCode?: string | null;
   dob: string; // ISO 8601 date string
   username: string;
   role?: 'admin' | 'user';
@@ -18,7 +18,6 @@ export interface UserProfileRow extends UserProfileData {
   $createdAt: string;
   $updatedAt: string;
   avatarURL?: string | null;
-  zipCode?: string | null;
   referralCode?: string | null;
   isBlocked?: boolean;
   isAdult?: boolean;
@@ -31,6 +30,7 @@ export interface UserProfileRow extends UserProfileData {
   savedEventIds?: Array<{ eventId: string; addedAt: string }>; // User's saved calendar events with timestamps
   notifications?: UserNotification[]; // User notification history
   notificationPreferences?: any; // User notification preferences (JSON object)
+  tierLevel?: string | null; // Current tier name (e.g. "SampleFan") when user achieves a tier
 }
 
 /**
@@ -68,6 +68,9 @@ export interface ClientData {
   state?: string;
   zip?: string;
   logoURL?: string | null; // Brand logo URL
+  /** Brand description from the clients table (preferred over event-level brandDescription) */
+  description?: string | null;
+  brandDescription?: string | null;
   $createdAt?: string;
   $updatedAt?: string;
   [key: string]: any; // Allow for additional fields
@@ -84,6 +87,21 @@ export interface FetchClientsFilters {
     latitude: number;
     longitude: number;
   };
+}
+
+/**
+ * Location Types
+ */
+export interface LocationRow {
+  $id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  location: [number, number]; // Point type: [longitude, latitude]
+  $createdAt?: string;
+  $updatedAt?: string;
 }
 
 /**
@@ -105,13 +123,14 @@ export interface EventRow {
   checkInPoints: number;
   reviewPoints: number;
   eventInfo: string;
-  discount?: number | null; // Discount percentage/amount
+  discount?: string | null; // Discount text/description
   discountImageURL?: string | null;
-  radius?: number; // Check-in radius in meters
+  brandDescription?: string | null; // Brand description text field
   categories?: string[]; // Array of category IDs
   location?: [number, number]; // Point type: [longitude, latitude]
+  locationName?: string; // Location name from locations table
   isArchived?: boolean;
-  isHidder?: boolean;
+  isHidden?: boolean; // Fixed typo: was isHidder
   $createdAt?: string;
   $updatedAt?: string;
 }
@@ -130,8 +149,9 @@ export interface EventsByLocationResponse {
     state: string;
     zipCode: string;
     products: string;
-    discount?: number | null;
+    discount?: string | null; // Discount text/description
     discountImageURL?: string | null;
+    brandDescription?: string | null; // Brand description text field
     distance: number; // in meters (from backend calculation)
     client: {
       $id: string;
@@ -183,10 +203,17 @@ export interface CheckInData {
   pointsEarned: number;
 }
 
+export interface BadgeEarnedInfo {
+  badgeType: 'events' | 'reviews';
+  badgeNumber: number;
+  achievementCount: number;
+}
+
 export interface CheckInRow extends CheckInData {
   $id: string;
   $createdAt: string;
   $updatedAt: string;
+  badgeEarned?: BadgeEarnedInfo;
 }
 
 /**
@@ -206,6 +233,7 @@ export interface ReviewRow extends ReviewData {
   $id: string;
   $createdAt: string;
   $updatedAt: string;
+  badgeEarned?: BadgeEarnedInfo;
 }
 
 /**

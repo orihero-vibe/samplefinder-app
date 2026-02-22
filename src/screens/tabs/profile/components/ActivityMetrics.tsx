@@ -41,9 +41,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 4,
     marginBottom: 24,
-    gap: 20,
   },
   metricColumn: {
     alignItems: 'center',
@@ -51,13 +50,13 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     fontSize: 30,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: Colors.brandPurpleBright,
   },
   metricLabel: {
     fontSize: 16,
-    fontFamily: 'Quicksand_500Regular',
-    color: Colors.black,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.pinBlueBlack,
     textAlign: 'center',
     flexWrap: 'wrap',
   },

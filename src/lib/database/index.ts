@@ -4,6 +4,7 @@ export type {
   UserProfileRow,
   ClientData,
   FetchClientsFilters,
+  LocationRow,
   EventRow,
   EventsByLocationResponse,
   CategoryData,
@@ -28,6 +29,8 @@ export {
   addEventToUserCalendar,
   removeEventFromUserCalendar,
   getUserSavedEventIds,
+  checkUsernameExists,
+  checkUsernameExistsForDifferentUser,
 } from './users';
 
 // Re-export client functions
@@ -36,6 +39,12 @@ export {
   fetchClientsWithFilters,
   fetchClientById,
 } from './clients';
+
+// Re-export location functions
+export {
+  fetchLocations,
+  fetchLocationById,
+} from './locations';
 
 // Re-export event functions
 export {
@@ -91,6 +100,7 @@ export {
 export {
   getActiveTrivia,
   submitTriviaAnswer,
+  dismissTrivia,
 } from './trivia';
 
 // Re-export trivia types
@@ -136,7 +146,7 @@ import { fetchCategories } from './categories';
 import { getUserStatistics } from './statistics';
 import { calculateTierStatus } from './statistics';
 import { fetchTiers, getUserCurrentTier, getUserNextTier } from './tiers';
-import { getActiveTrivia, submitTriviaAnswer } from './trivia';
+import { getActiveTrivia, submitTriviaAnswer, dismissTrivia } from './trivia';
 
 export default {
   createUserProfile,
@@ -158,5 +168,6 @@ export default {
   getUserNextTier,
   getActiveTrivia,
   submitTriviaAnswer,
+  dismissTrivia,
 };
 

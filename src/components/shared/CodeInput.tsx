@@ -12,6 +12,8 @@ interface CodeInputProps {
   value?: string;
   onChangeText?: (code: string) => void;
   editable?: boolean;
+  /** When false, allows alphanumeric input (letters + numbers). Default true = numeric only. */
+  numericOnly?: boolean;
 }
 
 export interface CodeInputRef {
@@ -24,6 +26,7 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
   value: controlledValue,
   onChangeText,
   editable = true,
+  numericOnly = true,
 }, ref) => {
   const [code, setCode] = useState<string[]>(Array(length).fill(''));
   const inputRefs = useRef<(TextInput | null)[]>([]);
@@ -38,12 +41,12 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
   }, [controlledValue, length, isControlled]);
 
   const handleChange = (text: string, index: number) => {
-    // Only allow numeric input
-    const numericText = text.replace(/[^0-9]/g, '');
+    const allowedPattern = numericOnly ? /[^0-9]/g : /[^a-zA-Z0-9]/g;
+    const filteredText = text.replace(allowedPattern, '');
 
-    if (numericText.length > 1) {
+    if (filteredText.length > 1) {
       // Handle paste
-      const pastedCode = numericText.slice(0, length);
+      const pastedCode = filteredText.slice(0, length);
       const newCode = [...code];
       pastedCode.split('').forEach((char, i) => {
         if (index + i < length) {
@@ -66,14 +69,14 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
     }
 
     const newCode = [...code];
-    newCode[index] = numericText;
+    newCode[index] = filteredText;
     setCode(newCode);
 
     const codeString = newCode.join('');
     onChangeText?.(codeString);
 
     // Move to next input if there's a value
-    if (numericText && index < length - 1) {
+    if (filteredText && index < length - 1) {
       inputRefs.current[index + 1]?.focus();
     }
 
@@ -117,7 +120,7 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
               value={code[index] || ''}
               onChangeText={(text) => handleChange(text, index)}
               onKeyPress={(e) => handleKeyPress(e, index)}
-              keyboardType="number-pad"
+              keyboardType={numericOnly ? 'number-pad' : 'default'}
               maxLength={1}
               selectTextOnFocus
               editable={editable}

@@ -5,6 +5,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 import { getCurrentUser, verifyEmail, sendEmailOTP, resendVerificationEmail, logout } from '@/lib/auth';
 import { initializePushNotifications } from '@/lib/notifications';
 import { CodeInputRef } from '@/components/shared/CodeInput';
+import { useTier1ModalStore } from '@/stores/tier1ModalStore';
 
 type ConfirmAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ConfirmAccount'>;
 
@@ -83,14 +84,17 @@ export const useConfirmAccountScreen = () => {
 
     try {
       await verifyEmail(userId, code);
-      
+
+      // Trigger Tier 1 modal for newly signed up users
+      useTier1ModalStore.getState().setShouldShowTier1Modal(true);
+
       // Initialize push notifications after successful verification
       // This is the right time because we now have a valid session
       initializePushNotifications().catch((error) => {
         console.warn('[ConfirmAccount] Failed to initialize push notifications:', error);
         // Don't block navigation - push notifications are not critical
       });
-      
+
       // Navigate to MainTabs after successful verification
       navigation.replace('MainTabs');
     } catch (error: any) {

@@ -26,6 +26,7 @@ export const usePromotionsScreen = () => {
   const [achievementModalVisible, setAchievementModalVisible] = useState(false);
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
   const [selectedPoints, setSelectedPoints] = useState<number>(100);
+  const [nextTierRequiredPoints, setNextTierRequiredPoints] = useState<number | undefined>(undefined);
   
   // State for live data
   const [isLoading, setIsLoading] = useState(true);
@@ -138,8 +139,8 @@ export const usePromotionsScreen = () => {
           item: {
             id: checkIn.$id,
             eventId: checkIn.eventID,
-            brandProduct: event.name || 'Event',
-            storeName: event.address || 'Store',
+            brandProduct: event.client?.name || 'Brand',
+            storeName: event.name || 'Event',
             date: new Date(checkIn.$createdAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -197,12 +198,32 @@ export const usePromotionsScreen = () => {
   const handleTierPress = (tier: Tier, points: number) => {
     setSelectedTier(tier);
     setSelectedPoints(points);
+    
+    // Find the next tier's required points
+    const currentTierIndex = tiers.findIndex(t => t.id === tier.id);
+    const nextTier = currentTierIndex >= 0 && currentTierIndex < tiers.length - 1 
+      ? tiers[currentTierIndex + 1] 
+      : null;
+    setNextTierRequiredPoints(nextTier?.requiredPoints);
+    
     setAchievementModalVisible(true);
   };
 
   const handlePointsPress = (points: number, tier?: Tier) => {
     setSelectedTier(tier || null);
     setSelectedPoints(points);
+    
+    // Find the next tier's required points
+    if (tier) {
+      const currentTierIndex = tiers.findIndex(t => t.id === tier.id);
+      const nextTier = currentTierIndex >= 0 && currentTierIndex < tiers.length - 1 
+        ? tiers[currentTierIndex + 1] 
+        : null;
+      setNextTierRequiredPoints(nextTier?.requiredPoints);
+    } else {
+      setNextTierRequiredPoints(undefined);
+    }
+    
     setAchievementModalVisible(true);
   };
 
@@ -290,6 +311,7 @@ export const usePromotionsScreen = () => {
     historyItems,
     selectedTier,
     selectedPoints,
+    nextTierRequiredPoints,
     achievementModalVisible,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,

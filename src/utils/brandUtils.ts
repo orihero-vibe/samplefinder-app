@@ -1,7 +1,7 @@
 import { EventRow, ClientData, CategoryData } from '@/lib/database';
 import { BrandDetailsData } from '@/screens/brand-details';
 import { CalendarEventDetail } from '@/screens/tabs/calendar/components';
-import { formatEventDate, formatEventTime, parseProducts, formatEventDistance } from './formatters';
+import { formatEventDate, formatEventTime, parseProducts, formatEventDistance, isEventTodayOrLater } from './formatters';
 import { Colors } from '@/constants/Colors';
 import { NewBrandData } from '@/screens/tabs/favorites/components';
 
@@ -126,6 +126,10 @@ export const convertEventToBrandDetails = (
   // Get client ID for favorites
   const clientId = client?.$id || '';
   
+  // Prefer client's brand description (from clients table) over event-level brandDescription
+  const brandDescription =
+    (client?.description ?? client?.brandDescription) ?? event.brandDescription ?? null;
+
   // Create BrandDetailsData
   const brandDetails: BrandDetailsData = {
     id: event.$id,
@@ -140,6 +144,7 @@ export const convertEventToBrandDetails = (
     discountMessage: undefined, // Will be populated from database when available
     discount: event.discount ?? null,
     discountImageURL: event.discountImageURL || null,
+    brandDescription,
   };
   
   return brandDetails;
@@ -291,10 +296,18 @@ export const convertClientsToBrands = (
       const clientName = client.name || client.title || 'Brand';
       const clientId = client.$id;
       
-      // Get all product types from this client's events
+      // Get all events from this client
       const clientEvents = eventsByClientId.get(clientId) || [];
       const productTypesSet = new Set<string>();
       
+      // Prefer client's brand description (from clients table), then event-level brandDescription
+      const sortedEvents = clientEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const upcomingEvents = sortedEvents.filter((event) => isEventTodayOrLater(event.date));
+      const mostRelevantEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : sortedEvents[sortedEvents.length - 1];
+      const eventBrandDescription = mostRelevantEvent?.brandDescription || null;
+      const description =
+        (client.description ?? client.brandDescription) ?? eventBrandDescription ?? '';
+
       clientEvents.forEach((event) => {
         const products = parseProducts(event.products || '');
         products.forEach((product) => {
@@ -307,7 +320,7 @@ export const convertClientsToBrands = (
       return {
         id: clientId, // Use client ID as brand ID
         brandName: clientName,
-        description: '', // Will be set based on product types
+        description,
         productTypes: Array.from(productTypesSet).sort(),
         createdAt: client.$createdAt || new Date().toISOString(),
         logoURL: client.logoURL || null, // Get logoURL from client

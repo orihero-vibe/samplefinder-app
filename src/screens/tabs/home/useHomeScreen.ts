@@ -1,17 +1,20 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Platform, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import * as Location from 'expo-location';
-import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile } from '@/lib/database';
+import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile, fetchLocations, LocationRow } from '@/lib/database';
 import { getCurrentUser } from '@/lib/auth';
-import { MapMarkerData, FilterType, EventData, StoreData } from './components';
+import { MapMarkerData, FilterType, EventData, StoreData, FilterButtonLayout, MeasureCallback } from './components';
 import { formatEventDistance } from '@/utils/formatters';
 import { geocodeZipCode, isValidZipCode } from '@/utils/geocoding';
 import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 
 export const useHomeScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null);
+  const [filterButtonLayout, setFilterButtonLayout] = useState<FilterButtonLayout | undefined>(undefined);
+  const pendingFilterRef = useRef<{ filter: FilterType; measureFn: MeasureCallback } | null>(null);
   const [radiusValues, setRadiusValues] = useState<string[]>([]);
   const [datesValues, setDatesValues] = useState<string[]>([]);
   const [categoriesValues, setCategoriesValues] = useState<string[]>([]);
@@ -93,55 +96,85 @@ export const useHomeScreen = () => {
     }
   };
 
-  useEffect(() => {
-    const getCurrentLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
+  const resolveLocation = useCallback(async () => {
+    try {
+      // Check current status first - if already denied, show ZIP modal immediately
+      const { status } = await Location.getForegroundPermissionsAsync();
 
-        if (status !== 'granted') {
+      if (status === 'denied') {
+        setHasLocationPermission(false);
+        setShowZipCodeModal(true);
+        return;
+      }
+
+      if (status !== 'granted') {
+        const { status: requestedStatus } = await Location.requestForegroundPermissionsAsync();
+
+        if (requestedStatus !== 'granted') {
           setHasLocationPermission(false);
-          // Show ZIP code modal instead of just an alert
           setShowZipCodeModal(true);
           return;
         }
-
-        setHasLocationPermission(true);
-
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 10000,
-          distanceInterval: 10,
-        });
-
-        const userCoords = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-
-        setUserLocation(userCoords);
-
-        setTimeout(() => {
-          if (mapRef.current && userCoords) {
-            (mapRef.current as any).animateToRegion(
-              {
-                ...userCoords,
-                latitudeDelta: 0.02,
-                longitudeDelta: 0.02,
-              },
-              1000
-            );
-          }
-        }, 500);
-      } catch (error) {
-        console.error('Error getting location:', error);
-        setHasLocationPermission(false);
-        // Show ZIP code modal on error as well
-        setShowZipCodeModal(true);
       }
-    };
 
-    getCurrentLocation();
+      setHasLocationPermission(true);
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 10000,
+        distanceInterval: 10,
+      });
+
+      const userCoords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      setUserLocation(userCoords);
+
+      setTimeout(() => {
+        if (mapRef.current && userCoords) {
+          (mapRef.current as any).animateToRegion(
+            {
+              ...userCoords,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            },
+            1000
+          );
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      setHasLocationPermission(false);
+      setShowZipCodeModal(true);
+    }
   }, []);
+
+  useEffect(() => {
+    resolveLocation();
+  }, [resolveLocation]);
+
+  // Re-check when Home gains focus - ensures ZIP modal shows if user denied and navigated away
+  useFocusEffect(
+    useCallback(() => {
+      if (!userLocation) {
+        Location.getForegroundPermissionsAsync().then(({ status }) => {
+          if (status === 'denied') {
+            setHasLocationPermission(false);
+            setShowZipCodeModal(true);
+          }
+        });
+      }
+    }, [userLocation])
+  );
+
+  // Refetch events when Home tab gains focus so admin changes (create/edit/hide/archive) appear without app restart
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshEventsTrigger((prev) => prev + 1);
+    }, [])
+  );
 
   const handleZipCodeChange = () => {
     // Clear error when user starts typing
@@ -262,10 +295,29 @@ export const useHomeScreen = () => {
     return () => clearTimeout(timeoutId);
   }, [radiusValues, datesValues, categoriesValues, categories, userLocation, isMapInitialized]);
 
-  // State for all upcoming events (for map markers)
+  // State for all upcoming events (for counting events at locations)
   const [allUpcomingEvents, setAllUpcomingEvents] = useState<EventRow[]>([]);
 
-  // Fetch all upcoming events for map markers (filtered by adult categories)
+  // State for all locations
+  const [allLocations, setAllLocations] = useState<LocationRow[]>([]);
+
+  // Fetch all locations for map markers
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const locations = await fetchLocations();
+        console.log('[HomeScreen] Locations fetched:', locations.length);
+        setAllLocations(locations);
+      } catch (error) {
+        console.error('Error loading locations:', error);
+        setAllLocations([]);
+      }
+    };
+
+    loadLocations();
+  }, []);
+
+  // Fetch all upcoming events (filtered by adult categories)
   useEffect(() => {
     // Only load events after all categories are loaded
     if (allCategoriesForFilter === null) {
@@ -292,63 +344,46 @@ export const useHomeScreen = () => {
     loadUpcomingEventsForMap();
   }, [allCategoriesForFilter, userIsAdult]);
 
-  // Create map markers from events (using event.location) - grouped by location
+  // Create map markers from locations (only locations with Active/Scheduled events)
   useEffect(() => {
-    // Filter events with valid location
-    const eventsWithLocation = allUpcomingEvents.filter((event) => {
-      return (
-        event.location &&
-        Array.isArray(event.location) &&
-        event.location.length >= 2 &&
-        !isNaN(event.location[0]) &&
-        !isNaN(event.location[1]) &&
-        event.location[0] !== 0 &&
-        event.location[1] !== 0
-      );
-    });
+    const locationMarkers: MapMarkerData[] = allLocations
+      .filter((location) => {
+        // Filter locations with valid coordinates
+        return (
+          location.location &&
+          Array.isArray(location.location) &&
+          location.location.length >= 2 &&
+          !isNaN(location.location[0]) &&
+          !isNaN(location.location[1]) &&
+          location.location[0] !== 0 &&
+          location.location[1] !== 0
+        );
+      })
+      .map((location) => {
+        // Count upcoming events at this location by matching location name or coordinates
+        const eventsAtLocation = allUpcomingEvents.filter((event) =>
+          isEventAtLocation(event, location)
+        );
 
-    // Group events by location (using a key based on rounded coordinates)
-    const locationGroups = new Map<string, EventRow[]>();
-    
-    eventsWithLocation.forEach((event) => {
-      // Round to 4 decimal places (~11m precision) to group nearby events
-      const lat = event.location![1].toFixed(4);
-      const lng = event.location![0].toFixed(4);
-      const locationKey = `${lat},${lng}`;
-      
-      if (!locationGroups.has(locationKey)) {
-        locationGroups.set(locationKey, []);
-      }
-      locationGroups.get(locationKey)!.push(event);
-    });
+        return {
+          id: location.$id,
+          latitude: location.location[1],
+          longitude: location.location[0],
+          title: location.name,
+          icon: 'oi:map-marker',
+          address: {
+            street: location.address || '',
+            city: location.city || '',
+            state: location.state || '',
+            zip: location.zipCode || '',
+          },
+          events: eventsAtLocation.map(e => e.$id), // Store event IDs for lookup
+        };
+      })
+      .filter((marker) => marker.events.length > 0); // Only show pins for locations with Active/Scheduled events
 
-    // Create one marker per unique location
-    const groupedMarkers: MapMarkerData[] = Array.from(locationGroups.entries()).map(([locationKey, groupEvents]) => {
-      const firstEvent = groupEvents[0];
-      const clientId = typeof firstEvent.client === 'string' ? firstEvent.client : firstEvent.client?.$id;
-      const clientObj = clientId ? allClients.find(c => c.$id === clientId) : (typeof firstEvent.client === 'object' ? firstEvent.client : null);
-      
-      // Use client name as the store name for the marker
-      const storeName = clientObj?.name || clientObj?.title || firstEvent.city || 'Store';
-      
-      return {
-        id: locationKey, // Use location key as unique ID for the marker
-        latitude: firstEvent.location![1],
-        longitude: firstEvent.location![0],
-        title: storeName,
-        icon: 'oi:map-marker',
-        address: {
-          street: firstEvent.address || '',
-          city: firstEvent.city || '',
-          state: firstEvent.state || '',
-          zip: firstEvent.zipCode || '',
-        },
-        events: groupEvents.map(e => e.$id), // Store event IDs for lookup
-      };
-    });
-
-    setMarkers(groupedMarkers);
-  }, [allUpcomingEvents, allClients]);
+    setMarkers(locationMarkers);
+  }, [allLocations, allUpcomingEvents]);
 
   // Fetch user profile to check isAdult field
   useEffect(() => {
@@ -648,6 +683,32 @@ export const useHomeScreen = () => {
     loadEvents();
   }, [userLocation, datesValues, categoriesValues, radiusValues, categories, allCategoriesForFilter, isLoadingClients, refreshEventsTrigger, userIsAdult]);
 
+  // Helper: match event to location by name or coordinates (fallback when locationName not set)
+  const isEventAtLocation = (event: EventRow, location: LocationRow): boolean => {
+    // 1. Match by locationName if available
+    const eventLocationName = event.locationName?.toLowerCase().trim();
+    const locationName = location.name.toLowerCase().trim();
+    if (eventLocationName && locationName && eventLocationName === locationName) {
+      return true;
+    }
+    // 2. Fallback: match by coordinates (event.location filled from location when created)
+    if (
+      event.location &&
+      location.location &&
+      event.location.length >= 2 &&
+      location.location.length >= 2
+    ) {
+      const distMeters = calculateDistanceMeters(
+        event.location[1],
+        event.location[0],
+        location.location[1],
+        location.location[0]
+      );
+      return distMeters < 50; // Within 50m = same location
+    }
+    return false;
+  };
+
   // Helper function to calculate distance in meters
   const calculateDistanceMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371000; // Earth's radius in meters
@@ -672,14 +733,34 @@ export const useHomeScreen = () => {
     };
   }, []);
 
-  const handleFilterPress = (filter: FilterType) => {
+  const handleFilterPress = (filter: FilterType, measureFn: MeasureCallback) => {
     if (filter === 'reset') {
       handleResetFilters();
     } else {
-      // Toggle filter modal - if same filter is pressed, close it
-      setSelectedFilter(selectedFilter === filter ? null : filter);
-      // Expand the bottom sheet to show Upcoming Events when a filter is pressed
-      bottomSheetRef.current?.snapToIndex(1);
+      // If bottom sheet is collapsed (index 0), expand it first
+      if (bottomSheetIndex === 0) {
+        // Store the pending filter and measurement function
+        pendingFilterRef.current = { filter, measureFn };
+        // Expand the bottom sheet first
+        bottomSheetRef.current?.snapToIndex(1);
+        // Wait for bottom sheet animation to complete, then measure and show modal
+        setTimeout(() => {
+          if (pendingFilterRef.current && pendingFilterRef.current.filter === filter) {
+            pendingFilterRef.current.measureFn((layout) => {
+              setSelectedFilter(filter);
+              setFilterButtonLayout(layout);
+              pendingFilterRef.current = null;
+            });
+          }
+        }, 350); // Match bottom sheet animation duration + buffer
+      } else {
+        // Bottom sheet is already expanded, measure and show modal immediately
+        measureFn((layout) => {
+          // Toggle filter modal - if same filter is pressed, close it
+          setSelectedFilter(selectedFilter === filter ? null : filter);
+          setFilterButtonLayout(layout);
+        });
+      }
     }
   };
 
@@ -730,11 +811,75 @@ export const useHomeScreen = () => {
 
   const handleMarkerPress = async (marker: MapMarkerData) => {
     if (marker.address) {
-      // Get all event IDs from this marker location
-      const eventIds = marker.events || [];
+      // Find the location by marker ID
+      const location = allLocations.find(loc => loc.$id === marker.id);
       
-      // Find all events at this location
-      const locationEvents = allUpcomingEvents.filter(e => eventIds.includes(e.$id));
+      if (!location) {
+        console.log('[handleMarkerPress] Location not found for marker:', marker.id);
+        return;
+      }
+
+      // Filter events by location name or coordinates
+      let locationEvents = allUpcomingEvents.filter((event) =>
+        isEventAtLocation(event, location)
+      );
+
+      // Apply date filter if active
+      if (datesValues.length > 0) {
+        const dateRanges = datesValues
+          .map(value => convertDateFilterToRange(value))
+          .filter((range): range is { start: string; end: string } => range !== null);
+        
+        if (dateRanges.length > 0) {
+          locationEvents = locationEvents.filter((event) => {
+            const eventDate = new Date(event.date);
+            // Event passes filter if it falls within ANY of the selected date ranges
+            return dateRanges.some(dateRange => {
+              const startDate = new Date(dateRange.start);
+              const endDate = new Date(dateRange.end);
+              return eventDate >= startDate && eventDate <= endDate;
+            });
+          });
+        }
+      }
+
+      // Apply radius filter if active
+      if (radiusValues.length > 0 && userLocation) {
+        const maxRadiusMiles = Math.max(...radiusValues.map(v => parseFloat(v)));
+        const maxRadiusMeters = maxRadiusMiles * 1609.34;
+        
+        locationEvents = locationEvents.filter((event) => {
+          if (!event.location) return false;
+          
+          // Calculate distance from user to event location
+          const distance = calculateDistanceMeters(
+            userLocation.latitude,
+            userLocation.longitude,
+            event.location[1], // latitude
+            event.location[0]  // longitude
+          );
+          
+          return distance <= maxRadiusMeters;
+        });
+      }
+
+      // Apply category filter if active
+      if (categoriesValues.length > 0 && categories.length > 0) {
+        const selectedCategoryIds = categories
+          .filter((cat) => {
+            const catValue = cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-');
+            return categoriesValues.includes(catValue);
+          })
+          .map((cat) => cat.$id);
+        
+        if (selectedCategoryIds.length > 0) {
+          locationEvents = locationEvents.filter((event) => {
+            // Check if event has any of the selected categories
+            const eventCategories = event.categories || [];
+            return selectedCategoryIds.some(catId => eventCategories.includes(catId));
+          });
+        }
+      }
       
       if (locationEvents.length > 0) {
         const formatTime = (hour: number, min: number) => {
@@ -743,7 +888,7 @@ export const useHomeScreen = () => {
           return min > 0 ? `${displayHour}:${min.toString().padStart(2, '0')} ${period}` : `${displayHour} ${period}`;
         };
 
-        // Transform all events at this location
+        // Transform all filtered events at this location
         const eventsData: EventData[] = locationEvents.map((event) => {
           const startTime = new Date(event.startTime);
           const endTime = new Date(event.endTime);
@@ -792,9 +937,21 @@ export const useHomeScreen = () => {
 
         const storeData: StoreData = {
           id: marker.id,
-          name: marker.title || 'Store',
+          name: location.name,
           address: marker.address,
           events: eventsData,
+        };
+
+        setSelectedStore(storeData);
+        setIsModalVisible(true);
+        setIsLoadingEvents(false);
+      } else {
+        // Show modal with no events message
+        const storeData: StoreData = {
+          id: marker.id,
+          name: location.name,
+          address: marker.address,
+          events: [],
         };
 
         setSelectedStore(storeData);
@@ -887,6 +1044,7 @@ export const useHomeScreen = () => {
     hasAnyFilters,
     activeView,
     isRefreshingEvents,
+    filterButtonLayout,
     setBottomSheetIndex,
     handleFilterPress,
     handleCloseFilter,

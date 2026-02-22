@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     top: 70,
-    left: 60,
+    left: 80,
     flexWrap: 'wrap',
     width: '45%',
     overflow: 'scroll',

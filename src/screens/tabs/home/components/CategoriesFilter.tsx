@@ -1,5 +1,5 @@
 import React from 'react';
-import FilterModal, { FilterOption } from './FilterModal';
+import FilterModal, { FilterOption, FilterButtonLayout } from './FilterModal';
 
 interface CategoriesFilterProps {
   visible: boolean;
@@ -8,6 +8,7 @@ interface CategoriesFilterProps {
   onClose: () => void;
   categories: Array<{ $id: string; name: string; slug?: string; isAdult?: boolean }>;
   userIsAdult?: boolean;
+  buttonLayout?: FilterButtonLayout;
 }
 
 const CategoriesFilter: React.FC<CategoriesFilterProps> = ({ 
@@ -17,6 +18,7 @@ const CategoriesFilter: React.FC<CategoriesFilterProps> = ({
   onClose,
   categories,
   userIsAdult = true,
+  buttonLayout,
 }) => {
   // Convert categories to FilterOption format
   const categoriesOptions: FilterOption[] = [
@@ -39,6 +41,8 @@ const CategoriesFilter: React.FC<CategoriesFilterProps> = ({
       onToggle={onToggle}
       onClose={onClose}
       userIsAdult={userIsAdult}
+      buttonLayout={buttonLayout}
+      expandToBottom
     />
   );
 };

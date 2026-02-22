@@ -1,13 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import { CloseIcon } from '@/components';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const TAB_BAR_HEIGHT = 66; // paddingVertical 8*2 + icon 50
 
 export interface FilterOption {
   id: string;
   label: string;
   value: string;
   isAdult?: boolean;
+}
+
+export interface FilterButtonLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 interface FilterModalProps {
@@ -18,6 +30,9 @@ interface FilterModalProps {
   onToggle: (value: string) => void;
   onClose: () => void;
   userIsAdult?: boolean;
+  buttonLayout?: FilterButtonLayout;
+  /** When true, modal expands to bottom navigation instead of fixed max height */
+  expandToBottom?: boolean;
 }
 
 const FilterModal: React.FC<FilterModalProps> = ({
@@ -28,8 +43,53 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onToggle,
   onClose,
   userIsAdult = true,
+  buttonLayout,
+  expandToBottom = false,
 }) => {
+  const insets = useSafeAreaInsets();
+
   if (!visible) return null;
+
+  // Calculate dropdown position based on button layout
+  const DROPDOWN_WIDTH = SCREEN_WIDTH * 0.9; // 90% of screen width
+  const DROPDOWN_MAX_HEIGHT = 350;
+  const GAP_FROM_BUTTON = 8;
+  const bottomNavHeight = TAB_BAR_HEIGHT + insets.bottom;
+
+  const dropdownStyle = buttonLayout
+    ? (() => {
+        // Calculate position below the button
+        let top = buttonLayout.y + buttonLayout.height + GAP_FROM_BUTTON;
+        // Center the dropdown horizontally on screen
+        let left = (SCREEN_WIDTH - DROPDOWN_WIDTH) / 2;
+
+        const maxHeight = expandToBottom
+          ? SCREEN_HEIGHT - top - bottomNavHeight - 20 // 80px for header and padding
+          : DROPDOWN_MAX_HEIGHT;
+
+        // Check if there's enough space below, if not, position above the button (only when not expandToBottom)
+        if (!expandToBottom) {
+          const spaceBelow = SCREEN_HEIGHT - top;
+          if (spaceBelow < maxHeight && buttonLayout.y > maxHeight) {
+            top = buttonLayout.y - maxHeight - GAP_FROM_BUTTON;
+          }
+        }
+
+        return {
+          position: 'absolute' as const,
+          top,
+          left,
+          width: DROPDOWN_WIDTH,
+          maxHeight,
+        };
+      })()
+    : {
+        position: 'absolute' as const,
+        bottom: expandToBottom ? bottomNavHeight : 100,
+        left: SCREEN_WIDTH * 0.05, // 5% margin on each side
+        width: DROPDOWN_WIDTH,
+        maxHeight: expandToBottom ? SCREEN_HEIGHT - bottomNavHeight - 80 : DROPDOWN_MAX_HEIGHT,
+      };
 
   return (
     <View style={styles.container}>
@@ -38,17 +98,18 @@ const FilterModal: React.FC<FilterModalProps> = ({
         activeOpacity={1} 
         onPress={onClose}
       />
-      <View style={styles.dropdownContainer}>
+      <View style={[styles.dropdownContainer, dropdownStyle]}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
-            <Monicon name="mdi:close" size={24} color={Colors.blueColorMode} />
+            <CloseIcon size={20} color={Colors.blueColorMode} />
           </TouchableOpacity>
         </View>
         <ScrollView 
           style={styles.optionsContainer}
           contentContainerStyle={styles.optionsContent}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
+          nestedScrollEnabled={true}
         >
           {options.map((option) => {
             // Special handling for "View All" option
@@ -72,7 +133,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               >
                 <View style={[styles.checkbox, isSelected && styles.checkboxSelected, shouldGreyOut && styles.checkboxDisabled]}>
                   {isSelected && (
-                    <Monicon name="mdi:check" size={18} color={Colors.white} />
+                    <Monicon name="mdi:check" size={16} color={Colors.white} />
                   )}
                 </View>
                 <Text style={[styles.optionText, shouldGreyOut && styles.optionTextDisabled]}>
@@ -97,13 +158,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   dropdownContainer: {
-    position: 'absolute',
-    bottom: 100, // Position above the bottom tab bar
-    left: 20,
-    right: 20,
     backgroundColor: Colors.white,
-    borderRadius: 20,
-    maxHeight: '60%',
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -117,13 +173,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
   },
@@ -131,25 +187,25 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   optionsContainer: {
-    maxHeight: 400,
+    flexGrow: 0,
   },
   optionsContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   checkbox: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
     borderRadius: 4,
     borderWidth: 2,
     borderColor: Colors.blueColorMode,
     backgroundColor: Colors.white,
-    marginRight: 12,
+    marginRight: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -162,9 +218,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   optionText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.blueColorMode,
+    flex: 1,
   },
   optionTextDisabled: {
     color: '#9E9E9E',

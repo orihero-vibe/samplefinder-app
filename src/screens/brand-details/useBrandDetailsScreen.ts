@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { CommonActions, CompositeNavigationProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { Share, Alert, Linking } from 'react-native';
+import { Share, Alert } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
-import * as Location from 'expo-location';
 import { getCurrentUser } from '@/lib/auth';
 import {
   fetchEventById,
@@ -23,9 +22,10 @@ import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
+import { useTierCompletionStore } from '@/stores/tierCompletionStore';
 import { convertEventToBrandDetails, extractClientFromEvent } from '@/utils/brandUtils';
-import { calculateDistance, parseEventDateTime } from '@/utils/formatters';
 import { scheduleEventReminders, cancelEventReminders } from '@/lib/notifications/eventReminders';
+import { getNavigationRef } from '@/lib/notifications/handlers';
 
 export interface BrandDetailsData {
   id: string; // Event ID
@@ -43,8 +43,9 @@ export interface BrandDetailsData {
   products: string[];
   eventInfo: string;
   discountMessage?: string;
-  discount?: number | null; // Discount percentage/amount
+  discount?: string | null; // Discount text/description
   discountImageURL?: string | null; // Discount barcode/coupon image
+  brandDescription?: string | null; // Brand description text field
 }
 
 // BrandDetailsScreen can be accessed from either HomeStack or CalendarStack
@@ -58,31 +59,28 @@ export type CheckInStatus = 'none' | 'input' | 'incorrect' | 'success';
 
 interface BrandDetailsScreenProps {
   route: {
-    params: { eventId?: string; brand?: BrandDetailsData };
+    params: { eventId?: string; brand?: BrandDetailsData; fromFavorites?: boolean };
   };
 }
 
 export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const navigation = useNavigation<BrandDetailsScreenNavigationProp>();
-  const { eventId, brand: brandParam } = route.params;
+  const { eventId, brand: brandParam, fromFavorites } = route.params;
   
   // State for brand data and loading
   const [brand, setBrand] = useState<BrandDetailsData | null>(brandParam || null);
   const [eventData, setEventData] = useState<EventRow | null>(null); // Store full event data for points
   const [isLoading, setIsLoading] = useState(!!eventId);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [detailsRefreshTrigger, setDetailsRefreshTrigger] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const isPullToRefreshRef = useRef(false);
   const [checkInCode, setCheckInCode] = useState<string>('');
   
-  // State for event location and timing data (for check-in validation)
-  const [eventLocation, setEventLocation] = useState<[number, number] | null>(null); // [longitude, latitude]
+  // State for event timing data (for check-in validation)
   const [eventStartTime, setEventStartTime] = useState<Date | null>(null);
   const [eventEndTime, setEventEndTime] = useState<Date | null>(null);
-  const [eventRadius, setEventRadius] = useState<number>(100); // Default 100 meters if not specified
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
-  
-  // State for user location
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [hasLocationPermission, setHasLocationPermission] = useState(false);
   
   // Zustand favorites store
   const favoriteIds = useFavoritesStore((state) => state.favoriteIds);
@@ -108,6 +106,12 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const [checkInPoints, setCheckInPoints] = useState(0);
   const [reviewPoints, setReviewPoints] = useState(0);
   
+  // Badge earned modal state
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+  const [badgeType, setBadgeType] = useState<'events' | 'reviews'>('events');
+  const [badgeNumber, setBadgeNumber] = useState(0);
+  const [badgeAchievementCount, setBadgeAchievementCount] = useState(0);
+  
   // Calendar alert modal state
   const [calendarAlertVisible, setCalendarAlertVisible] = useState(false);
   const [calendarAlertType, setCalendarAlertType] = useState<'added' | 'removed'>('added');
@@ -123,21 +127,46 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     }
   }, [brand?.id]);
 
+  // Refetch event details when screen gains focus after navigating away (e.g. user swipes back)
+  const isFirstDetailsFocus = useRef(true);
+  const lastEventIdRef = useRef<string | undefined>(eventId);
+  if (lastEventIdRef.current !== eventId) {
+    lastEventIdRef.current = eventId;
+    isFirstDetailsFocus.current = true;
+  }
+  useFocusEffect(
+    useCallback(() => {
+      if (!eventId) return;
+      if (isFirstDetailsFocus.current) {
+        isFirstDetailsFocus.current = false;
+        return;
+      }
+      setDetailsRefreshTrigger((prev) => prev + 1);
+    }, [eventId])
+  );
+
   useEffect(() => {
     const loadEventData = async () => {
       if (!eventId) {
         setIsLoading(false);
+        setIsRefreshing(false);
         return;
       }
 
+      const isPullToRefresh = isPullToRefreshRef.current;
+
       try {
-        setIsLoading(true);
+        if (!isPullToRefresh) {
+          setIsLoading(true);
+        }
         setError(null);
-        
+
         const event = await fetchEventById(eventId);
         if (!event) {
           setError('Event not found');
           setIsLoading(false);
+          setIsRefreshing(false);
+          isPullToRefreshRef.current = false;
           return;
         }
         
@@ -151,22 +180,12 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
           }
         }
         
-        // Use event.location for check-in validation (location moved from brand to event)
-        if (event.location) {
-          setEventLocation(event.location);
-        }
-        
+        // Set event timing for check-in validation
         if (event.startTime) {
           setEventStartTime(new Date(event.startTime));
         }
         if (event.endTime) {
           setEventEndTime(new Date(event.endTime));
-        }
-        
-        if (event.radius && event.radius > 0) {
-          setEventRadius(event.radius);
-        } else {
-          setEventRadius(100);
         }
         
         const logoUrl = client?.logoURL || null;
@@ -175,7 +194,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
         setEventData(event);
         const brandData = convertEventToBrandDetails(event, client);
         setBrand(brandData);
-        setCheckInCode(event.checkInCode || '');
+        setCheckInCode(String(event.checkInCode ?? ''));
         
         const authUser = await getCurrentUser();
         if (authUser) {
@@ -200,12 +219,21 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
         setError(err.message || 'Failed to load event details');
       } finally {
         setIsLoading(false);
+        setIsRefreshing(false);
+        isPullToRefreshRef.current = false;
       }
     };
 
     loadEventData();
+  }, [eventId, detailsRefreshTrigger]);
+
+  const handleRefreshDetails = useCallback(() => {
+    if (!eventId) return;
+    isPullToRefreshRef.current = true;
+    setIsRefreshing(true);
+    setDetailsRefreshTrigger((prev) => prev + 1);
   }, [eventId]);
-  
+
   const isFavorite = useMemo(() => {
     if (!brand || !brand.clientId) return false;
     // Check by clientId (brand ID), not event ID
@@ -229,8 +257,64 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     }
   };
 
+  const navigateBackToFavorites = useCallback(() => {
+    const rootNav = getNavigationRef();
+    const rootState = rootNav?.getRootState();
+    if (rootNav?.isReady() && rootState?.routes?.length) {
+      const mainTabsRoute = rootState.routes.find((r: { name: string }) => r.name === 'MainTabs');
+      const tabsState = mainTabsRoute?.state;
+      if (tabsState?.routes?.length) {
+        const existingTabRoutes = tabsState.routes as Array<{ name: string; key?: string; state?: unknown }>;
+        const updatedTabRoutes = existingTabRoutes.map((route, i) =>
+          i === 0
+            ? { ...route, state: { index: 0, routes: [{ name: 'HomeMain' }] } }
+            : route
+        );
+        const resetState = {
+          index: 0,
+          routes: [
+            {
+              ...mainTabsRoute,
+              state: {
+                ...tabsState,
+                index: 2, // Favorites tab
+                routes: updatedTabRoutes,
+              },
+            },
+          ],
+        };
+        rootNav.dispatch(CommonActions.reset(resetState as Parameters<typeof CommonActions.reset>[0]));
+        return;
+      }
+    }
+    const parent = navigation.getParent();
+    if (parent) {
+      (parent as any).navigate('MainTabs', { screen: 'Favorites' });
+    } else {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  // When fromFavorites is true, intercept back gesture (swipe) so we go to Favorites tab instead of Home stack
+  useEffect(() => {
+    if (!fromFavorites) return;
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      const action = e.data.action;
+      const isBackGesture = action.type === 'POP' || action.type === 'GO_BACK';
+      if (isBackGesture) {
+        e.preventDefault();
+        navigateBackToFavorites();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, fromFavorites, navigateBackToFavorites]);
+
   const handleBack = () => {
-    navigation.goBack();
+    if (fromFavorites) {
+      navigateBackToFavorites();
+    } else {
+      navigation.goBack();
+    }
   };
 
   const handleShare = async () => {
@@ -324,70 +408,17 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     }
   };
 
-  useEffect(() => {
-    const getCurrentLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        
-        if (status !== 'granted') {
-          setHasLocationPermission(false);
-          return;
-        }
-
-        setHasLocationPermission(true);
-
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-
-        const userCoords = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-
-        setUserLocation(userCoords);
-      } catch (error) {
-        console.error('Error getting location:', error);
-        setHasLocationPermission(false);
-      }
-    };
-
-    getCurrentLocation();
-
-    const locationInterval = setInterval(() => {
-      if (checkInStatus !== 'success') {
-        getCurrentLocation();
-      }
-    }, 30000);
-
-    return () => clearInterval(locationInterval);
-  }, [checkInStatus]);
-
+  // Check-in validation based on date and time only
   const canCheckIn = useMemo(() => {
-    if (!eventLocation || !eventStartTime || !eventEndTime) {
+    if (!eventStartTime || !eventEndTime) {
       return false;
     }
 
     const now = new Date();
     const isWithinTimeRange = now >= eventStartTime && now <= eventEndTime;
     
-    if (!isWithinTimeRange) {
-      return false;
-    }
-
-    if (!userLocation || !hasLocationPermission) {
-      return false;
-    }
-
-    const distance = calculateDistance(
-      userLocation.latitude,
-      userLocation.longitude,
-      eventLocation[1],
-      eventLocation[0]
-    );
-
-    return distance <= eventRadius;
-  }, [eventLocation, eventStartTime, eventEndTime, eventRadius, userLocation, hasLocationPermission]);
+    return isWithinTimeRange;
+  }, [eventStartTime, eventEndTime]);
 
   useEffect(() => {
     if (checkInStatus === 'success') {
@@ -407,7 +438,7 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     }
 
     if (code.length === 6) {
-      if (code === checkInCode) {
+      if (String(code) === String(checkInCode)) {
         try {
           setIsSubmittingCheckIn(true);
           
@@ -441,16 +472,24 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
             pointsEarned: eventData?.checkInPoints || 0,
           };
 
-          await createCheckIn(checkInData);
+          const checkInResult = await createCheckIn(checkInData);
 
           const earnedPoints = eventData?.checkInPoints || 0;
           setCheckInPoints(earnedPoints);
           setCheckInStatus('success');
           
-          // Show points earned modal
-          setPointsModalAmount(earnedPoints);
-          setPointsModalTitle('Nice Work!');
-          setPointsModalVisible(true);
+          // Check if a badge was earned
+          if (checkInResult.badgeEarned) {
+            setBadgeType('events');
+            setBadgeNumber(checkInResult.badgeEarned.badgeNumber);
+            setBadgeAchievementCount(checkInResult.badgeEarned.achievementCount);
+            setBadgeModalVisible(true);
+          } else {
+            // Show points earned modal only if no badge was earned
+            setPointsModalAmount(earnedPoints);
+            setPointsModalTitle('Nice Work!');
+            setPointsModalVisible(true);
+          }
         } catch (error: any) {
           console.error('Error during check-in:', error);
           Alert.alert('Error', error.message || 'Failed to complete check-in');
@@ -475,6 +514,26 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
 
   const handleClosePointsModal = () => {
     setPointsModalVisible(false);
+    // Show tier completion modal after earned modal closes (if user completed a tier)
+    useTierCompletionStore.getState().showPendingTierModal();
+  };
+
+  const handleCloseBadgeModal = () => {
+    setBadgeModalVisible(false);
+    // Show tier completion modal after earned modal closes (if user completed a tier)
+    useTierCompletionStore.getState().showPendingTierModal();
+  };
+
+  const handleShareBadge = async () => {
+    if (!brand) return;
+    try {
+      const badgeName = badgeType === 'events' ? 'Events Badge' : 'Review Badge';
+      await Share.share({
+        message: `I just earned the ${badgeNumber} ${badgeName} on SampleFinder! 🎉`,
+      });
+    } catch (error) {
+      console.error('Error sharing badge:', error);
+    }
   };
 
   const handleCloseCalendarAlert = () => {
@@ -511,6 +570,8 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
 
   const handleViewRewards = () => {
     setPointsModalVisible(false);
+    // Show tier completion modal after earned modal closes (if user completed a tier)
+    useTierCompletionStore.getState().showPendingTierModal();
     const parent = navigation.getParent();
     if (parent) {
       parent.navigate('MainTabs', { screen: 'Promotions' });
@@ -556,17 +617,25 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
         pointsEarned: eventData?.reviewPoints || 0,
       };
 
-      await createReview(reviewData);
+      const reviewResult = await createReview(reviewData);
 
       setHasReviewed(true);
       reviewBottomSheetRef.current?.close();
       
-      // Show points earned modal for review
-      const earnedPoints = eventData?.reviewPoints || 0;
-      setReviewPoints(earnedPoints);
-      setPointsModalAmount(earnedPoints);
-      setPointsModalTitle('Review Submitted');
-      setPointsModalVisible(true);
+      // Check if a badge was earned
+      if (reviewResult.badgeEarned) {
+        setBadgeType('reviews');
+        setBadgeNumber(reviewResult.badgeEarned.badgeNumber);
+        setBadgeAchievementCount(reviewResult.badgeEarned.achievementCount);
+        setBadgeModalVisible(true);
+      } else {
+        // Show points earned modal only if no badge was earned
+        const earnedPoints = eventData?.reviewPoints || 0;
+        setReviewPoints(earnedPoints);
+        setPointsModalAmount(earnedPoints);
+        setPointsModalTitle('Review Submitted');
+        setPointsModalVisible(true);
+      }
     } catch (error: any) {
       console.error('Error submitting review:', error);
       Alert.alert('Error', error.message || 'Failed to submit review');
@@ -597,6 +666,10 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     calendarAlertVisible,
     calendarAlertType,
     removeConfirmVisible,
+    badgeModalVisible,
+    badgeType,
+    badgeNumber,
+    badgeAchievementCount,
     handleBack,
     handleShare,
     handleAddToCalendar,
@@ -610,6 +683,10 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     handleCloseCalendarAlert,
     handleConfirmRemoveFromCalendar,
     handleCancelRemoveFromCalendar,
+    handleCloseBadgeModal,
+    handleShareBadge,
+    isRefreshing,
+    handleRefreshDetails,
   };
 };
 

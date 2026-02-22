@@ -241,26 +241,21 @@ export const useSignUpScreen = () => {
     };
   }, [username]);
 
-  useEffect(() => {
-    // Check notification permissions before showing modal
-    const checkNotificationPermissions = async () => {
-      try {
-        const { status } = await Notifications.getPermissionsAsync();
-        if (status !== 'granted') {
-          // Only show modal if permissions are not already granted
-          setShowPushNotificationModal(true);
-        } else {
-          // Permissions already granted, skip modal and show age verification
-          setShowAgeVerificationModal(true);
-        }
-      } catch (error) {
-        console.error('Error checking notification permissions:', error);
-        // On error, show the modal anyway
+  const showPushOrAgeModal = useCallback(async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
         setShowPushNotificationModal(true);
       }
-    };
-    
-    checkNotificationPermissions();
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+      setShowPushNotificationModal(true);
+    }
+  }, []);
+
+  // On mount: show modals in order Age → Privacy (Terms) → Push Notification
+  useEffect(() => {
+    setShowAgeVerificationModal(true);
   }, []);
 
   // Real-time validation for fields (except username which is debounced)
@@ -343,19 +338,58 @@ export const useSignUpScreen = () => {
     navigation.navigate('Login');
   };
 
+  const submitSignUp = async () => {
+    const isValid = await validateAllFields();
+    if (!isValid) {
+      setShowError(true);
+      return;
+    }
+
+    const emailError = validateEmail(email);
+    if (emailError) {
+      updateFieldError('email', emailError);
+      setShowError(true);
+      return;
+    }
+
+    setShowError(false);
+    setErrorMessage('');
+    setIsLoading(true);
+
+    try {
+      await signup({
+        email: email.trim(),
+        password: password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phoneNumber: phoneNumber.trim(),
+        zipCode: zipCode.trim(),
+        dateOfBirth: dateOfBirth.trim(),
+        username: username.trim(),
+      });
+
+      navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      const errorMsg = getUserFriendlyErrorMessage(error);
+      setErrorMessage(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handlePushNotificationEnable = () => {
     setShowPushNotificationModal(false);
-    setShowAgeVerificationModal(true);
   };
 
   const handlePushNotificationNotNow = () => {
     setShowPushNotificationModal(false);
-    setShowAgeVerificationModal(true);
   };
 
   const handleAgeVerificationAccept = () => {
     setShowAgeVerificationModal(false);
     setAgeVerified(true);
+    setShowPrivacyModal(true);
   };
 
   const handleAgeVerificationDismiss = () => {
@@ -366,11 +400,13 @@ export const useSignUpScreen = () => {
   const handleTermsAccept = () => {
     setShowTermsModal(false);
     setTermsAccepted(true);
+    showPushOrAgeModal();
   };
 
   const handlePrivacyAccept = () => {
     setShowPrivacyModal(false);
     setPrivacyAccepted(true);
+    showPushOrAgeModal();
   };
 
   const handleTermsLinkPress = () => {
@@ -440,52 +476,18 @@ export const useSignUpScreen = () => {
       return;
     }
 
-    // Validate T&C acceptance
+    if (!privacyAccepted) {
+      setShowPrivacyModal(true);
+      return;
+    }
+
     if (!termsAccepted) {
       setErrorMessage('Please accept the Terms & Conditions to continue.');
       setShowTermsModal(true);
       return;
     }
-    
-    // Validate all fields before submission
-    const isValid = await validateAllFields();
-    if (!isValid) {
-      setShowError(true);
-      return;
-    }
 
-    // Double-check email validation to prevent hanging
-    const emailError = validateEmail(email);
-    if (emailError) {
-      updateFieldError('email', emailError);
-      setShowError(true);
-      return;
-    }
-
-    setShowError(false);
-    setErrorMessage('');
-    setIsLoading(true);
-
-    try {
-      await signup({
-        email: email.trim(),
-        password: password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phoneNumber: phoneNumber.trim(),
-        zipCode: zipCode.trim(),
-        dateOfBirth: dateOfBirth.trim(),
-        username: username.trim(),
-      });
-
-      navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      const errorMsg = getUserFriendlyErrorMessage(error);
-      setErrorMessage(errorMsg);
-    } finally {
-      setIsLoading(false);
-    }
+    await submitSignUp();
   };
 
   return {

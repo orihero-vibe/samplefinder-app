@@ -50,7 +50,7 @@ const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFa
         screen: 'Home',
         params: {
           screen: 'BrandDetails',
-          params: { eventId },
+          params: { eventId, fromFavorites: true },
         },
       });
     }
@@ -99,7 +99,7 @@ const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFa
 
       {isExpanded && (
         <View style={styles.expandedContent}>
-          <Text style={styles.description}>{brand.description}</Text>
+          <Text numberOfLines={3} style={styles.description}>{brand.description}</Text>
           {brand.events && brand.events.length > 0 && (
             <BrandUpcomingEvents events={brand.events} onEventPress={handleEventPress} />
           )}

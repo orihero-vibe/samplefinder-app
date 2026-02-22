@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon, AchievementStartIcon, HistoryIcon } from '@/icons';
+import { getTierDisplayParts } from '@/utils/formatters';
+import { CertifiedBrandAmbassadorIcon, CertifiedInfluencerIcon } from '@/icons';
 import { Badge, Tier } from './index';
 import BadgeItem from './BadgeItem';
 
@@ -39,6 +40,7 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
   const currentTier = earnedTiers.length > 0 
     ? earnedTiers[earnedTiers.length - 1] // Get the most recent earned tier
     : tiers[0]; // Default to first tier if none earned
+  const currentTierDisplayParts = currentTier ? getTierDisplayParts(currentTier.name) : null;
 
   return (
     <View style={styles.cardWrapper}>
@@ -49,17 +51,6 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
         style={styles.gradientBorderContainer}
       >
         <View style={styles.card}>
-          {/* Header with Sparkle Icon */}
-          <View style={styles.headerContainer}>
-            <HistoryIcon size={40} />
-            <Text style={styles.headerTitle}>ACHIEVEMENTS</Text>
-          </View>
-
-          {/* Description Text */}
-          <Text style={styles.descriptionText}>
-            Keep Sampling, Keep Earning Badges & Points! Come Back To Track Your Progress.
-          </Text>
-
           {/* Current Achievement Badge */}
           {currentTier && (
             <TouchableOpacity
@@ -79,7 +70,14 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
                   <Monicon name="ph:seal-fill" size={100} color={Colors.pinDarkBlue} />
                 )}
               </View>
-              <Text style={styles.tierName}>{currentTier.name}</Text>
+              {currentTierDisplayParts && (
+                <View style={styles.tierNameRow}>
+                  <Text style={styles.tierName}>{currentTierDisplayParts.main}</Text>
+                  {currentTierDisplayParts.subtitle ? (
+                    <Text style={styles.tierNameSubtitle}>{currentTierDisplayParts.subtitle}</Text>
+                  ) : null}
+                </View>
+              )}
             </TouchableOpacity>
           )}
 
@@ -116,16 +114,20 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
           )}
 
           {/* Activity Badges */}
+          {earnedEventBadges.length > 0 && (
           <View style={styles.activityBadgesContainer}>
             {earnedEventBadges.map((badge) => (
-              <BadgeItem key={badge.id} badge={badge} />
+              <BadgeItem key={badge.id} badge={badge} isEventsBadge />
             ))}
           </View>
+          )}
+          {earnedReviewBadges.length > 0 && (
           <View style={styles.activityBadgesContainer}>
             {earnedReviewBadges.map((badge) => (
               <BadgeItem key={badge.id} badge={badge} color={Colors.pinDarkBlue} />
             ))}
           </View>
+          )}
         </View>
       </LinearGradient>
     </View>
@@ -155,27 +157,6 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
   },
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontFamily: 'Quicksand_700Bold',
-    color: Colors.pinDarkBlue,
-    textAlign: 'center',
-    marginTop: 8,
-    letterSpacing: 1,
-  },
-  descriptionText: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_500Medium',
-    color: Colors.pinDarkBlue,
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 10,
-    lineHeight: 20,
-  },
   badgeContainer: {
     alignItems: 'center',
     marginBottom: 16,
@@ -187,9 +168,22 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
   },
+  tierNameRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'baseline',
+    gap: 4,
+  },
   tierName: {
     fontSize: 22,
     fontFamily: 'Quicksand_700Bold',
+    color: Colors.pinDarkBlue,
+    textAlign: 'center',
+  },
+  tierNameSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Quicksand_500Medium',
     color: Colors.pinDarkBlue,
     textAlign: 'center',
   },
@@ -198,9 +192,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   pointsValue: {
-    fontSize: 48,
-    fontFamily: 'Quicksand_700Bold',
-    color: Colors.pinkInfluencer,
+    fontSize: 50,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: Colors.brandPurpleBright,
     marginBottom: 4,
   },
   pointsLabel: {
@@ -211,10 +205,12 @@ const styles = StyleSheet.create({
   certificationsContainer: {
     width: '100%',
     marginBottom: 24,
+    alignItems: 'center',
   },
   certificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
     marginBottom: 16,
   },
@@ -222,7 +218,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.pinDarkBlue,
-    flex: 1,
   },
   activityBadgesContainer: {
     flexDirection: 'row',

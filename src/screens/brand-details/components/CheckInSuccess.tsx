@@ -11,7 +11,7 @@ interface CheckInSuccessProps {
   onLeaveReview?: () => void;
   pointsEarned?: number;
   showReviewButton?: boolean;
-  discount?: number | null;
+  discount?: string | null; // Discount text/description
   discountImageURL?: string | null;
 }
 
@@ -31,9 +31,9 @@ const CheckInSuccess: React.FC<CheckInSuccessProps> = ({
       {hasDiscount && (
         <View style={styles.barcodeSection}>
           <View style={styles.barcodeRow}>
-            {discount != null && (
+            {discount && (
               <Text style={styles.barcodeText}>
-                Scan to save ${discount} on{'\n'}today's purchase
+                {discount}
               </Text>
             )}
             {discountImageURL ? (

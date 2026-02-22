@@ -5,7 +5,7 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Colors } from '@/constants/Colors';
-import { StoreEventCard, StoreEventData } from '@/components';
+import { CloseIcon, StoreEventCard, StoreEventData } from '@/components';
 import { EventData } from './UpcomingEvents';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { HomeStackParamList } from '@/navigation/HomeStack';
@@ -67,9 +67,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <View style={styles.closeButtonCircle}>
-                <Monicon name="mdi:close" size={16} color={Colors.brandPurpleDeep} />
-              </View>
+              <CloseIcon />
             </TouchableOpacity>
           </View>
 
@@ -85,61 +83,25 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents
                 <Text style={styles.emptyText}>No events available</Text>
               </View>
             ) : (
-              // Flatten events with their product types - each product becomes a row
-              (() => {
-                const productRows: Array<{
-                  eventId: string;
-                  productName: string;
-                  date: Date | string;
-                  time: string;
-                  logoURL?: string | null;
-                }> = [];
-
-                store.events.forEach((event) => {
-                  const productTypes = (event as any).productTypes as string[] | undefined;
-                  
-                  if (productTypes && productTypes.length > 0) {
-                    // Create a row for each product type
-                    productTypes.forEach((product) => {
-                      productRows.push({
-                        eventId: event.id,
-                        productName: product,
-                        date: event.date,
-                        time: event.time,
-                        logoURL: event.logoURL,
-                      });
-                    });
-                  } else {
-                    // Fallback: show event name if no product types
-                    productRows.push({
-                      eventId: event.id,
-                      productName: event.name,
-                      date: event.date,
-                      time: event.time,
-                      logoURL: event.logoURL,
-                    });
-                  }
-                });
-
-                return productRows.map((row, index) => {
-                  const storeEvent: StoreEventData = {
-                    id: row.eventId,
-                    name: row.productName,
-                    date: row.date,
-                    time: row.time,
-                    logoURL: row.logoURL,
-                  };
-                  return (
-                    <React.Fragment key={`${row.eventId}-${row.productName}-${index}`}>
-                      <StoreEventCard
-                        event={storeEvent}
-                        onPress={handleEventPress}
-                      />
-                      {index < productRows.length - 1 && <View style={styles.separator} />}
-                    </React.Fragment>
-                  );
-                });
-              })()
+              // Display one row per event (not products)
+              store.events.map((event, index) => {
+                const storeEvent: StoreEventData = {
+                  id: event.id,
+                  name: event.brandName || event.name,
+                  date: event.date,
+                  time: event.time,
+                  logoURL: event.logoURL,
+                };
+                return (
+                  <React.Fragment key={event.id}>
+                    <StoreEventCard
+                      event={storeEvent}
+                      onPress={handleEventPress}
+                    />
+                    {index < store.events.length - 1 && <View style={styles.separator} />}
+                  </React.Fragment>
+                );
+              })
             )}
             <View style={styles.separator} />
           </ScrollView>

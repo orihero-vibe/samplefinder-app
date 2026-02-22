@@ -1,12 +1,21 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 export type FilterType = 'radius' | 'dates' | 'categories' | 'reset';
 
+export interface FilterButtonLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type MeasureCallback = (callback: (layout: FilterButtonLayout) => void) => void;
+
 interface FilterButtonsProps {
   selectedFilter: FilterType | null;
-  onFilterPress: (filter: FilterType) => void;
+  onFilterPress: (filter: FilterType, measureFn: MeasureCallback) => void;
   radiusCount?: number;
   datesCount?: number;
   categoriesCount?: number;
@@ -21,8 +30,26 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
   categoriesCount = 0,
   hasAnyFilters = false,
 }) => {
-  const handleFilterPress = (filter: FilterType) => {
-    onFilterPress(filter);
+  const radiusButtonRef = useRef<TouchableOpacity>(null);
+  const datesButtonRef = useRef<TouchableOpacity>(null);
+  const categoriesButtonRef = useRef<TouchableOpacity>(null);
+
+  const createMeasureFn = (ref: React.RefObject<TouchableOpacity> | null): MeasureCallback => {
+    return (callback) => {
+      if (ref?.current) {
+        ref.current.measureInWindow((x, y, width, height) => {
+          callback({ x, y, width, height });
+        });
+      }
+    };
+  };
+
+  const handleFilterPress = (filter: FilterType, ref: React.RefObject<TouchableOpacity> | null) => {
+    if (filter === 'reset') {
+      onFilterPress(filter, () => {});
+    } else {
+      onFilterPress(filter, createMeasureFn(ref));
+    }
   };
 
   return (
@@ -34,12 +61,13 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
       >
         <View style={styles.buttonsRow}>
           <TouchableOpacity
+            ref={radiusButtonRef}
             style={[
               styles.filterButton,
               styles.filterButtonSpacing,
               (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonSelected,
             ]}
-            onPress={() => handleFilterPress('radius')}
+            onPress={() => handleFilterPress('radius', radiusButtonRef)}
             activeOpacity={0.7}
           >
             <Text
@@ -53,12 +81,13 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            ref={datesButtonRef}
             style={[
               styles.filterButton,
               styles.filterButtonSpacing,
               (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonSelected,
             ]}
-            onPress={() => handleFilterPress('dates')}
+            onPress={() => handleFilterPress('dates', datesButtonRef)}
             activeOpacity={0.7}
           >
             <Text
@@ -72,12 +101,13 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
+            ref={categoriesButtonRef}
             style={[
               styles.filterButton,
               styles.filterButtonSpacing,
               (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonSelected,
             ]}
-            onPress={() => handleFilterPress('categories')}
+            onPress={() => handleFilterPress('categories', categoriesButtonRef)}
             activeOpacity={0.7}
           >
             <Text
@@ -96,7 +126,7 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
               styles.filterButtonReset,
               hasAnyFilters && styles.filterButtonResetEnabled,
             ]}
-            onPress={() => handleFilterPress('reset')}
+            onPress={() => handleFilterPress('reset', null)}
             activeOpacity={0.7}
             disabled={!hasAnyFilters}
           >

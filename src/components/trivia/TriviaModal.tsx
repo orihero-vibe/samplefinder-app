@@ -10,10 +10,15 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { SparkleIcon, LocationPinIcon } from '../../icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import WrongAnswerIcon from '../../icons/WrongAnswerIcon';
 import PointsBadgeIcon from '../../icons/PointsBadgeIcon';
 import type { TriviaQuestion, SubmitAnswerResult } from '../../lib/database/trivia';
+import { Colors } from '../../constants/Colors';
+import CloseIcon from '../shared/CloseIcon';
+import SparkleIcon from '@/icons/SparkleIcon';
+import { AchievementStartIcon, MediumStarIcon, SmallStarIcon, } from '@/icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -26,6 +31,8 @@ interface TriviaModalProps {
   onClose: () => void;
   onSubmitAnswer: (answerIndex: number) => Promise<SubmitAnswerResult>;
   onAnswerResult?: (isCorrect: boolean, pointsAwarded: number) => void;
+  /** Called when user closes without answering (skip or countdown missed) */
+  onSkipped?: () => void;
 }
 
 type AnswerState = 'idle' | 'submitting' | 'correct' | 'incorrect';
@@ -36,12 +43,14 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   onClose,
   onSubmitAnswer,
   onAnswerResult,
+  onSkipped,
 }) => {
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
   const [pointsAwarded, setPointsAwarded] = useState<number>(0);
-  const [countdown, setCountdown] = useState<number>(10);
+  const [countdown, setCountdown] = useState<number>(5);
+  const [closeEnabledAfterWin, setCloseEnabledAfterWin] = useState(true);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
 
@@ -51,7 +60,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       setCorrectAnswerIndex(null);
       setAnswerState('idle');
       setPointsAwarded(0);
-      setCountdown(10);
+      setCountdown(5);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -88,6 +97,15 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     }
   }, [visible, answerState, countdown]);
 
+  // When user wins, keep close disabled briefly then allow dismiss
+  useEffect(() => {
+    if (visible && answerState === 'correct') {
+      setCloseEnabledAfterWin(false);
+      const timer = setTimeout(() => setCloseEnabledAfterWin(true), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, answerState]);
+
   const handleAnswerPress = async (index: number) => {
     if (selectedAnswerIndex !== null || answerState === 'submitting') return; // Prevent multiple selections
 
@@ -100,7 +118,8 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       if (result.success) {
         const isCorrect = result.isCorrect ?? false;
         const points = result.pointsAwarded ?? 0;
-        const correctIndex = result.correctAnswerIndex ?? null;
+        const correctIndex =
+          result.correctAnswerIndex ?? (isCorrect ? index : null);
         
         setAnswerState(isCorrect ? 'correct' : 'incorrect');
         setPointsAwarded(points);
@@ -131,10 +150,14 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   };
 
   const handleClose = () => {
+    const wasSkipped = answerState === 'idle';
     setSelectedAnswerIndex(null);
     setCorrectAnswerIndex(null);
     setAnswerState('idle');
     setPointsAwarded(0);
+    if (wasSkipped) {
+      onSkipped?.();
+    }
     onClose();
   };
 
@@ -177,6 +200,15 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       return styles.answerButtonText;
     };
 
+    const ButtonContent = () =>
+      isSelected && isSubmitting ? (
+        <ActivityIndicator size="small" color="#FFFFFF" />
+      ) : (
+        <Text style={getTextStyle()}>
+          {answer}
+        </Text>
+      );
+
     return (
       <TouchableOpacity
         key={index}
@@ -185,16 +217,42 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
         disabled={selectedAnswerIndex !== null || isSubmitting}
         activeOpacity={0.8}
       >
-        <View style={styles.answerButtonGradient}>
-          {isSelected && isSubmitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={getTextStyle()}>
-              {answer}
-            </Text>
-          )}
-        </View>
-
+        {showCorrectState ? (
+          <LinearGradient
+            colors={['#95268B', '#3713DA']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.answerButtonCorrectBorder}
+          >
+            <View style={styles.answerButtonCorrectInner}>
+              <ButtonContent />
+            </View>
+          </LinearGradient>
+        ) : showIncorrectState ? (
+          <LinearGradient
+            colors={['#F51616', '#8F0D0D']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.answerButtonInner}
+          >
+            <ButtonContent />
+          </LinearGradient>
+        ) : (
+          <LinearGradient
+            colors={[
+              '#32004B',
+              '#3D1578',
+              '#1D0A74',
+              '#1D0A74',
+              '#6C0331',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.answerButtonInner}
+          >
+            <ButtonContent />
+          </LinearGradient>
+        )}
       </TouchableOpacity>
     );
   };
@@ -215,6 +273,9 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           <View style={styles.pointsBadgeContainer}>
             <PointsBadgeIcon size={140} points={pointsAwarded} />
           </View>
+          <View style={styles.sparkleContainerTopRight}>
+            <SmallStarIcon size={40} />
+          </View>
         </View>
       );
     } else if (answerState === 'incorrect') {
@@ -233,7 +294,23 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           Earn points when you answer correctly!
         </Text>
         <View style={styles.countdownContainer}>
-          <Text style={styles.countdownValue}>{countdown}</Text>
+          <View style={styles.countdownRing}>
+            <MaskedView
+              maskElement={
+                <View style={styles.countdownMaskWrapper}>
+                  <Text style={styles.countdownValueMask}>{countdown}</Text>
+                </View>
+              }
+              style={styles.countdownGradientTextWrapper}
+            >
+              <LinearGradient
+                colors={['#95268B', '#3713DA']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.countdownGradientTextFill}
+              />
+            </MaskedView>
+          </View>
         </View>
       </View>
     );
@@ -260,10 +337,15 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
             },
           ]}
         >
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <View style={styles.closeButtonCircle}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </View>
+          <TouchableOpacity
+            style={[
+              styles.closeButton,
+              answerState === 'correct' && !closeEnabledAfterWin && styles.closeButtonDisabled,
+            ]}
+            onPress={handleClose}
+            disabled={answerState === 'correct' && !closeEnabledAfterWin}
+          >
+            <CloseIcon size={24} color={Colors.pinDarkBlue} />
           </TouchableOpacity>
 
           {renderLocationIcon()}
@@ -273,6 +355,16 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           <Text style={styles.question}>{question.question}</Text>
 
           <View style={styles.answersContainer}>
+            {answerState === 'correct' && (
+              <View style={styles.sparkleContainerRight}>
+               <SmallStarIcon size={40} />
+              </View>
+            )}
+             {answerState === 'correct' && (
+              <View style={styles.sparkleContainerLeft}>
+               <AchievementStartIcon width={40} height={40} />
+              </View>
+            )}
             {question.answers.map((answer, index) => renderAnswerButton(answer, index))}
           </View>
 
@@ -297,7 +389,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: SCREEN_WIDTH - 40,
     maxWidth: 400,
-    alignItems: 'center',
+    // alignItems: 'center',
   },
   closeButton: {
     position: 'absolute',
@@ -305,18 +397,8 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 10,
   },
-  closeButtonCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 18,
-    color: '#6B7280',
-    fontWeight: '600',
+  closeButtonDisabled: {
+    opacity: 0.4,
   },
   locationIconContainer: {
     marginTop: 8,
@@ -329,35 +411,35 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontFamily: 'Quicksand_700Bold',
     marginBottom: 12,
     textAlign: 'center',
+    color: Colors.pinBlueBlack,
   },
   question: {
     fontSize: 16,
-    color: '#4B5563',
+    color: Colors.pinDarkBlue,
+    fontFamily: 'Quicksand_500Medium',
     marginBottom: 24,
-    textAlign: 'center',
     lineHeight: 22,
+    paddingHorizontal: 12,
+    textAlign: 'center',
   },
   answersContainer: {
     width: '100%',
     marginBottom: 20,
+    alignItems: 'center',
   },
   answerButton: {
     marginBottom: 12,
-    borderRadius: 28,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    backgroundColor: '#6B46C1',
+    width: '60%'
   },
-  answerButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 28,
-    minHeight: 56,
+  answerButtonInner: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -365,25 +447,37 @@ const styles = StyleSheet.create({
     borderColor: '#6B46C1',
     backgroundColor: '#6B46C1',
   },
-  answerButtonCorrect: {
-    borderColor: '#6B46C1',
+  answerButtonCorrect: {},
+  answerButtonCorrectBorder: {
+    padding: 2,
+    borderRadius: 12,
+  },
+  answerButtonCorrectInner: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    borderRadius: 12,
   },
   answerButtonIncorrect: {
-    borderColor: '#DC2626',
-    backgroundColor: '#DC2626',
+    borderWidth: 0,
   },
   answerButtonText: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#FFFFFF',
     fontWeight: '600',
     textAlign: 'center',
+    textAlignVertical: 'center',
+    lineHeight: 24,
+    includeFontPadding: false,
   },
   answerButtonTextSelected: {
     color: '#FFFFFF',
   },
   answerButtonTextCorrect: {
-    color: '#6B46C1',
+    color: Colors.blueColorMode,
   },
   sparkleContainer: {
     position: 'absolute',
@@ -393,9 +487,25 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -12 }],
     gap: 8,
   },
+  sparkleContainerLeft: {
+    position: 'absolute',
+    left: 10,
+    top: '70%',
+    flexDirection: 'column',
+    transform: [{ translateY: -24 }],
+    gap: 8,
+  },
   sparkleContainerRight: {
     position: 'absolute',
-    right: -24,
+    right: 10,
+    top: '20%',
+    flexDirection: 'column',
+    transform: [{ translateY: -24 }],
+    gap: 8,
+  },
+  sparkleContainerTopRight:{
+    position: 'absolute',
+    right: 10,
     top: '50%',
     flexDirection: 'column',
     transform: [{ translateY: -24 }],
@@ -425,12 +535,19 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: Colors.pinDarkBlue,
     marginBottom: 16,
-    textAlign: 'center',
+    paddingHorizontal: 12,
     fontWeight: '400',
+    fontFamily: 'Quicksand_500Medium',
   },
   countdownContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  countdownRing: {
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -441,10 +558,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
-  countdownValue: {
+  countdownGradientTextWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 48,
+    minHeight: 56,
+  },
+  countdownGradientTextFill: {
+    position: 'absolute',
+    width: 48,
+    height: 56,
+  },
+  countdownMaskWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 48,
+    minHeight: 56,
+  },
+  countdownValueMask: {
     fontSize: 40,
     fontWeight: '700',
-    color: '#6B46C1',
+    color: '#000',
   },
   incorrectIconContainer: {
     marginBottom: 20,
@@ -453,8 +587,8 @@ const styles = StyleSheet.create({
   },
   incorrectMessage: {
     fontSize: 16,
-    fontWeight: '400',
-    color: '#4B5563',
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.pinDarkBlue,
     textAlign: 'center',
   },
 });

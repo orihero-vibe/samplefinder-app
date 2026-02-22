@@ -23,12 +23,17 @@ import { PlusJakartaSans_800ExtraBold} from '@expo-google-fonts/plus-jakarta-san
 import AppNavigator from '@/navigation/AppNavigator';
 import { TriviaModal } from '@/components/trivia';
 import type { TriviaQuestion } from '@/lib/database/trivia';
-import { getActiveTrivia, submitTriviaAnswer } from '@/lib/database';
-import { getUserProfile } from '@/lib/database';
+import { getActiveTrivia, submitTriviaAnswer, dismissTrivia, fetchTiers, getUserProfile } from '@/lib/database';
 import { setupTokenRefreshListener, initializePushNotifications, cleanupPastEventReminders } from '@/lib/notifications';
 import { getCurrentUser } from '@/lib/auth';
 import { CustomSplashScreen } from '@/components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
+import { useTier1ModalStore } from '@/stores/tier1ModalStore';
+import { useTierCompletionStore } from '@/stores/tierCompletionStore';
+import { AchievementModal } from '@/screens/tabs/promotions/components';
+import type { Tier } from '@/screens/tabs/promotions/components';
+import { Share } from 'react-native';
+import { getUserCurrentTier } from '@/lib/database/tiers';
 import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
@@ -40,6 +45,17 @@ export default function App() {
   const [triviaQuestion, setTriviaQuestion] = useState<TriviaQuestion | null>(null);
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
   const triviaShownRef = useRef(false);
+
+  const shouldShowTier1Modal = useTier1ModalStore((s) => s.shouldShowTier1Modal);
+  const setShouldShowTier1Modal = useTier1ModalStore((s) => s.setShouldShowTier1Modal);
+  const [tier1ModalVisible, setTier1ModalVisible] = useState(false);
+  const [tier1Tier, setTier1Tier] = useState<Tier | null>(null);
+
+  // Global tier completion modal state
+  const shouldShowTierModal = useTierCompletionStore((s) => s.shouldShowTierModal);
+  const completedTier = useTierCompletionStore((s) => s.completedTier);
+  const pointsEarned = useTierCompletionStore((s) => s.pointsEarned);
+  const clearTierCompletion = useTierCompletionStore((s) => s.clearTierCompletion);
 
   useEffect(() => {
     async function prepare() {
@@ -112,26 +128,121 @@ export default function App() {
   }, []);
 
   // Fetch active trivia 5 seconds after app is ready (only once per session)
+  // Fetches profile in effect to avoid race with auth session restoration
   useEffect(() => {
-    if (appIsReady && userProfileId && !triviaShownRef.current) {
-      const timer = setTimeout(async () => {
-        try {
-          const triviaQuestions = await getActiveTrivia(userProfileId);
-          
-          if (triviaQuestions.length > 0) {
-            // Show the first available trivia question
-            setTriviaQuestion(triviaQuestions[0]);
-            setShowTrivia(true);
-            triviaShownRef.current = true;
-          }
-        } catch (error) {
-          console.error('[App] Failed to fetch trivia:', error);
-        }
-      }, 5000); // 5 seconds delay
+    if (!appIsReady || triviaShownRef.current) return;
 
-      return () => clearTimeout(timer);
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const user = await getCurrentUser();
+        if (cancelled || !user) return;
+
+        const profile = await getUserProfile(user.$id);
+        if (cancelled || !profile) return;
+
+        setUserProfileId(profile.$id); // for submit handler
+        const triviaQuestions = await getActiveTrivia(profile.$id);
+        if (cancelled) return;
+
+        if (triviaQuestions.length > 0) {
+          setTriviaQuestion(triviaQuestions[0]);
+          setShowTrivia(true);
+          triviaShownRef.current = true;
+        }
+      } catch (error) {
+        if (!cancelled) console.error('[App] Failed to fetch trivia:', error);
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [appIsReady]);
+
+  // Show Tier 1 modal for newly signed up users (after email verification)
+  useEffect(() => {
+    if (!shouldShowTier1Modal || !appIsReady) return;
+
+    let cancelled = false;
+    const loadAndShowTier1Modal = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (cancelled || !user) return;
+
+        const [profile, tiers] = await Promise.all([
+          getUserProfile(user.$id),
+          fetchTiers(),
+        ]);
+        if (cancelled || !profile || !tiers.length) return;
+
+        const tier1Row = tiers.find((t) => t.order === 1) ?? tiers[0];
+        const cleanImageURL = tier1Row.imageURL?.replace('&mode=admin', '') ?? null;
+
+        // Tier 1 welcome is always "earned" (Thanks for Joining! / Share), not progress state
+        const tier1: Tier = {
+          id: tier1Row.$id,
+          name: tier1Row.name,
+          currentPoints: tier1Row.requiredPoints,
+          requiredPoints: tier1Row.requiredPoints,
+          badgeEarned: true,
+          imageURL: cleanImageURL,
+          order: tier1Row.order,
+        };
+
+        if (!cancelled) {
+          setTier1Tier(tier1);
+          setTier1ModalVisible(true);
+        }
+      } catch (error) {
+        if (!cancelled) console.error('[App] Failed to load Tier 1 modal data:', error);
+      }
+    };
+
+    loadAndShowTier1Modal();
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldShowTier1Modal, appIsReady]);
+
+  const handleCloseTier1Modal = () => {
+    setTier1ModalVisible(false);
+    setTier1Tier(null);
+    setShouldShowTier1Modal(false);
+  };
+
+  const handleShareTier1 = async () => {
+    try {
+      if (tier1Tier) {
+        await Share.share({
+          message: `I just earned the ${tier1Tier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+        });
+      }
+      handleCloseTier1Modal();
+    } catch (error) {
+      console.error('[App] Error sharing achievement:', error);
+      handleCloseTier1Modal();
     }
-  }, [appIsReady, userProfileId]);
+  };
+
+  const handleCloseTierCompletionModal = () => {
+    clearTierCompletion();
+  };
+
+  const handleShareTierCompletion = async () => {
+    try {
+      if (completedTier) {
+        await Share.share({
+          message: `I just earned the ${completedTier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
+        });
+      }
+      handleCloseTierCompletionModal();
+    } catch (error) {
+      console.error('[App] Error sharing tier completion:', error);
+      handleCloseTierCompletionModal();
+    }
+  };
 
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
@@ -158,8 +269,46 @@ export default function App() {
     return submitTriviaAnswer(userProfileId, triviaQuestion.$id, answerIndex);
   };
 
-  const handleAnswerResult = (isCorrect: boolean, pointsAwarded: number) => {
-    // You can add logic here to update user points in UI, show notifications, etc.
+  const handleAnswerResult = async (isCorrect: boolean, pointsAwarded: number) => {
+    // Check for tier completion after earning points from trivia
+    if (isCorrect && pointsAwarded > 0 && userProfileId) {
+      try {
+        const [profile, tiers] = await Promise.all([
+          getUserProfile(userProfileId),
+          fetchTiers(),
+        ]);
+
+        if (!profile || !tiers.length) return;
+
+        const newTotalPoints = profile.totalPoints || 0;
+        const oldTotalPoints = newTotalPoints - pointsAwarded;
+        
+        const oldTier = getUserCurrentTier(tiers, oldTotalPoints);
+        const newTier = getUserCurrentTier(tiers, newTotalPoints);
+
+        // If tier changed, show the achievement modal
+        if (newTier && oldTier && newTier.$id !== oldTier.$id) {
+          const cleanImageURL = newTier.imageURL?.replace('&mode=admin', '') ?? null;
+          const tierForModal: Tier = {
+            id: newTier.$id,
+            name: newTier.name,
+            currentPoints: Math.min(newTotalPoints, newTier.requiredPoints),
+            requiredPoints: newTier.requiredPoints,
+            badgeEarned: newTotalPoints >= newTier.requiredPoints,
+            imageURL: cleanImageURL,
+            order: newTier.order,
+          };
+
+          useTierCompletionStore.getState().setTierCompleted(
+            tierForModal,
+            pointsAwarded,
+            'trivia'
+          );
+        }
+      } catch (error) {
+        console.error('[App] Failed to check tier completion after trivia:', error);
+      }
+    }
   };
 
   return (
@@ -174,8 +323,27 @@ export default function App() {
               onClose={handleTriviaClose}
               onSubmitAnswer={handleSubmitAnswer}
               onAnswerResult={handleAnswerResult}
+              onSkipped={() => {
+                if (userProfileId && triviaQuestion) {
+                  dismissTrivia(userProfileId, triviaQuestion.$id);
+                }
+              }}
             />
           )}
+          <AchievementModal
+            visible={tier1ModalVisible}
+            tier={tier1Tier}
+            points={100}
+            onClose={handleCloseTier1Modal}
+            onShare={handleShareTier1}
+          />
+          <AchievementModal
+            visible={shouldShowTierModal}
+            tier={completedTier}
+            points={pointsEarned}
+            onClose={handleCloseTierCompletionModal}
+            onShare={handleShareTierCompletion}
+          />
         </View>
       </BottomSheetModalProvider>
     </GestureHandlerRootView>

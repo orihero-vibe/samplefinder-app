@@ -127,7 +127,7 @@ const SignUpScreen = () => {
           inputBorderColor={Colors.blueColorMode}
           inputBorderWidth={3}
           error={!!fieldErrors.username}
-        
+          errorMessage={fieldErrors.username}
         />
 
         <CustomInput
@@ -141,6 +141,7 @@ const SignUpScreen = () => {
           error={!!fieldErrors.zipCode}
           placeholder="12345"
           maxLength={5}
+          containerStyle={styles.zipCodeContainer}
         />
 
         <CustomInput
@@ -218,11 +219,7 @@ const SignUpScreen = () => {
 
       <PushNotificationModal
         visible={showPushNotificationModal}
-        onClose={() => {
-          setShowPushNotificationModal(false);
-          // Show age verification modal after push notification modal is closed
-          setShowAgeVerificationModal(true);
-        }}
+        onClose={() => setShowPushNotificationModal(false)}
         onEnable={handlePushNotificationEnable}
         onNotNow={handlePushNotificationNotNow}
       />

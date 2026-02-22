@@ -248,6 +248,7 @@ export const updateUserProfile = async (
     totalReviews?: number;
     totalPoints?: number;
     favoriteIds?: string[];
+    tierLevel?: string | null;
   }
 ): Promise<UserProfileRow> => {
   console.log('[database.updateUserProfile] Updating user profile:', {
@@ -295,6 +296,9 @@ export const updateUserProfile = async (
     }
     if (updates.favoriteIds !== undefined) {
       updateData.favoriteIds = updates.favoriteIds;
+    }
+    if (updates.tierLevel !== undefined) {
+      updateData.tierLevel = updates.tierLevel;
     }
     if ((updates as any).savedEventIds !== undefined) {
       updateData.savedEventIds = (updates as any).savedEventIds;
@@ -357,6 +361,7 @@ export const updateUserProfile = async (
       savedEventIds: parseSavedEventIds(updatedProfile.savedEventIds),
       notifications: updatedProfile.notifications || [],
       notificationPreferences: updatedProfile.notificationPreferences,
+      tierLevel: updatedProfile.tierLevel ?? null,
     };
   } catch (error: any) {
     console.error('[database.updateUserProfile] Error updating user profile:', error);
@@ -480,6 +485,72 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
 };
 
 /**
+ * Check if a username exists for a different user (used in edit profile)
+ * Returns true if username exists and belongs to a different user
+ */
+export const checkUsernameExistsForDifferentUser = async (
+  username: string, 
+  currentUserProfileId: string
+): Promise<boolean> => {
+  console.log('[database.checkUsernameExistsForDifferentUser] Checking username:', username, 'excluding profile:', currentUserProfileId);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.checkUsernameExistsForDifferentUser]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  if (!username || !username.trim()) {
+    return false;
+  }
+
+  const trimmedUsername = username.trim();
+  const lowerUsername = trimmedUsername.toLowerCase();
+
+  try {
+    // Query for profiles with matching username
+    let allResults;
+    try {
+      allResults = await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: USER_PROFILES_TABLE_ID,
+        queries: [
+          Query.limit(1000),
+        ],
+      });
+
+      // Check if username exists for a different user (case-insensitive)
+      if (allResults.rows && allResults.rows.length > 0) {
+        const existsForDifferentUser = allResults.rows.some((row: any) => 
+          row.username && 
+          row.username.toLowerCase() === lowerUsername && 
+          row.$id !== currentUserProfileId
+        );
+        console.log('[database.checkUsernameExistsForDifferentUser] Result:', existsForDifferentUser);
+        return existsForDifferentUser;
+      }
+    } catch (queryError: any) {
+      // Handle blob resolution errors gracefully
+      if (queryError?.message?.includes('blob') || queryError?.message?.includes('Unable to resolve data')) {
+        console.warn('[database.checkUsernameExistsForDifferentUser] Blob resolution error:', queryError?.message);
+        // Allow update - if username is duplicate, the update will fail
+        return false;
+      } else {
+        throw queryError;
+      }
+    }
+
+    console.log('[database.checkUsernameExistsForDifferentUser] Username does not exist for other users');
+    return false;
+  } catch (error: any) {
+    console.error('[database.checkUsernameExistsForDifferentUser] Error:', error);
+    console.warn('[database.checkUsernameExistsForDifferentUser] Error occurred, allowing update.');
+    return false;
+  }
+};
+
+/**
  * Get user profile by authID
  */
 export const getUserProfile = async (authID: string): Promise<UserProfileRow | null> => {
@@ -559,6 +630,7 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       savedEventIds: parseSavedEventIds(profile.savedEventIds),
       notifications: profile.notifications || [],
       notificationPreferences: profile.notificationPreferences,
+      tierLevel: profile.tierLevel ?? null,
     };
   } catch (error: any) {
     console.error('[database.getUserProfile] Error fetching user profile:', error);

@@ -1,10 +1,11 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useFavoritesStore } from '@/stores/favoritesStore';
 import { NewBrandData } from './components';
 import { fetchClients, fetchAllEvents, getUserProfile, addFavoriteBrand, removeFavoriteBrand, fetchCategories, CategoryData } from '@/lib/database';
-import { convertClientsToBrands, filterEventsByAdultCategories } from '@/utils/brandUtils';
+import { convertClientsToBrands, filterEventsByAdultCategories, extractClientFromEvent } from '@/utils/brandUtils';
 import { ClientData, EventRow } from '@/lib/database';
-import { formatEventDate, formatEventTime } from '@/utils/formatters';
+import { formatEventDate, formatEventTime, isEventTodayOrLater } from '@/utils/formatters';
 import type { EventData } from './components/BrandUpcomingEvents';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -12,6 +13,7 @@ export interface FavoriteBrandData {
   id: string;
   brandName: string;
   description: string;
+  productTypes?: string[];
   brandPhotoURL?: string;
   events?: EventData[];
 }
@@ -70,12 +72,11 @@ export const useFavoritesScreen = () => {
       // Convert clients to brand data with product types from filtered events
       const brands = convertClientsToBrands(clients, filteredEvents);
       
-      // Format description from product types
+      // Format description: use brandDescription if available, otherwise fall back to product types
       const brandsWithDescription = brands.map((brand) => ({
         ...brand,
-        description: brand.productTypes.length > 0
-          ? brand.productTypes.join(', ')
-          : 'No products listed',
+        description: brand.description 
+          || (brand.productTypes.length > 0 ? brand.productTypes.join(', ') : 'No description available'),
       }));
       
       setAllBrands(brandsWithDescription);
@@ -95,6 +96,13 @@ export const useFavoritesScreen = () => {
     loadData();
   }, [setFavorites]);
 
+  // Refetch events when Favorites tab gains focus so admin changes appear without app restart
+  useFocusEffect(
+    useCallback(() => {
+      loadData(true);
+    }, [])
+  );
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     loadData(true);
@@ -105,8 +113,19 @@ export const useFavoritesScreen = () => {
     const brands: FavoriteBrandData[] = [];
     
     for (const brandId of favoriteIds) {
-      // Find the client/brand by ID
-      const client = allClients.find((c) => c.$id === brandId);
+      // Find the client/brand by ID (from clients list or derive from events)
+      let client = allClients.find((c) => c.$id === brandId);
+      if (!client) {
+        // Fallback: derive from events (e.g., brand has upcoming events but wasn't in clients due to pagination)
+        const firstEvent = allEvents.find((e) => {
+          const cid = typeof e.client === 'string' ? e.client : e.client?.$id;
+          return cid === brandId;
+        });
+        const extracted = firstEvent && typeof firstEvent.client === 'object'
+          ? extractClientFromEvent(firstEvent)
+          : null;
+        if (extracted) client = extracted;
+      }
       if (!client) continue;
       
       const brandName = client.name || client.title || 'Brand';
@@ -114,16 +133,23 @@ export const useFavoritesScreen = () => {
       // Get brand data to find product types
       const brandData = allBrands.find((b) => b.id === brandId);
       
-      // Find all upcoming events for this brand
-      const brandEvents = allEvents
+      // Find all events for this brand to get brandDescription
+      const allBrandEvents = allEvents
         .filter((event) => {
           const clientId = typeof event.client === 'string' 
             ? event.client 
             : event.client?.$id;
           return clientId === brandId;
         })
-        .filter((event) => new Date(event.date) >= new Date()) // Only upcoming events
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      // Get brandDescription from the most recent event (prioritize upcoming events, then past events)
+      const upcomingEvents = allBrandEvents.filter((event) => isEventTodayOrLater(event.date));
+      const mostRelevantEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : allBrandEvents[allBrandEvents.length - 1];
+      const brandDescription = mostRelevantEvent?.brandDescription || null;
+      
+      // Filter to only upcoming events for display
+      const brandEvents = upcomingEvents
         .slice(0, 3) // Limit to 3 upcoming events
         .map((event): EventData => {
           const eventClient = typeof event.client !== 'string' ? event.client : null;
@@ -145,10 +171,16 @@ export const useFavoritesScreen = () => {
           };
         });
       
+      // Prefer client/brand description (from brandData), then event-level brandDescription, then product types
+      const description = brandData?.description 
+        || brandDescription 
+        || brandData?.productTypes?.join(', ') 
+        || 'No description available';
+      
       brands.push({
         id: brandId,
         brandName,
-        description: brandData?.description || brandData?.productTypes?.join(', ') || 'No products listed',
+        description,
         brandPhotoURL: client.logoURL || undefined,
         events: brandEvents.length > 0 ? brandEvents : undefined,
       });

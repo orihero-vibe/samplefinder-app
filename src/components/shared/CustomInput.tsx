@@ -11,6 +11,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { formatPhoneNumber, formatDate } from '@/utils/formatters';
 import { QuestionIcon, QuestionMarkIcon } from '@/icons';
+import { Colors } from '@/constants';
 
 export type InputType = 
   | 'text'
@@ -36,6 +37,7 @@ interface CustomInputProps extends Omit<TextInputProps, 'style'> {
   onHelpPress?: () => void;
   containerStyle?: object;
   autoFormat?: boolean; // Enable automatic formatting for phone/date
+  inputTextColor?: string;
 }
 
 const CustomInput: React.FC<CustomInputProps> = ({
@@ -45,6 +47,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
   placeholder,
   type = 'text',
   labelColor = '#000',
+  inputTextColor = Colors.brandBlueBright,
   inputBorderColor,
   inputBorderWidth,
   error = false,
@@ -143,39 +146,42 @@ const CustomInput: React.FC<CustomInputProps> = ({
         </View>
       )}
       <View style={styles.inputContainer}>
-        <TextInput
-          style={[
-            styles.input,
-            { 
-              borderColor: getBorderColor(),
-              ...(inputBorderWidth && { borderWidth: inputBorderWidth })
-            },
-            error && styles.inputError,
-            shouldShowPasswordToggle && styles.inputWithIcon,
-          ]}
-          value={value}
-          onChangeText={handleTextChange}
-          placeholder={getPlaceholder()}
-          placeholderTextColor="#999"
-          secureTextEntry={shouldShowPassword}
-          keyboardType={getKeyboardType()}
-          autoCapitalize={type === 'email' || type === 'password' ? 'none' : 'sentences'}
-          autoCorrect={type === 'email' || type === 'password' ? false : true}
-          {...textInputProps}
-        />
-        {shouldShowPasswordToggle && (
-          <TouchableOpacity
-            onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-            style={styles.eyeIcon}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons
-              name={isPasswordVisible ? 'visibility-off' : 'visibility'}
-              size={24}
-              color="#666"
-            />
-          </TouchableOpacity>
-        )}
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                borderColor: getBorderColor(),
+                ...(inputBorderWidth && { borderWidth: inputBorderWidth }),
+                ...(inputTextColor && { color: inputTextColor }),
+              },
+              error && styles.inputError,
+              shouldShowPasswordToggle && styles.inputWithIcon,
+            ]}
+            value={value}
+            onChangeText={handleTextChange}
+            placeholder={getPlaceholder()}
+            placeholderTextColor="#999"
+            secureTextEntry={shouldShowPassword}
+            keyboardType={getKeyboardType()}
+            autoCapitalize={type === 'email' || type === 'password' ? 'none' : 'sentences'}
+            autoCorrect={type === 'email' || type === 'password' ? false : true}
+            {...textInputProps}
+          />
+          {shouldShowPasswordToggle && (
+            <TouchableOpacity
+              onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+              style={styles.eyeIcon}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons
+                name={isPasswordVisible ? 'visibility-off' : 'visibility'}
+                size={24}
+                color="#666"
+              />
+            </TouchableOpacity>
+          )}
+        </View>
         {error && errorMessage && (
           <Text style={styles.errorText}>{errorMessage}</Text>
         )}
@@ -209,6 +215,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   inputContainer: {
+    width: '100%',
+  },
+  inputWrapper: {
     position: 'relative',
     width: '100%',
   },
@@ -231,20 +240,18 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     position: 'absolute',
-    right: 20,
-    top: '50%',
-    transform: [{ translateY: -12 }],
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    minWidth: 40,
   },
   errorText: {
-    position: 'absolute',
-    top: '100%',
-    left: 4,
-    right: 4,
     color: '#F51616',
     fontSize: 12,
     fontFamily: 'Quicksand_700Bold',
     marginTop: 4,
-    zIndex: 10,
+    paddingHorizontal: 4,
   },
 });
 

@@ -48,7 +48,7 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
         
         // Filter out archived and hidden events
         const isArchived = row.isArchived === true || row.isArchived === 'true';
-        const isHidden = row.isHidder === true || row.isHidder === 'true';
+        const isHidden = row.isHidden === true || row.isHidden === 'true';
         
         return clientMatches && !isArchived && !isHidden;
       })
@@ -81,11 +81,11 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
           eventInfo: row.eventInfo || '',
           discount: row.discount ?? null,
           discountImageURL: row.discountImageURL || null,
-          radius: row.radius || undefined,
+          brandDescription: row.brandDescription ?? null,
           categories: row.categories || [], // Include categories for adult filtering
           location,
           isArchived: row.isArchived || false,
-          isHidder: row.isHidder || false,
+          isHidden: row.isHidden || false,
           $createdAt: row.$createdAt,
           $updatedAt: row.$updatedAt,
         };
@@ -176,11 +176,12 @@ export const fetchAllEvents = async (): Promise<EventRow[]> => {
         eventInfo: row.eventInfo || '',
         discount: row.discount ?? null,
         discountImageURL: row.discountImageURL || null,
-        radius: row.radius || undefined,
+        brandDescription: row.brandDescription ?? null,
         categories: row.categories || [], // Include categories for adult filtering
         location,
+        locationName: row.locationName || '',
         isArchived: row.isArchived || false,
-        isHidder: row.isHidder || false,
+        isHidden: row.isHidden || false,
         $createdAt: row.$createdAt,
         $updatedAt: row.$updatedAt,
       };
@@ -275,11 +276,12 @@ export const fetchAllUpcomingEvents = async (): Promise<EventRow[]> => {
         eventInfo: row.eventInfo || '',
         discount: row.discount ?? null,
         discountImageURL: row.discountImageURL || null,
-        radius: row.radius || undefined,
+        brandDescription: row.brandDescription ?? null,
         categories: row.categories || [], // Include categories for adult filtering
         location,
+        locationName: row.locationName || '',
         isArchived: row.isArchived || false,
-        isHidder: row.isHidder || false,
+        isHidden: row.isHidden || false,
         $createdAt: row.$createdAt,
         $updatedAt: row.$updatedAt,
       };
@@ -322,7 +324,7 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
 
     // Check if event is archived or hidden
     const isArchived = result.isArchived === true || result.isArchived === 'true';
-    const isHidden = result.isHidder === true || result.isHidder === 'true';
+    const isHidden = result.isHidden === true || result.isHidden === 'true';
 
     if (isArchived || isHidden) {
       console.log('[database.fetchEventById] Event is archived or hidden:', eventId);
@@ -365,11 +367,11 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       eventInfo: result.eventInfo || '',
       discount: result.discount ?? null,
       discountImageURL: result.discountImageURL || null,
-      radius: result.radius || undefined,
+      brandDescription: result.brandDescription ?? null,
       categories: result.categories || [], // Include categories for adult filtering
       location,
       isArchived: result.isArchived || false,
-      isHidder: result.isHidder || false,
+      isHidden: result.isHidden || false,
       $createdAt: result.$createdAt,
       $updatedAt: result.$updatedAt,
     };

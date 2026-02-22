@@ -45,6 +45,7 @@ const CheckInCodeInput: React.FC<CheckInCodeInputProps> = ({
         value={code}
         onChangeText={handleCodeChange}
         onCodeComplete={handleCodeComplete}
+        numericOnly={false}
       />
       {showError && (
         <Text style={styles.errorText}>Incorrect Code</Text>

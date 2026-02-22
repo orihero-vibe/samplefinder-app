@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/Colors';
+import { getTierDisplayParts } from '@/utils/formatters';
 import { Monicon } from '@monicon/native';
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
@@ -20,6 +21,7 @@ interface TierItemProps {
 const TierItem: React.FC<TierItemProps> = ({ tier }) => {
   const progress = Math.min((tier.currentPoints / tier.requiredPoints) * 100, 100);
   const [imageError, setImageError] = React.useState(false);
+  const { main, subtitle } = getTierDisplayParts(tier.name);
 
   return (
     <View style={styles.container}>
@@ -36,7 +38,10 @@ const TierItem: React.FC<TierItemProps> = ({ tier }) => {
         )}
       </View>
       <View style={styles.info}>
-        <Text style={styles.name}>{tier.name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{main}</Text>
+          {subtitle ? <Text style={styles.nameSubtitle}>{subtitle}</Text> : null}
+        </View>
         {tier.badgeEarned ? (
           <Text style={styles.badgeEarnedText}>Badge Earned!</Text>
         ) : (
@@ -69,9 +74,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingLeft: 10
   },
+  nameRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: 4,
+  },
   name: {
     fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
+    color: Colors.blueColorMode,
+  },
+  nameSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Quicksand_500Medium',
     color: Colors.blueColorMode,
   },
   points: {

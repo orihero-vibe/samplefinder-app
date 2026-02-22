@@ -2,7 +2,11 @@ import { ID, Query } from 'react-native-appwrite';
 import { tablesDB, DATABASE_ID, USER_PROFILES_TABLE_ID } from './config';
 import type { ReviewData, ReviewRow } from './types';
 import { createUserNotification } from './userNotifications';
+import { updateUserProfile } from './users';
 import { fetchTiers, getUserCurrentTier } from './tiers';
+import { BADGE_THRESHOLDS, getLastAchievedBadge } from '@/constants/Badges';
+import { useTierCompletionStore } from '@/stores/tierCompletionStore';
+import type { Tier } from '@/screens/tabs/promotions/components';
 
 export const REVIEWS_TABLE_ID = process.env.APPWRITE_REVIEWS_TABLE_ID || 'reviews';
 
@@ -29,8 +33,14 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
     
     const profile = userProfile as any;
     const oldTotalPoints = profile.totalPoints || 0;
-    const newTotalReviews = (profile.totalReviews || 0) + 1;
+    const oldTotalReviews = profile.totalReviews || 0;
+    const newTotalReviews = oldTotalReviews + 1;
     const newTotalPoints = oldTotalPoints + (reviewData.pointsEarned || 0);
+
+    // Check if a new badge was earned
+    const oldBadgeThreshold = getLastAchievedBadge(oldTotalReviews);
+    const newBadgeThreshold = getLastAchievedBadge(newTotalReviews);
+    const badgeEarned = newBadgeThreshold !== null && newBadgeThreshold !== oldBadgeThreshold;
 
     const authUserID = profile.authID;
     if (!authUserID) {
@@ -92,6 +102,8 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
       const tiers = await fetchTiers();
       const newTier = getUserCurrentTier(tiers, newTotalPoints);
       if (newTier && oldTier && newTier.$id !== oldTier.$id) {
+        await updateUserProfile(profile.$id, { tierLevel: newTier.name });
+
         await createUserNotification({
           userId: authUserID,
           type: 'tierChanged',
@@ -104,10 +116,48 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
             newTierName: newTier.name,
           },
         });
+
+        // Trigger global tier completion modal
+        const cleanImageURL = newTier.imageURL?.replace('&mode=admin', '') ?? null;
+        const tierForModal: Tier = {
+          id: newTier.$id,
+          name: newTier.name,
+          currentPoints: Math.min(newTotalPoints, newTier.requiredPoints),
+          requiredPoints: newTier.requiredPoints,
+          badgeEarned: newTotalPoints >= newTier.requiredPoints,
+          imageURL: cleanImageURL,
+          order: newTier.order,
+        };
+        
+        useTierCompletionStore.getState().setTierCompleted(
+          tierForModal,
+          reviewData.pointsEarned || 0,
+          'review'
+        );
       }
     } catch (tierError) {
       console.error('[reviews] Failed to check tier or create tier notification:', tierError);
       // Don't fail the review if tier notification fails
+    }
+
+    // Create badge earned notification if applicable
+    if (badgeEarned && newBadgeThreshold !== null) {
+      try {
+        await createUserNotification({
+          userId: authUserID,
+          type: 'badgeEarned',
+          title: 'Badge Earned! 🎉',
+          message: `Congratulations! You've earned the ${newBadgeThreshold} Review Badge!`,
+          data: {
+            badgeType: 'reviews',
+            badgeThreshold: newBadgeThreshold,
+            achievementCount: newTotalReviews,
+          },
+        });
+      } catch (badgeError) {
+        console.error('[reviews] Failed to create badge notification:', badgeError);
+        // Don't fail the review if badge notification fails
+      }
     }
     
     return {
@@ -121,6 +171,11 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
       pointsEarned: result.pointsEarned,
       $createdAt: result.$createdAt,
       $updatedAt: result.$updatedAt,
+      badgeEarned: badgeEarned ? {
+        badgeType: 'reviews' as const,
+        badgeNumber: newBadgeThreshold!,
+        achievementCount: newTotalReviews,
+      } : undefined,
     };
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create review');

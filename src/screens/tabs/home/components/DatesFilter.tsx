@@ -1,11 +1,12 @@
 import React from 'react';
-import FilterModal, { FilterOption } from './FilterModal';
+import FilterModal, { FilterOption, FilterButtonLayout } from './FilterModal';
 
 interface DatesFilterProps {
   visible: boolean;
   selectedValues: string[];
   onToggle: (value: string) => void;
   onClose: () => void;
+  buttonLayout?: FilterButtonLayout;
 }
 
 const datesOptions: FilterOption[] = [
@@ -16,7 +17,7 @@ const datesOptions: FilterOption[] = [
   { id: '5', label: 'View All', value: 'all' },
 ];
 
-const DatesFilter: React.FC<DatesFilterProps> = ({ visible, selectedValues, onToggle, onClose }) => {
+const DatesFilter: React.FC<DatesFilterProps> = ({ visible, selectedValues, onToggle, onClose, buttonLayout }) => {
   return (
     <FilterModal
       visible={visible}
@@ -25,6 +26,7 @@ const DatesFilter: React.FC<DatesFilterProps> = ({ visible, selectedValues, onTo
       selectedValues={selectedValues}
       onToggle={onToggle}
       onClose={onClose}
+      buttonLayout={buttonLayout}
     />
   );
 };

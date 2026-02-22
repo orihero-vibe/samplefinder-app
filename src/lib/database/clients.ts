@@ -17,6 +17,7 @@ export const fetchClients = async (): Promise<ClientData[]> => {
     const result = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: CLIENTS_TABLE_ID,
+      queries: [Query.limit(1000)], // Ensure all clients loaded (Appwrite default is 25)
     });
 
     if (!result.rows || result.rows.length === 0) {

@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { Alert, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, deleteAccount } from '@/lib/auth';
-import { getUserProfile, updateUserProfile, UserProfileRow } from '@/lib/database';
+import { getUserProfile, updateUserProfile, UserProfileRow, checkUsernameExistsForDifferentUser } from '@/lib/database';
 import { updateEmail, updatePassword } from '@/lib/auth';
 import { uploadAvatar, deleteAvatar, extractFileIdFromUrl } from '@/lib/storage';
 
@@ -36,7 +36,10 @@ export const useEditProfileScreen = () => {
   const [validationErrors, setValidationErrors] = useState<{
     password?: string;
     phoneNumber?: string;
+    username?: string;
   }>({});
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const usernameCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadProfile = async () => {
     try {
@@ -87,6 +90,62 @@ export const useEditProfileScreen = () => {
       loadProfile();
     }, [])
   );
+
+  // Check username uniqueness with debouncing
+  useEffect(() => {
+    if (!profile) return;
+
+    // Clear any existing timeout
+    if (usernameCheckTimeoutRef.current) {
+      clearTimeout(usernameCheckTimeoutRef.current);
+    }
+
+    const trimmedUsername = username.trim();
+    
+    // Skip check if username hasn't changed or is empty
+    if (!trimmedUsername || trimmedUsername === (profile.username || '')) {
+      setValidationErrors((prev) => {
+        const { username: _, ...rest } = prev;
+        return rest;
+      });
+      return;
+    }
+
+    // Debounce the username check
+    usernameCheckTimeoutRef.current = setTimeout(async () => {
+      try {
+        setIsCheckingUsername(true);
+        const exists = await checkUsernameExistsForDifferentUser(trimmedUsername, profile.$id);
+        
+        if (exists) {
+          setValidationErrors((prev) => ({
+            ...prev,
+            username: 'This username is already taken',
+          }));
+        } else {
+          setValidationErrors((prev) => {
+            const { username: _, ...rest } = prev;
+            return rest;
+          });
+        }
+      } catch (error) {
+        console.error('[EditProfileScreen] Error checking username:', error);
+        // Clear username error on check failure to avoid blocking legitimate updates
+        setValidationErrors((prev) => {
+          const { username: _, ...rest } = prev;
+          return rest;
+        });
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      if (usernameCheckTimeoutRef.current) {
+        clearTimeout(usernameCheckTimeoutRef.current);
+      }
+    };
+  }, [username, profile]);
 
   // Track changes
   useEffect(() => {
@@ -153,11 +212,17 @@ export const useEditProfileScreen = () => {
   };
 
   const validateForm = (): string | null => {
-    const newValidationErrors: { password?: string; phoneNumber?: string } = {};
+    const newValidationErrors: { password?: string; phoneNumber?: string; username?: string } = {};
     
     if (!username.trim()) {
       return 'Username is required';
     }
+    
+    // Check if username is taken
+    if (validationErrors.username) {
+      return validationErrors.username;
+    }
+    
     if (!phoneNumber.trim()) {
       return 'Phone number is required';
     }
@@ -208,6 +273,13 @@ export const useEditProfileScreen = () => {
   };
 
   const handleSaveUpdates = async () => {
+    // Wait for username check to complete if in progress
+    if (isCheckingUsername) {
+      setErrorModalMessage('Please wait while we verify the username availability');
+      setShowErrorModal(true);
+      return;
+    }
+
     const validationError = validateForm();
     if (validationError) {
       setErrorModalMessage(validationError);
@@ -547,6 +619,7 @@ export const useEditProfileScreen = () => {
     showUnsavedChangesModal,
     error,
     validationErrors,
+    isCheckingUsername,
     profile,
     username,
     phoneNumber,

@@ -7,7 +7,6 @@ import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
 import ReferFriendSuccessBottomSheet from '@/components/shared/ReferFriendSuccessBottomSheet';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
-import { calculateTierStatus } from '@/lib/database';
 import {
   TopLinks,
   ProfileOverview,
@@ -26,6 +25,7 @@ const ProfileScreen = () => {
     profile,
     authUser,
     statistics,
+    tierStatus,
     isLoading,
     error,
     isLoggingOut,
@@ -109,7 +109,7 @@ const ProfileScreen = () => {
         <RewardsProgressButton onPress={handleViewRewardsPress} />
         <PersonalInfoSection
           data={{
-            tierStatus: calculateTierStatus(statistics.totalPoints),
+            tierStatus,
             dateOfBirth: formattedDOB,
             phoneNumber: profile?.phoneNumber || '',
             email: authUser?.email || '',

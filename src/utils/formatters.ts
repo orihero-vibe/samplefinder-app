@@ -3,6 +3,19 @@
  */
 
 /**
+ * Splits a tier display name into main title and optional parenthetical subtitle.
+ * E.g. "VIS (Very Important Sampler)" → { main: "VIS", subtitle: "(Very Important Sampler)" }.
+ * Used so the subtitle can be rendered in a smaller font per Figma.
+ */
+export const getTierDisplayParts = (name: string): { main: string; subtitle: string | null } => {
+  const match = name.match(/^(.+?)\s+(\([^)]+\))$/);
+  if (match) {
+    return { main: match[1].trim(), subtitle: match[2] };
+  }
+  return { main: name, subtitle: null };
+};
+
+/**
  * Formats a phone number as (XXX) XXX-XXXX
  */
 export const formatPhoneNumber = (text: string): string => {
@@ -304,6 +317,18 @@ export const formatEventTime = (startTime: string, endTime: string): string => {
     console.error('[formatters.formatEventTime] Error formatting time:', error);
     return '';
   }
+};
+
+/**
+ * Returns true if event date is today or later (compares by calendar date only).
+ * Use for "upcoming" so today's events still display even if their start time has passed.
+ */
+export const isEventTodayOrLater = (eventDate: string | Date): boolean => {
+  const event = new Date(eventDate);
+  const today = new Date();
+  event.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  return event >= today;
 };
 
 /**

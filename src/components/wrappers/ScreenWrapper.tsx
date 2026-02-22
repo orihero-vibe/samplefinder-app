@@ -23,13 +23,18 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   const { bottom } = useSafeAreaInsets();
   const footerHeight = isSmallDevice ? 60 : isMediumDevice ? 70 : 80;
   const totalFooterHeight = footerHeight + bottom;
-  
+
+  const scrollContentStyle = [
+    styles.scrollContent,
+    { paddingBottom: totalFooterHeight + 8 },
+    contentBackgroundColor && { backgroundColor: contentBackgroundColor },
+  ];
+
   const contentStyle = [
     styles.content,
     contentBackgroundColor && { backgroundColor: contentBackgroundColor },
     contentContainerStyle,
   ];
-
 
   const content = (
     <>
@@ -59,7 +64,7 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           style={styles.keyboardView}
         >
           <ScrollView
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: totalFooterHeight + 16 }]}
+            contentContainerStyle={scrollContentStyle}
             showsVerticalScrollIndicator={false}
           >
             {content}
@@ -87,7 +92,7 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   style={{ flex: 1 }}
 >
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: totalFooterHeight + 16 }]}
+          contentContainerStyle={scrollContentStyle}
           showsVerticalScrollIndicator={false}
         >
           {content}
@@ -133,7 +138,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   content: {
-    flex: 1,
     paddingHorizontal: isSmallDevice ? 20 : 30,
     paddingVertical: isSmallDevice ? 12 : isMediumDevice ? 16 : 20,
     paddingBottom: isSmallDevice ? 16 : 30,

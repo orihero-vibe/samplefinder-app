@@ -1,11 +1,12 @@
 import React from 'react';
-import FilterModal, { FilterOption } from './FilterModal';
+import FilterModal, { FilterOption, FilterButtonLayout } from './FilterModal';
 
 interface RadiusFilterProps {
   visible: boolean;
   selectedValues: string[];
   onToggle: (value: string) => void;
   onClose: () => void;
+  buttonLayout?: FilterButtonLayout;
 }
 
 const radiusOptions: FilterOption[] = [
@@ -15,7 +16,7 @@ const radiusOptions: FilterOption[] = [
   { id: '4', label: '< 50 miles', value: '50' },
 ];
 
-const RadiusFilter: React.FC<RadiusFilterProps> = ({ visible, selectedValues, onToggle, onClose }) => {
+const RadiusFilter: React.FC<RadiusFilterProps> = ({ visible, selectedValues, onToggle, onClose, buttonLayout }) => {
   return (
     <FilterModal
       visible={visible}
@@ -24,6 +25,7 @@ const RadiusFilter: React.FC<RadiusFilterProps> = ({ visible, selectedValues, on
       selectedValues={selectedValues}
       onToggle={onToggle}
       onClose={onClose}
+      buttonLayout={buttonLayout}
     />
   );
 };

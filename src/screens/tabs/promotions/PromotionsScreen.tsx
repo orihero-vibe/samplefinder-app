@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ScrollView, View, ActivityIndicator, Text, TouchableOpacity, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,8 +7,10 @@ import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
 import ReferFriendSuccessBottomSheet from '@/components/shared/ReferFriendSuccessBottomSheet';
 import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import { Colors } from '@/constants/Colors';
+import { HistoryRefetchIcon } from '@/icons';
 import {
-  AchievementModal,
+  TierEarnedModal,
+  TierProgressModal,
   BadgesSection,
   EarnedSection,
   HistorySection,
@@ -22,7 +24,8 @@ import styles from './styles';
 const PromotionsScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const historyRef = useRef<View>(null);
-  
+  const [showHistory, setShowHistory] = useState(false);
+
   const {
     activeTab,
     eventBadges,
@@ -33,6 +36,7 @@ const PromotionsScreen = () => {
     historyItems,
     selectedTier,
     selectedPoints,
+    nextTierRequiredPoints,
     achievementModalVisible,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
@@ -58,20 +62,23 @@ const PromotionsScreen = () => {
   } = usePromotionsScreen();
 
   const handleViewHistory = () => {
-    // Scroll to the history section
-    historyRef.current?.measureLayout(
-      scrollViewRef.current as any,
-      (x, y) => {
-        scrollViewRef.current?.scrollTo({
-          y: y - 20, // Add some offset for better UX
-          animated: true,
-        });
-      },
-      () => {
-        // Fallback: scroll to end if measurement fails
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }
-    );
+    setShowHistory(true);
+    // Scroll to the history section after it has mounted and laid out
+    setTimeout(() => {
+      historyRef.current?.measureLayout(
+        scrollViewRef.current as any,
+        (x, y) => {
+          scrollViewRef.current?.scrollTo({
+            y: y - 20, // Add some offset for better UX
+            animated: true,
+          });
+        },
+        () => {
+          // Fallback: scroll to end if measurement fails
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }
+      );
+    }, 100);
   };
 
   return (
@@ -138,13 +145,15 @@ const PromotionsScreen = () => {
               
               {/* View History Button */}
               <TouchableOpacity style={styles.viewHistoryButton} onPress={handleViewHistory}>
-                <Monicon name="mdi:refresh" size={20} color={Colors.white} />
+                <HistoryRefetchIcon size={20} color={Colors.white} />
                 <Text style={styles.viewHistoryText}>View History</Text>
               </TouchableOpacity>
               
-              <View ref={historyRef} collapsable={false}>
-                <HistorySection historyItems={historyItems} onEventPress={handleHistoryEventPress} />
-              </View>
+              {showHistory && (
+                <View ref={historyRef} collapsable={false}>
+                  <HistorySection historyItems={historyItems} onEventPress={handleHistoryEventPress} />
+                </View>
+              )}
             </View>
           </ScrollView>
         )}
@@ -162,13 +171,13 @@ const PromotionsScreen = () => {
         onViewRewards={handleViewRewards}
       />
 
-      <AchievementModal
-        visible={achievementModalVisible}
-        tier={selectedTier}
-        points={selectedPoints}
-        onClose={handleCloseAchievementModal}
-        onShare={handleShareAchievement}
-        onViewMoreEvents={handleViewMoreEvents}
+      <TierProgressModal
+          visible={achievementModalVisible}
+          tier={selectedTier}
+          totalPoints={totalPoints}
+          nextTierRequiredPoints={nextTierRequiredPoints}
+          onClose={handleCloseAchievementModal}
+          onViewMoreEvents={handleViewMoreEvents}
       />
     </View>
   );

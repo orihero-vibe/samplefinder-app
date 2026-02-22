@@ -2,7 +2,11 @@ import { ID, Query } from 'react-native-appwrite';
 import { tablesDB, DATABASE_ID, USER_PROFILES_TABLE_ID } from './config';
 import type { CheckInData, CheckInRow } from './types';
 import { createUserNotification } from './userNotifications';
+import { updateUserProfile } from './users';
 import { fetchTiers, getUserCurrentTier } from './tiers';
+import { BADGE_THRESHOLDS, getLastAchievedBadge } from '@/constants/Badges';
+import { useTierCompletionStore } from '@/stores/tierCompletionStore';
+import type { Tier } from '@/screens/tabs/promotions/components';
 
 export const CHECK_INS_TABLE_ID = process.env.APPWRITE_CHECK_INS_TABLE_ID || 'checkins';
 
@@ -29,8 +33,14 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
     
     const profile = userProfile as any;
     const oldTotalPoints = profile.totalPoints || 0;
-    const newTotalEvents = (profile.totalEvents || 0) + 1;
+    const oldTotalEvents = profile.totalEvents || 0;
+    const newTotalEvents = oldTotalEvents + 1;
     const newTotalPoints = oldTotalPoints + checkInData.pointsEarned;
+
+    // Check if a new badge was earned
+    const oldBadgeThreshold = getLastAchievedBadge(oldTotalEvents);
+    const newBadgeThreshold = getLastAchievedBadge(newTotalEvents);
+    const badgeEarned = newBadgeThreshold !== null && newBadgeThreshold !== oldBadgeThreshold;
 
     const authUserID = profile.authID;
     if (!authUserID) {
@@ -91,6 +101,8 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
       const tiers = await fetchTiers();
       const newTier = getUserCurrentTier(tiers, newTotalPoints);
       if (newTier && oldTier && newTier.$id !== oldTier.$id) {
+        await updateUserProfile(profile.$id, { tierLevel: newTier.name });
+
         await createUserNotification({
           userId: authUserID,
           type: 'tierChanged',
@@ -103,10 +115,48 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
             newTierName: newTier.name,
           },
         });
+
+        // Trigger global tier completion modal
+        const cleanImageURL = newTier.imageURL?.replace('&mode=admin', '') ?? null;
+        const tierForModal: Tier = {
+          id: newTier.$id,
+          name: newTier.name,
+          currentPoints: Math.min(newTotalPoints, newTier.requiredPoints),
+          requiredPoints: newTier.requiredPoints,
+          badgeEarned: newTotalPoints >= newTier.requiredPoints,
+          imageURL: cleanImageURL,
+          order: newTier.order,
+        };
+        
+        useTierCompletionStore.getState().setTierCompleted(
+          tierForModal,
+          checkInData.pointsEarned,
+          'checkin'
+        );
       }
     } catch (tierError) {
       console.error('[checkIns] Failed to check tier or create tier notification:', tierError);
       // Don't fail the check-in if tier notification fails
+    }
+
+    // Create badge earned notification if applicable
+    if (badgeEarned && newBadgeThreshold !== null) {
+      try {
+        await createUserNotification({
+          userId: authUserID,
+          type: 'badgeEarned',
+          title: 'Badge Earned! 🎉',
+          message: `Congratulations! You've earned the ${newBadgeThreshold} Events Badge!`,
+          data: {
+            badgeType: 'events',
+            badgeThreshold: newBadgeThreshold,
+            achievementCount: newTotalEvents,
+          },
+        });
+      } catch (badgeError) {
+        console.error('[checkIns] Failed to create badge notification:', badgeError);
+        // Don't fail the check-in if badge notification fails
+      }
     }
     
     return {
@@ -117,6 +167,11 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
       pointsEarned: result.pointsEarned,
       $createdAt: result.$createdAt,
       $updatedAt: result.$updatedAt,
+      badgeEarned: badgeEarned ? {
+        badgeType: 'events' as const,
+        badgeNumber: newBadgeThreshold!,
+        achievementCount: newTotalEvents,
+      } : undefined,
     };
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create check-in');

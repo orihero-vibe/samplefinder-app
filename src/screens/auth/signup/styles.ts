@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   buttonContainer: {
-    marginTop: 28,
+    marginTop: 54,
     marginBottom: 20,
     position: 'relative',
   },
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 16,
     paddingHorizontal: 10,
   },
   termsText: {
@@ -98,6 +98,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Quicksand_700Bold',
     textDecorationLine: 'underline',
+  },
+  zipCodeContainer: {
+    marginTop: 12,
   },
 });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View, ActivityIndicator, Text } from 'react-native';
+import { ScrollView, View, ActivityIndicator, Text, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   ActionButtons,
@@ -16,6 +16,7 @@ import ReviewModal from '@/components/shared/ReviewModal';
 import PointsEarnedModal from '@/components/shared/PointsEarnedModal';
 import CalendarAlertModal from '@/components/shared/CalendarAlertModal';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
+import BadgeEarnedModal from '@/components/shared/BadgeEarnedModal';
 import { useBrandDetailsScreen, BrandDetailsData } from './useBrandDetailsScreen';
 import styles from './styles';
 
@@ -23,7 +24,7 @@ export type { BrandDetailsData };
 
 interface BrandDetailsScreenProps {
   route: {
-    params: { eventId?: string; brand?: BrandDetailsData };
+    params: { eventId?: string; brand?: BrandDetailsData; fromFavorites?: boolean };
   };
 }
 
@@ -48,6 +49,10 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     calendarAlertVisible,
     calendarAlertType,
     removeConfirmVisible,
+    badgeModalVisible,
+    badgeType,
+    badgeNumber,
+    badgeAchievementCount,
     handleBack,
     handleShare,
     handleAddToCalendar,
@@ -61,6 +66,10 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     handleCloseCalendarAlert,
     handleConfirmRemoveFromCalendar,
     handleCancelRemoveFromCalendar,
+    handleCloseBadgeModal,
+    handleShareBadge,
+    isRefreshing,
+    handleRefreshDetails,
   } = useBrandDetailsScreen({ route });
 
   // Show loading state
@@ -104,6 +113,15 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          route.params.eventId ? (
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefreshDetails}
+              tintColor="#2D1B69"
+            />
+          ) : undefined
+        }
       >
         <BrandLocationPin logoUrl={brandLogoUrl} />
         <BrandInfo brand={brand} />
@@ -168,6 +186,15 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         cancelText="Cancel"
         onConfirm={handleConfirmRemoveFromCalendar}
         onCancel={handleCancelRemoveFromCalendar}
+      />
+
+      <BadgeEarnedModal
+        visible={badgeModalVisible}
+        badgeType={badgeType}
+        badgeNumber={badgeNumber}
+        achievementCount={badgeAchievementCount}
+        onClose={handleCloseBadgeModal}
+        onShare={handleShareBadge}
       />
     </View>
   );

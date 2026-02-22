@@ -39,6 +39,8 @@ const EditProfileScreen = () => {
     errorModalMessage,
     showUnsavedChangesModal,
     error,
+    validationErrors,
+    isCheckingUsername,
     profile,
     username,
     phoneNumber,
@@ -185,6 +187,8 @@ const EditProfileScreen = () => {
               placeholder="Enter username"
               labelColor={Colors.blueColorMode}
               inputBorderColor={Colors.blueColorMode}
+              error={!!validationErrors.username}
+              errorMessage={validationErrors.username || (isCheckingUsername ? 'Checking availability...' : '')}
             />
 
             <CustomInput

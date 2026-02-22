@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -91,6 +91,13 @@ export const useDiscoverEventsScreen = () => {
 
     getCurrentLocation();
   }, []);
+
+  // Refetch events when Discover screen gains focus so admin changes appear without app restart
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshTrigger((prev) => prev + 1);
+    }, [])
+  );
 
   useEffect(() => {
     // Wait until categories are loaded before fetching events
