@@ -35,8 +35,7 @@ interface EventData {
   address: string;
   state: string;
   zipCode: string;
-  productType?: string[];
-  products: string;
+  products?: string[];
   discount?: number;
   discountImageURL?: string;
   checkInCode: string;
@@ -79,11 +78,6 @@ interface SubmitAnswerRequest {
   answerIndex: number;
 }
 
-interface DismissTriviaRequest {
-  userId: string;
-  triviaId: string;
-}
-
 // Account deletion types
 interface DeleteAccountRequest {
   userId: string;
@@ -95,15 +89,16 @@ interface UpdateUserStatusRequest {
   block: boolean;
 }
 
-// User lookup types
-interface GetUserByEmailRequest {
+// Create user request (Auth + user profile)
+interface CreateUserRequest {
   email: string;
-}
-
-interface ResetPasswordAfterOTPRequest {
-  userId: string;
-  otp: string;
-  newPassword: string;
+  password: string;
+  firstname?: string;
+  lastname?: string;
+  username?: string;
+  phoneNumber?: string;
+  role?: string;
+  tierLevel?: string;
 }
 
 interface TriviaClientDocument {
@@ -123,8 +118,6 @@ interface TriviaDocument {
   endDate: string;
   points: number;
   client?: TriviaClientDocument;
-  skippedUsers?: string[];
-  skips?: number;
 }
 
 interface ActiveTriviaResponse {
@@ -449,14 +442,12 @@ async function getActiveTrivia(
 
   log(`User has answered ${answeredTriviaIds.size} trivia questions`);
 
-  // Filter out trivia that the user has already answered or skipped
+  // Filter out trivia that the user has already answered
   // Also remove correctOptionIndex from the response for security
   const unansweredTrivia: ActiveTriviaResponse[] = [];
 
   for (const trivia of activeTriviaResponse.documents as unknown as TriviaDocument[]) {
-    const wasAnswered = answeredTriviaIds.has(trivia.$id);
-    const wasSkipped = (trivia.skippedUsers || []).includes(userId);
-    if (!wasAnswered && !wasSkipped) {
+    if (!answeredTriviaIds.has(trivia.$id)) {
       unansweredTrivia.push({
         $id: trivia.$id,
         question: trivia.question,
@@ -484,12 +475,7 @@ async function submitTriviaAnswer(
   triviaId: string,
   answerIndex: number,
   log: (message: string) => void
-): Promise<{
-  isCorrect: boolean;
-  pointsAwarded: number;
-  correctAnswerIndex: number;
-  message: string;
-}> {
+): Promise<{ isCorrect: boolean; pointsAwarded: number; message: string }> {
   const now = new Date().toISOString();
 
   // 1. Get the trivia question and validate it exists
@@ -595,57 +581,10 @@ async function submitTriviaAnswer(
   return {
     isCorrect,
     pointsAwarded,
-    correctAnswerIndex: trivia.correctOptionIndex,
     message: isCorrect
       ? `Correct! You earned ${pointsAwarded} points.`
       : 'Incorrect answer. Better luck next time!',
   };
-}
-
-/**
- * Record that a user skipped/dismissed a trivia question (no answer submitted).
- * Adds the user's profile ID to the trivia's skippedUsers array so it won't be shown again.
- */
-async function dismissTrivia(
-  databases: Databases,
-  userId: string,
-  triviaId: string,
-  log: (message: string) => void
-): Promise<void> {
-  // 1. Validate user exists
-  try {
-    await databases.getDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, userId);
-  } catch {
-    throw { code: 404, message: 'User not found' };
-  }
-
-  // 2. Get trivia document
-  let trivia: TriviaDocument;
-  try {
-    trivia = (await databases.getDocument(
-      DATABASE_ID,
-      TRIVIA_TABLE_ID,
-      triviaId
-    )) as unknown as TriviaDocument;
-  } catch {
-    throw { code: 404, message: 'Trivia question not found' };
-  }
-
-  const skippedUsers: string[] = Array.isArray(trivia.skippedUsers) ? [...trivia.skippedUsers] : [];
-  if (skippedUsers.includes(userId)) {
-    log(`User ${userId} already in skippedUsers for trivia ${triviaId}, no update`);
-    return;
-  }
-
-  skippedUsers.push(userId);
-
-  const updatePayload: { skippedUsers: string[]; skips?: number } = { skippedUsers };
-  if (typeof trivia.skips === 'number') {
-    updatePayload.skips = trivia.skips + 1;
-  }
-  await databases.updateDocument(DATABASE_ID, TRIVIA_TABLE_ID, triviaId, updatePayload);
-
-  log(`Added user ${userId} to skippedUsers for trivia ${triviaId}`);
 }
 
 // ============================================================================
@@ -736,102 +675,92 @@ async function updateUserStatus(
 }
 
 // ============================================================================
-// USER LOOKUP FUNCTION
+// CREATE USER FUNCTION
 // ============================================================================
 
 /**
- * Get user ID by email address.
- * Searches Appwrite Auth for a user with the specified email address.
- * Returns the user ID if found.
+ * Create a new user in both Appwrite Auth and user_profiles collection.
+ * Requires server-side execution as creating Auth users needs users.write scope.
  */
-async function getUserByEmail(
+async function createUser(
   users: Users,
-  email: string,
+  databases: Databases,
+  data: CreateUserRequest,
   log: (message: string) => void
-): Promise<{ userId: string; name?: string; emailVerification: boolean }> {
-  log(`Searching for user with email: ${email}`);
+): Promise<{ success: boolean; userId: string; profileId: string; error?: string }> {
+  log(`Creating user: ${data.email}`);
 
   try {
-    // Trim and validate email
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) {
-      throw { code: 400, message: 'Email is required' };
+    // 1. Check if email already exists in Auth
+    const existingByEmail = await users.list([Query.equal('email', data.email)]);
+    if (existingByEmail.total > 0) {
+      throw { code: 409, message: 'A user with this email already exists. Please use a different email.' };
     }
 
-    // Query users by email using Appwrite SDK
-    // The users.list() method accepts an array of queries
-    log(`Querying users with email: ${trimmedEmail}`);
-    const result = await users.list([Query.equal('email', trimmedEmail)]);
-
-    log(`Query completed. Total users found: ${result.total}`);
-
-    if (result.total === 0) {
-      throw { code: 404, message: 'User not found with this email address' };
+    // 2. Check if phone already exists (when provided)
+    if (data.phoneNumber?.trim()) {
+      const phoneFormatted = `+1${data.phoneNumber.replace(/\D/g, '')}`;
+      if (phoneFormatted.length >= 12) {
+        const existingByPhone = await users.list([Query.equal('phone', phoneFormatted)]);
+        if (existingByPhone.total > 0) {
+          throw { code: 409, message: 'A user with this phone number already exists. Please use a different email or phone.' };
+        }
+      }
     }
 
-    // Get the first user (email should be unique)
-    const user = result.users[0];
-    log(`User found: ${user.$id}`);
+    // 3. Validate username uniqueness if provided
+    if (data.username?.trim()) {
+      const existingByUsername = await databases.listDocuments(
+        DATABASE_ID,
+        USER_PROFILES_TABLE_ID,
+        [Query.equal('username', data.username.trim())]
+      );
+      if (existingByUsername.total > 0) {
+        throw { code: 409, message: 'Username already exists. Please choose a different username.' };
+      }
+    }
+
+    // 4. Create Auth user (node-appwrite v14 uses positional params: userId, email, phone, password, name)
+    const userId = ID.unique();
+    const name = [data.firstname, data.lastname].filter(Boolean).join(' ').trim() || '';
+    await users.create(
+      userId,
+      data.email,
+      data.phoneNumber ? `+1${data.phoneNumber.replace(/\D/g, '')}` : undefined,
+      data.password,
+      name || undefined
+    );
+    log(`Auth user created: ${userId}`);
+
+    // 5. Create user profile
+    const profileData: Record<string, unknown> = {
+      authID: userId,
+      firstname: data.firstname || '',
+      lastname: data.lastname || '',
+      username: data.username || '',
+      phoneNumber: data.phoneNumber || '',
+      role: data.role || 'user',
+      tierLevel: data.tierLevel || '',
+      isBlocked: false,
+      idAdult: true,
+    };
+
+    const profile = await databases.createDocument(
+      DATABASE_ID,
+      USER_PROFILES_TABLE_ID,
+      ID.unique(),
+      profileData
+    );
+    log(`User profile created: ${profile.$id}`);
 
     return {
-      userId: user.$id,
-      name: user.name,
-      emailVerification: user.emailVerification,
+      success: true,
+      userId,
+      profileId: profile.$id,
     };
   } catch (err: unknown) {
     const typedErr = err as { code?: number; message?: string };
-    log(`Error during user lookup: ${typedErr.message || 'Unknown error'}`);
-    throw typedErr;
-  }
-}
-
-// ============================================================================
-// PASSWORD RESET FUNCTION
-// ============================================================================
-
-/**
- * Reset user password after OTP verification
- * This function verifies the OTP server-side and updates the password using server-side permissions
- */
-async function resetPasswordAfterOTP(
-  users: Users,
-  userId: string,
-  otp: string,
-  newPassword: string,
-  log: (message: string) => void
-): Promise<void> {
-  log(`Resetting password for user: ${userId}`);
-
-  try {
-    // Validate inputs
-    if (!userId || !otp || !newPassword) {
-      throw { code: 400, message: 'userId, otp, and newPassword are required' };
-    }
-
-    // Validate password strength (basic validation)
-    if (newPassword.length < 8) {
-      throw { code: 400, message: 'Password must be at least 8 characters long' };
-    }
-
-    log(`Verifying OTP for user: ${userId}`);
-    
-    // Verify the OTP by creating a session token
-    // This validates that the OTP is correct without creating a persistent session
-    try {
-      // Use the Users API to update the email verification status
-      // The OTP token is validated when we try to create a session with it
-      // Since we're using server-side API, we can verify and update directly
-      log(`Updating password with server-side permissions`);
-      await users.updatePassword(userId, newPassword);
-      log(`Password updated successfully for user: ${userId}`);
-    } catch (err: unknown) {
-      const typedErr = err as { message?: string };
-      log(`Error updating password: ${typedErr.message || 'Unknown error'}`);
-      throw { code: 400, message: 'Failed to update password. Please try again.' };
-    }
-  } catch (err: unknown) {
-    const typedErr = err as { code?: number; message?: string };
-    log(`Error resetting password: ${typedErr.message || 'Unknown error'}`);
+    log(`Error creating user: ${typedErr.message || 'Unknown error'}`);
     throw typedErr;
   }
 }
@@ -1181,6 +1110,57 @@ export default async function handler({ req, res, log, error }: HandlerContext) 
     }
 
     // ========================================================================
+    // CREATE USER ENDPOINT
+    // ========================================================================
+
+    if (req.path === '/create-user' && req.method === 'POST') {
+      log('Processing create-user request');
+
+      const body = req.body as CreateUserRequest;
+
+      if (!body || !body.email || !body.password) {
+        return res.json(
+          {
+            success: false,
+            error: 'email and password are required',
+          },
+          400
+        );
+      }
+
+      if (body.password.length < 8) {
+        return res.json(
+          {
+            success: false,
+            error: 'Password must be at least 8 characters',
+          },
+          400
+        );
+      }
+
+      try {
+        const result = await createUser(users, databases, body, log);
+
+        return res.json({
+          success: true,
+          ...result,
+        });
+      } catch (err: unknown) {
+        const typedErr = err as { code?: number; message?: string };
+        if (typedErr.code && typedErr.message) {
+          return res.json(
+            {
+              success: false,
+              error: typedErr.message,
+            },
+            typedErr.code
+          );
+        }
+        throw err;
+      }
+    }
+
+    // ========================================================================
     // USER STATUS MANAGEMENT
     // ========================================================================
     
@@ -1229,130 +1209,12 @@ export default async function handler({ req, res, log, error }: HandlerContext) 
     }
 
     // ========================================================================
-    // USER LOOKUP
-    // ========================================================================
-    
-    // GET user ID by email
-    if (req.path === '/get-user-by-email' && req.method === 'POST') {
-      log('Processing get-user-by-email request');
-
-      const body = req.body as GetUserByEmailRequest;
-
-      if (!body || !body.email) {
-        return res.json(
-          {
-            success: false,
-            error: 'email is required',
-          },
-          400
-        );
-      }
-
-      try {
-        const result = await getUserByEmail(users, body.email, log);
-
-        return res.json({
-          success: true,
-          ...result,
-        });
-      } catch (err: unknown) {
-        const typedErr = err as { code?: number; message?: string };
-        if (typedErr.code && typedErr.message) {
-          return res.json(
-            {
-              success: false,
-              error: typedErr.message,
-            },
-            typedErr.code
-          );
-        }
-        throw err;
-      }
-    }
-
-    // ========================================================================
-    // PASSWORD RESET
-    // ========================================================================
-    
-    // POST reset password after OTP verification
-    if (req.path === '/reset-password-after-otp' && req.method === 'POST') {
-      log('Processing reset-password-after-otp request');
-
-      const body = req.body as ResetPasswordAfterOTPRequest;
-
-      if (!body || !body.userId || !body.otp || !body.newPassword) {
-        return res.json(
-          {
-            success: false,
-            error: 'userId, otp, and newPassword are required',
-          },
-          400
-        );
-      }
-
-      try {
-        await resetPasswordAfterOTP(users, body.userId, body.otp, body.newPassword, log);
-
-        return res.json({
-          success: true,
-          message: 'Password reset successfully',
-        });
-      } catch (err: unknown) {
-        const typedErr = err as { code?: number; message?: string };
-        if (typedErr.code && typedErr.message) {
-          return res.json(
-            {
-              success: false,
-              error: typedErr.message,
-            },
-            typedErr.code
-          );
-        }
-        throw err;
-      }
-    }
-
-    // DISMISS trivia (user skipped or missed)
-    if (req.path === '/dismiss-trivia' && req.method === 'POST') {
-      log('Processing dismiss-trivia request');
-
-      const body = req.body as DismissTriviaRequest;
-
-      if (!body || !body.userId) {
-        return res.json(
-          { success: false, error: 'userId is required' },
-          400
-        );
-      }
-      if (!body.triviaId) {
-        return res.json(
-          { success: false, error: 'triviaId is required' },
-          400
-        );
-      }
-
-      try {
-        await dismissTrivia(databases, body.userId, body.triviaId, log);
-        return res.json({ success: true });
-      } catch (err: unknown) {
-        const typedErr = err as { code?: number; message?: string };
-        if (typedErr.code && typedErr.message) {
-          return res.json(
-            { success: false, error: typedErr.message },
-            typedErr.code
-          );
-        }
-        throw err;
-      }
-    }
-
-    // ========================================================================
     // DEFAULT RESPONSE
     // ========================================================================
     return res.json({
       success: false,
       error:
-        'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /dismiss-trivia, POST /delete-account, POST /update-user-status, POST /get-user-by-email, POST /reset-password-after-otp, GET /ping',
+        'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /create-user, POST /delete-account, POST /update-user-status, GET /ping',
     });
   } catch (err: unknown) {
     const errorMessage =

@@ -312,14 +312,12 @@ async function submitTriviaAnswer(databases, userId, triviaId, answerIndex, log)
  * Adds the user's profile ID to the trivia's skippedUsers array so it won't be shown again.
  */
 async function dismissTrivia(databases, userId, triviaId, log) {
-    // 1. Validate user exists
     try {
         await databases.getDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, userId);
     }
     catch {
         throw { code: 404, message: 'User not found' };
     }
-    // 2. Get trivia document
     let trivia;
     try {
         trivia = (await databases.getDocument(DATABASE_ID, TRIVIA_TABLE_ID, triviaId));
@@ -339,6 +337,75 @@ async function dismissTrivia(databases, userId, triviaId, log) {
     }
     await databases.updateDocument(DATABASE_ID, TRIVIA_TABLE_ID, triviaId, updatePayload);
     log(`Added user ${userId} to skippedUsers for trivia ${triviaId}`);
+}
+// ============================================================================
+// USER LOOKUP FUNCTION
+// ============================================================================
+/**
+ * Get user ID by email address.
+ * Searches Appwrite Auth for a user with the specified email address.
+ * Returns the user ID if found.
+ */
+async function getUserByEmail(users, email, log) {
+    log(`Searching for user with email: ${email}`);
+    try {
+        const trimmedEmail = email.trim().toLowerCase();
+        if (!trimmedEmail) {
+            throw { code: 400, message: 'Email is required' };
+        }
+        log(`Querying users with email: ${trimmedEmail}`);
+        const result = await users.list([Query.equal('email', trimmedEmail)]);
+        log(`Query completed. Total users found: ${result.total}`);
+        if (result.total === 0) {
+            throw { code: 404, message: 'User not found with this email address' };
+        }
+        const user = result.users[0];
+        log(`User found: ${user.$id}`);
+        return {
+            userId: user.$id,
+            name: user.name,
+            emailVerification: user.emailVerification,
+        };
+    }
+    catch (err) {
+        const typedErr = err;
+        log(`Error during user lookup: ${typedErr.message || 'Unknown error'}`);
+        throw typedErr;
+    }
+}
+// ============================================================================
+// PASSWORD RESET FUNCTION
+// ============================================================================
+/**
+ * Reset user password after OTP verification
+ * This function verifies the OTP server-side and updates the password using server-side permissions
+ */
+async function resetPasswordAfterOTP(users, userId, otp, newPassword, log) {
+    log(`Resetting password for user: ${userId}`);
+    try {
+        if (!userId || !otp || !newPassword) {
+            throw { code: 400, message: 'userId, otp, and newPassword are required' };
+        }
+        if (newPassword.length < 8) {
+            throw { code: 400, message: 'Password must be at least 8 characters long' };
+        }
+        log(`Verifying OTP for user: ${userId}`);
+        try {
+            log(`Updating password with server-side permissions`);
+            await users.updatePassword(userId, newPassword);
+            log(`Password updated successfully for user: ${userId}`);
+        }
+        catch (err) {
+            const typedErr = err;
+            log(`Error updating password: ${typedErr.message || 'Unknown error'}`);
+            throw { code: 400, message: 'Failed to update password. Please try again.' };
+        }
+    }
+    catch (err) {
+        const typedErr = err;
+        log(`Error resetting password: ${typedErr.message || 'Unknown error'}`);
+        throw typedErr;
+    }
 }
 // ============================================================================
 // USER STATUS MANAGEMENT FUNCTION
@@ -405,82 +472,65 @@ async function updateUserStatus(users, databases, userId, block, log) {
     }
 }
 // ============================================================================
-// USER LOOKUP FUNCTION
+// CREATE USER FUNCTION
 // ============================================================================
 /**
- * Get user ID by email address.
- * Searches Appwrite Auth for a user with the specified email address.
- * Returns the user ID if found.
+ * Create a new user in both Appwrite Auth and user_profiles collection.
+ * Requires server-side execution as creating Auth users needs users.write scope.
  */
-async function getUserByEmail(users, email, log) {
-    log(`Searching for user with email: ${email}`);
+async function createUser(users, databases, data, log) {
+    log(`Creating user: ${data.email}`);
     try {
-        // Trim and validate email
-        const trimmedEmail = email.trim().toLowerCase();
-        if (!trimmedEmail) {
-            throw { code: 400, message: 'Email is required' };
+        // 1. Check if email already exists in Auth
+        const existingByEmail = await users.list([Query.equal('email', data.email)]);
+        if (existingByEmail.total > 0) {
+            throw { code: 409, message: 'A user with this email already exists. Please use a different email.' };
         }
-        // Query users by email using Appwrite SDK
-        // The users.list() method accepts an array of queries
-        log(`Querying users with email: ${trimmedEmail}`);
-        const result = await users.list([Query.equal('email', trimmedEmail)]);
-        log(`Query completed. Total users found: ${result.total}`);
-        if (result.total === 0) {
-            throw { code: 404, message: 'User not found with this email address' };
+        // 2. Check if phone already exists (when provided)
+        if (data.phoneNumber?.trim()) {
+            const phoneFormatted = `+1${data.phoneNumber.replace(/\D/g, '')}`;
+            if (phoneFormatted.length >= 12) {
+                const existingByPhone = await users.list([Query.equal('phone', phoneFormatted)]);
+                if (existingByPhone.total > 0) {
+                    throw { code: 409, message: 'A user with this phone number already exists. Please use a different email or phone.' };
+                }
+            }
         }
-        // Get the first user (email should be unique)
-        const user = result.users[0];
-        log(`User found: ${user.$id}`);
+        // 3. Validate username uniqueness if provided
+        if (data.username?.trim()) {
+            const existingByUsername = await databases.listDocuments(DATABASE_ID, USER_PROFILES_TABLE_ID, [Query.equal('username', data.username.trim())]);
+            if (existingByUsername.total > 0) {
+                throw { code: 409, message: 'Username already exists. Please choose a different username.' };
+            }
+        }
+        // 4. Create Auth user (node-appwrite v14 uses positional params: userId, email, phone, password, name)
+        const userId = ID.unique();
+        const name = [data.firstname, data.lastname].filter(Boolean).join(' ').trim() || '';
+        await users.create(userId, data.email, data.phoneNumber ? `+1${data.phoneNumber.replace(/\D/g, '')}` : undefined, data.password, name || undefined);
+        log(`Auth user created: ${userId}`);
+        // 5. Create user profile
+        const profileData = {
+            authID: userId,
+            firstname: data.firstname || '',
+            lastname: data.lastname || '',
+            username: data.username || '',
+            phoneNumber: data.phoneNumber || '',
+            role: data.role || 'user',
+            tierLevel: data.tierLevel || '',
+            isBlocked: false,
+            idAdult: true,
+        };
+        const profile = await databases.createDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, ID.unique(), profileData);
+        log(`User profile created: ${profile.$id}`);
         return {
-            userId: user.$id,
-            name: user.name,
-            emailVerification: user.emailVerification,
+            success: true,
+            userId,
+            profileId: profile.$id,
         };
     }
     catch (err) {
         const typedErr = err;
-        log(`Error during user lookup: ${typedErr.message || 'Unknown error'}`);
-        throw typedErr;
-    }
-}
-// ============================================================================
-// PASSWORD RESET FUNCTION
-// ============================================================================
-/**
- * Reset user password after OTP verification
- * This function verifies the OTP server-side and updates the password using server-side permissions
- */
-async function resetPasswordAfterOTP(users, userId, otp, newPassword, log) {
-    log(`Resetting password for user: ${userId}`);
-    try {
-        // Validate inputs
-        if (!userId || !otp || !newPassword) {
-            throw { code: 400, message: 'userId, otp, and newPassword are required' };
-        }
-        // Validate password strength (basic validation)
-        if (newPassword.length < 8) {
-            throw { code: 400, message: 'Password must be at least 8 characters long' };
-        }
-        log(`Verifying OTP for user: ${userId}`);
-        // Verify the OTP by creating a session token
-        // This validates that the OTP is correct without creating a persistent session
-        try {
-            // Use the Users API to update the email verification status
-            // The OTP token is validated when we try to create a session with it
-            // Since we're using server-side API, we can verify and update directly
-            log(`Updating password with server-side permissions`);
-            await users.updatePassword(userId, newPassword);
-            log(`Password updated successfully for user: ${userId}`);
-        }
-        catch (err) {
-            const typedErr = err;
-            log(`Error updating password: ${typedErr.message || 'Unknown error'}`);
-            throw { code: 400, message: 'Failed to update password. Please try again.' };
-        }
-    }
-    catch (err) {
-        const typedErr = err;
-        log(`Error resetting password: ${typedErr.message || 'Unknown error'}`);
+        log(`Error creating user: ${typedErr.message || 'Unknown error'}`);
         throw typedErr;
     }
 }
@@ -724,6 +774,42 @@ export default async function handler({ req, res, log, error }) {
             }
         }
         // ========================================================================
+        // CREATE USER ENDPOINT
+        // ========================================================================
+        if (req.path === '/create-user' && req.method === 'POST') {
+            log('Processing create-user request');
+            const body = req.body;
+            if (!body || !body.email || !body.password) {
+                return res.json({
+                    success: false,
+                    error: 'email and password are required',
+                }, 400);
+            }
+            if (body.password.length < 8) {
+                return res.json({
+                    success: false,
+                    error: 'Password must be at least 8 characters',
+                }, 400);
+            }
+            try {
+                const result = await createUser(users, databases, body, log);
+                return res.json({
+                    success: true,
+                    ...result,
+                });
+            }
+            catch (err) {
+                const typedErr = err;
+                if (typedErr.code && typedErr.message) {
+                    return res.json({
+                        success: false,
+                        error: typedErr.message,
+                    }, typedErr.code);
+                }
+                throw err;
+            }
+        }
+        // ========================================================================
         // USER STATUS MANAGEMENT
         // ========================================================================
         // UPDATE user status (block/unblock)
@@ -816,7 +902,9 @@ export default async function handler({ req, res, log, error }) {
                 throw err;
             }
         }
-        // DISMISS trivia (user skipped or missed)
+        // ========================================================================
+        // DISMISS TRIVIA
+        // ========================================================================
         if (req.path === '/dismiss-trivia' && req.method === 'POST') {
             log('Processing dismiss-trivia request');
             const body = req.body;
@@ -843,7 +931,7 @@ export default async function handler({ req, res, log, error }) {
         // ========================================================================
         return res.json({
             success: false,
-            error: 'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /dismiss-trivia, POST /delete-account, POST /update-user-status, POST /get-user-by-email, POST /reset-password-after-otp, GET /ping',
+            error: 'Invalid endpoint. Available endpoints: POST /get-events-by-location, POST /get-active-trivia, POST /submit-answer, POST /dismiss-trivia, POST /create-user, POST /delete-account, POST /update-user-status, POST /get-user-by-email, POST /reset-password-after-otp, GET /ping',
         });
     }
     catch (err) {
