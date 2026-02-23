@@ -61,7 +61,11 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
       databaseId: DATABASE_ID,
       tableId: CHECK_INS_TABLE_ID,
       rowId: rowId,
-      data: checkInData,
+      data: {
+        user: checkInData.userID,
+        event: checkInData.eventID,
+        points: checkInData.pointsEarned,
+      },
       permissions: [
         `read("user:${authUserID}")`,
         `update("user:${authUserID}")`,
@@ -161,10 +165,10 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
     
     return {
       $id: result.$id,
-      userID: result.userID,
-      eventID: result.eventID,
-      checkInCode: result.checkInCode,
-      pointsEarned: result.pointsEarned,
+      userID: checkInData.userID,
+      eventID: checkInData.eventID,
+      checkInCode: checkInData.checkInCode,
+      pointsEarned: result.points ?? checkInData.pointsEarned,
       $createdAt: result.$createdAt,
       $updatedAt: result.$updatedAt,
       badgeEarned: badgeEarned ? {
@@ -187,7 +191,7 @@ export const getUserCheckIns = async (userID: string): Promise<CheckInRow[]> => 
     const result = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: CHECK_INS_TABLE_ID,
-      queries: [Query.equal('userID', userID)],
+      queries: [Query.equal('user', userID)],
     });
 
     if (!result.rows || result.rows.length === 0) {
@@ -196,10 +200,10 @@ export const getUserCheckIns = async (userID: string): Promise<CheckInRow[]> => 
 
     return result.rows.map((row: any) => ({
       $id: row.$id,
-      userID: row.userID,
-      eventID: row.eventID,
-      checkInCode: row.checkInCode,
-      pointsEarned: row.pointsEarned,
+      userID: typeof row.user === 'string' ? row.user : row.user?.$id ?? '',
+      eventID: typeof row.event === 'string' ? row.event : row.event?.$id ?? '',
+      checkInCode: '',
+      pointsEarned: row.points ?? 0,
       $createdAt: row.$createdAt,
       $updatedAt: row.$updatedAt,
     }));
@@ -223,7 +227,7 @@ export const getUserCheckInForEvent = async (
     const result = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: CHECK_INS_TABLE_ID,
-      queries: [Query.equal('userID', userID), Query.equal('eventID', eventID)],
+      queries: [Query.equal('user', userID), Query.equal('event', eventID)],
     });
 
     if (!result.rows || result.rows.length === 0) {
@@ -233,10 +237,10 @@ export const getUserCheckInForEvent = async (
     const row = result.rows[0];
     return {
       $id: row.$id,
-      userID: row.userID,
-      eventID: row.eventID,
-      checkInCode: row.checkInCode,
-      pointsEarned: row.pointsEarned,
+      userID: typeof row.user === 'string' ? row.user : row.user?.$id ?? '',
+      eventID: typeof row.event === 'string' ? row.event : row.event?.$id ?? '',
+      checkInCode: '',
+      pointsEarned: row.points ?? 0,
       $createdAt: row.$createdAt,
       $updatedAt: row.$updatedAt,
     };
