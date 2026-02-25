@@ -1,26 +1,28 @@
 /**
- * Geocoding utility to convert ZIP code to coordinates
+ * Geocoding utility to convert address, city, or ZIP code to coordinates
  * Uses Google Maps Geocoding API
  */
 
-interface GeocodeResult {
+export interface GeocodeResult {
   latitude: number;
   longitude: number;
   address?: string;
 }
 
 /**
- * Geocode a ZIP code to get coordinates
- * @param zipCode - The ZIP code to geocode
- * @returns Promise with latitude and longitude
+ * Geocode a location query (address, city name, or ZIP code) to coordinates
+ * @param query - Address, city (e.g. "Austin, TX"), or ZIP code (e.g. "78701")
+ * @returns Promise with latitude, longitude, and formatted address
  */
-export const geocodeZipCode = async (zipCode: string): Promise<GeocodeResult> => {
+export const geocodeLocation = async (query: string): Promise<GeocodeResult> => {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) {
+    throw new Error('Please enter a city, address, or ZIP code.');
+  }
+
   try {
-    // Use Google Maps Geocoding API
-    // The API key is available in app.json, but we'll use a direct API call
-    // For production, you might want to proxy this through your backend
-    const apiKey = 'AIzaSyBJB8PG5CP2Sn4aIKxvAB8R1P8KVAoyJEo'; // From app.json
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(zipCode)}&key=${apiKey}`;
+    const apiKey = 'AIzaSyBJB8PG5CP2Sn4aIKxvAB8R1P8KVAoyJEo';
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(trimmed)}&key=${apiKey}`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -34,26 +36,37 @@ export const geocodeZipCode = async (zipCode: string): Promise<GeocodeResult> =>
         longitude: location.lng,
         address,
       };
-    } else if (data.status === 'ZERO_RESULTS') {
-      throw new Error('ZIP code not found. Please enter a valid ZIP code.');
-    } else {
-      throw new Error('Unable to find location for this ZIP code. Please try again.');
     }
-  } catch (error: any) {
-    console.error('[geocoding] Error geocoding ZIP code:', error);
-    if (error.message) {
+    if (data.status === 'ZERO_RESULTS') {
+      throw new Error('Location not found. Try a city, address, or ZIP code.');
+    }
+    throw new Error('Unable to find that location. Please try again.');
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('[geocoding] Error geocoding location:', error);
       throw error;
     }
-    throw new Error('Failed to geocode ZIP code. Please check your internet connection and try again.');
+    throw new Error('Failed to find location. Check your connection and try again.');
   }
 };
 
 /**
- * Validate ZIP code format (US ZIP codes: 5 digits or 5+4 format)
+ * Geocode a ZIP code (convenience wrapper; same API supports any address)
+ * @deprecated Prefer geocodeLocation for city/address support
+ */
+export const geocodeZipCode = async (zipCode: string): Promise<GeocodeResult> =>
+  geocodeLocation(zipCode);
+
+/**
+ * Validate ZIP code format (US: 5 digits or 5+4)
  */
 export const isValidZipCode = (zipCode: string): boolean => {
   const trimmed = zipCode.trim();
-  // US ZIP code: 5 digits or 5 digits + dash + 4 digits
-  const zipRegex = /^\d{5}(-\d{4})?$/;
-  return zipRegex.test(trimmed);
+  return /^\d{5}(-\d{4})?$/.test(trimmed);
 };
+
+/**
+ * Minimum valid length for a location search (city, address, or ZIP)
+ */
+export const isValidLocationInput = (query: string): boolean =>
+  query.trim().length >= 2;

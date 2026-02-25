@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import CustomInput from './CustomInput';
 import CustomButton from './CustomButton';
@@ -16,6 +17,7 @@ interface ZipCodeModalProps {
   visible: boolean;
   onZipCodeSubmit: (zipCode: string) => void;
   onZipCodeChange?: (zipCode: string) => void;
+  onDismiss?: () => void;
   isLoading?: boolean;
   error?: string;
 }
@@ -24,6 +26,7 @@ const ZipCodeModal: React.FC<ZipCodeModalProps> = ({
   visible,
   onZipCodeSubmit,
   onZipCodeChange,
+  onDismiss,
   isLoading = false,
   error,
 }) => {
@@ -31,27 +34,31 @@ const ZipCodeModal: React.FC<ZipCodeModalProps> = ({
 
   const handleZipCodeChange = (text: string) => {
     setZipCode(text);
-    // Notify parent to clear error when user starts typing
     if (onZipCodeChange) {
       onZipCodeChange(text);
     }
   };
 
   const handleSubmit = () => {
-    const trimmedZip = zipCode.trim();
-    if (trimmedZip.length >= 5) {
-      onZipCodeSubmit(trimmedZip);
+    const trimmed = zipCode.trim();
+    if (trimmed.length >= 2) {
+      onZipCodeSubmit(trimmed);
     }
   };
 
-  const isValidZip = zipCode.trim().length >= 5;
+  const handleDismiss = () => {
+    if (isLoading) return;
+    onDismiss?.();
+  };
+
+  const canSubmit = zipCode.trim().length >= 2;
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={() => {}}
+      onRequestClose={onDismiss ?? (() => {})}
       statusBarTranslucent
     >
       <View style={styles.overlay}>
@@ -67,19 +74,16 @@ const ZipCodeModal: React.FC<ZipCodeModalProps> = ({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.modalContent}>
-              <Text style={styles.title}>Enter Your ZIP Code</Text>
+              <Text style={styles.title}>Enter your location</Text>
               <Text style={styles.description}>
-                Location access was denied. Please enter your ZIP code to find nearby events.
+                Location access was denied. Enter your city, address, or ZIP code to find nearby events.
               </Text>
 
               <CustomInput
-                label="ZIP Code"
+                label="City, address, or ZIP code"
                 value={zipCode}
                 onChangeText={handleZipCodeChange}
-                placeholder="12345"
-                type="numeric"
-                keyboardType="number-pad"
-                maxLength={10}
+                placeholder="e.g. Austin, TX or 78701"
                 labelColor={Colors.white}
                 error={!!error}
                 errorMessage={error}
@@ -93,9 +97,19 @@ const ZipCodeModal: React.FC<ZipCodeModalProps> = ({
                   variant="primary"
                   size="medium"
                   loading={isLoading}
-                  disabled={!isValidZip || isLoading}
+                  disabled={!canSubmit || isLoading}
                   fullWidth
                 />
+                {onDismiss && (
+                  <TouchableOpacity
+                    style={styles.skipButton}
+                    onPress={handleDismiss}
+                    disabled={isLoading}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.skipButtonText}>Use map without location</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </ScrollView>
@@ -152,6 +166,17 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 40,
+  },
+  skipButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.white,
+    textDecorationLine: 'underline',
   },
 });
 

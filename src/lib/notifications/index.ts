@@ -34,4 +34,5 @@ export {
   cancelAllEventReminders,
   cleanupPastEventReminders,
 } from './eventReminders';
+export { sendNewTierPushNotification, sendNewBadgePushNotification } from './tierNotifications';
 

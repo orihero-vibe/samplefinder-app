@@ -11,6 +11,12 @@ interface ScreenWrapperProps {
   keyboardAvoiding?: boolean;
   contentContainerStyle?: object;
   contentBackgroundColor?: string;
+  /**
+   * Optional override for bottom padding applied to the scroll content
+   * to keep the main content clear of the footer.
+   * When undefined, a default value based on footer height is used.
+   */
+  footerPaddingBottom?: number;
 }
 
 const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
@@ -19,6 +25,7 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   keyboardAvoiding = true,
   contentContainerStyle,
   contentBackgroundColor,
+  footerPaddingBottom,
 }) => {
   const { bottom } = useSafeAreaInsets();
   const footerHeight = isSmallDevice ? 60 : isMediumDevice ? 70 : 80;
@@ -26,7 +33,12 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
 
   const scrollContentStyle = [
     styles.scrollContent,
-    { paddingBottom: totalFooterHeight + 8 },
+    {
+      paddingBottom:
+        typeof footerPaddingBottom === 'number'
+          ? footerPaddingBottom
+          : totalFooterHeight + 8,
+    },
     contentBackgroundColor && { backgroundColor: contentBackgroundColor },
   ];
 

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import WrongAnswerIcon from '../../icons/WrongAnswerIcon';
 import PointsBadgeIcon from '../../icons/PointsBadgeIcon';
 import type { TriviaQuestion, SubmitAnswerResult } from '../../lib/database/trivia';
@@ -171,6 +172,20 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     </View>
   );
 
+  const renderBrandLogo = () => {
+    const logoURL = question.client?.logoURL;
+    if (!logoURL) return null;
+    return (
+      <View style={styles.brandLogoContainer}>
+        <Image
+          source={{ uri: logoURL }}
+          style={styles.brandLogo}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  };
+
   const renderAnswerButton = (answer: string, index: number) => {
     const isSelected = selectedAnswerIndex === index;
     const isSubmitting = answerState === 'submitting';
@@ -295,21 +310,41 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
         </Text>
         <View style={styles.countdownContainer}>
           <View style={styles.countdownRing}>
-            <MaskedView
-              maskElement={
-                <View style={styles.countdownMaskWrapper}>
-                  <Text style={styles.countdownValueMask}>{countdown}</Text>
-                </View>
-              }
-              style={styles.countdownGradientTextWrapper}
-            >
-              <LinearGradient
-                colors={['#95268B', '#3713DA']}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.countdownGradientTextFill}
+            <Svg width={80} height={80} viewBox="0 0 80 80" style={styles.countdownRingSvg}>
+              <Defs>
+                <SvgLinearGradient id="countdownRingGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <Stop offset="0%" stopColor="#95268B" />
+                  <Stop offset="100%" stopColor="#3713DA" />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle
+                cx={40}
+                cy={40}
+                r={36}
+                stroke="url(#countdownRingGradient)"
+                strokeWidth={3}
+                fill="none"
+                strokeDasharray="3 6"
+                strokeLinecap="round"
               />
-            </MaskedView>
+            </Svg>
+            <View style={styles.countdownNumberWrapper} pointerEvents="none">
+              <MaskedView
+                maskElement={
+                  <View style={styles.countdownMaskWrapper}>
+                    <Text style={styles.countdownValueMask}>{countdown}</Text>
+                  </View>
+                }
+                style={styles.countdownGradientTextWrapper}
+              >
+                <LinearGradient
+                  colors={['#95268B', '#3713DA']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.countdownGradientTextFill}
+                />
+              </MaskedView>
+            </View>
           </View>
         </View>
       </View>
@@ -348,7 +383,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
             <CloseIcon size={24} color={Colors.pinDarkBlue} />
           </TouchableOpacity>
 
-          {renderLocationIcon()}
+          {question.client?.logoURL ? renderBrandLogo() : renderLocationIcon()}
 
           <Text style={styles.title}>{title}</Text>
 
@@ -408,6 +443,16 @@ const styles = StyleSheet.create({
   locationImage: {
     width: 80,
     height: 80,
+  },
+  brandLogoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  brandLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   title: {
     fontSize: 24,
@@ -518,8 +563,8 @@ const styles = StyleSheet.create({
   },
   correctMessage: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontFamily: 'Quicksand_700Bold',
+    color:Colors.pinBlueBlack,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -550,35 +595,43 @@ const styles = StyleSheet.create({
   countdownRing: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: '#6B46C1',
-    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  countdownRingSvg: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+  },
+  countdownNumberWrapper: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   countdownGradientTextWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 48,
-    minHeight: 56,
+    width: 56,
+    height: 56,
   },
   countdownGradientTextFill: {
-    position: 'absolute',
-    width: 48,
+    width: 56,
     height: 56,
   },
   countdownMaskWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 48,
-    minHeight: 56,
+    width: 56,
+    height: 56,
   },
   countdownValueMask: {
     fontSize: 40,
     fontWeight: '700',
     color: '#000',
+    textAlign: 'center',
   },
   incorrectIconContainer: {
     marginBottom: 20,

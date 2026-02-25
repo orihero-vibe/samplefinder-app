@@ -27,7 +27,7 @@ const BrandLocationPin: React.FC<BrandLocationPinProps> = ({ logoUrl }) => {
 const styles = StyleSheet.create({
   pinContainer: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 40,
     marginBottom: 8,
   },
   logoImage: {

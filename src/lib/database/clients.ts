@@ -139,6 +139,13 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
       eventQueries.push(Query.lessThanEqual('date', filters.dateRange.end));
     }
 
+    // Radius filter - apply on events table (events have location point; clients table has no location)
+    if (filters.radiusMiles && filters.userLocation) {
+      const radiusMeters = filters.radiusMiles * 1609.34; // Convert miles to meters
+      const centerPoint: [number, number] = [filters.userLocation.longitude, filters.userLocation.latitude];
+      eventQueries.push(Query.distanceLessThan('location', centerPoint, radiusMeters));
+    }
+
     let filteredEvents: any[] = [];
 
     // Category filter - fetch events for each category and combine
@@ -189,21 +196,11 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
       }
     });
 
-    // Step 2: Filter clients by radius (if specified) and by client IDs from events
-    const clientQueries: any[] = [];
-
-    // Radius filter - use Query.distanceLessThan on clients table (clients have location column)
-    if (filters.radiusMiles && filters.userLocation) {
-      const radiusMeters = filters.radiusMiles * 1609.34; // Convert miles to meters
-      const centerPoint: [number, number] = [filters.userLocation.longitude, filters.userLocation.latitude];
-      clientQueries.push(Query.distanceLessThan('location', centerPoint, radiusMeters));
-    }
-
-    // Fetch clients (radius filter applied server-side if specified)
+    // Step 2: Fetch clients; radius was applied via events in Step 1 (clients table has no location column)
     const clientsResult = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: CLIENTS_TABLE_ID,
-      queries: clientQueries.length > 0 ? clientQueries : undefined,
+      queries: undefined,
     });
 
     if (!clientsResult.rows || clientsResult.rows.length === 0) {
@@ -211,8 +208,10 @@ export const fetchClientsWithFilters = async (filters: FetchClientsFilters): Pro
     }
 
     // Step 3: Filter clients to only include those that have matching events
-    // Only filter by event matches if date or category filters were applied
-    const hasEventFilters = filters.dateRange || (filters.categoryIds && filters.categoryIds.length > 0);
+    const hasEventFilters =
+      !!filters.dateRange ||
+      (filters.categoryIds && filters.categoryIds.length > 0) ||
+      !!(filters.radiusMiles && filters.userLocation);
     
     // If no events matched AND we had event filters, return empty array
     if (clientIdsFromEvents.size === 0 && hasEventFilters) {

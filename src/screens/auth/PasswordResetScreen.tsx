@@ -161,8 +161,8 @@ const PasswordResetScreen = () => {
       <SuccessModal
         visible={showSuccessModal}
         title="Password Reset Complete!"
-        message="Your password has been reset successfully. Please log in with your new password."
-        buttonText="Go to Login"
+        message="Your password has been reset successfully. Taking you to the home screen."
+        buttonText="Go to Home"
         onClose={handleSuccessModalClose}
       />
     </ScreenWrapper>

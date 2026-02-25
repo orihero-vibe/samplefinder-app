@@ -42,9 +42,13 @@ SplashScreen.preventAutoHideAsync();
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [showTrivia, setShowTrivia] = useState(false);
-  const [triviaQuestion, setTriviaQuestion] = useState<TriviaQuestion | null>(null);
+  /** Queue of unanswered trivia (all favorite brands); show one at a time until empty */
+  const [triviaQueue, setTriviaQueue] = useState<TriviaQuestion[]>([]);
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
   const triviaShownRef = useRef(false);
+  const currentTriviaRef = useRef<TriviaQuestion | null>(null);
+  const currentQuestion = triviaQueue[0] ?? null;
+  currentTriviaRef.current = currentQuestion;
 
   const shouldShowTier1Modal = useTier1ModalStore((s) => s.shouldShowTier1Modal);
   const setShouldShowTier1Modal = useTier1ModalStore((s) => s.setShouldShowTier1Modal);
@@ -146,7 +150,7 @@ export default function App() {
         if (cancelled) return;
 
         if (triviaQuestions.length > 0) {
-          setTriviaQuestion(triviaQuestions[0]);
+          setTriviaQueue(triviaQuestions);
           setShowTrivia(true);
           triviaShownRef.current = true;
         }
@@ -160,6 +164,13 @@ export default function App() {
       clearTimeout(timer);
     };
   }, [appIsReady]);
+
+  // Hide trivia modal when queue is exhausted (user closed last question)
+  useEffect(() => {
+    if (triviaQueue.length === 0) {
+      setShowTrivia(false);
+    }
+  }, [triviaQueue.length]);
 
   // Show Tier 1 modal for newly signed up users (after email verification)
   useEffect(() => {
@@ -255,18 +266,19 @@ export default function App() {
   }
 
   const handleTriviaClose = () => {
-    setShowTrivia(false);
+    setTriviaQueue((prev) => prev.slice(1));
   };
 
   const handleSubmitAnswer = async (answerIndex: number) => {
-    if (!userProfileId || !triviaQuestion) {
+    const question = currentTriviaRef.current;
+    if (!userProfileId || !question) {
       return {
         success: false,
         error: 'User profile or trivia question not available',
       };
     }
 
-    return submitTriviaAnswer(userProfileId, triviaQuestion.$id, answerIndex);
+    return submitTriviaAnswer(userProfileId, question.$id, answerIndex);
   };
 
   const handleAnswerResult = async (isCorrect: boolean, pointsAwarded: number) => {
@@ -316,16 +328,18 @@ export default function App() {
       <BottomSheetModalProvider>
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
           <AppNavigator />
-          {triviaQuestion && (
+          {currentQuestion && (
             <TriviaModal
+              key={currentQuestion.$id}
               visible={showTrivia}
-              question={triviaQuestion}
+              question={currentQuestion}
               onClose={handleTriviaClose}
               onSubmitAnswer={handleSubmitAnswer}
               onAnswerResult={handleAnswerResult}
               onSkipped={() => {
-                if (userProfileId && triviaQuestion) {
-                  dismissTrivia(userProfileId, triviaQuestion.$id);
+                const q = currentTriviaRef.current;
+                if (userProfileId && q) {
+                  dismissTrivia(userProfileId, q.$id);
                 }
               }}
             />

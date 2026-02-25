@@ -3,7 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { sendPasswordRecoveryOTP } from '@/lib/auth';
+import { login, sendPasswordRecoveryOTP, verifyEmail, verifyEmailAndResetPassword } from '@/lib/auth';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 
 type PasswordResetScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PasswordReset'>;
@@ -102,8 +102,21 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
+    if (!/^[0-9]{6}$/.test(verificationCode)) {
+      setError('Please enter a valid 6-digit code');
+      return;
+    }
+
     if (!email) {
       setError('Email address is missing. Please start over.');
+      setTimeout(() => {
+        navigation.replace('ForgotPassword', {});
+      }, 2000);
+      return;
+    }
+
+    if (!userId) {
+      setError('User information is missing. Please start over.');
       setTimeout(() => {
         navigation.replace('ForgotPassword', {});
       }, 2000);
@@ -114,15 +127,15 @@ export const usePasswordResetScreen = () => {
     setError('');
 
     try {
-      console.log('[PasswordReset] Verifying recovery code...');
-      // For now, we'll move to password step
-      // The actual verification happens when we update the password
-      // Appwrite's updateRecovery will verify the secret
+      console.log('[PasswordReset] Verifying recovery OTP with backend...');
+      await verifyEmail(userId, verificationCode);
+      console.log('[PasswordReset] OTP verified successfully, moving to password step');
       setStep('password');
-      console.log('[PasswordReset] Code accepted, moving to password step');
     } catch (error: any) {
-      console.error('[PasswordReset] Code verification error:', error);
-      setError(error?.message || 'Invalid code. Please try again.');
+      console.error('[PasswordReset] OTP verification error:', error);
+      const errorMessage =
+        error?.message || 'Invalid or expired code. Please request a new password reset.';
+      setError(errorMessage);
       setCode('');
       codeInputRef.current?.focus();
     } finally {
@@ -181,8 +194,22 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
+    if (code.length !== 6) {
+      setError('Please enter the 6-digit code sent to your email.');
+      setStep('code');
+      return;
+    }
+
     if (!email) {
       setError('Email address is missing. Please start over.');
+      setTimeout(() => {
+        navigation.replace('ForgotPassword', {});
+      }, 2000);
+      return;
+    }
+
+    if (!userId) {
+      setError('User information is missing. Please start over.');
       setTimeout(() => {
         navigation.replace('ForgotPassword', {});
       }, 2000);
@@ -193,21 +220,11 @@ export const usePasswordResetScreen = () => {
     setError('');
 
     try {
-      if (!userId) {
-        throw new Error('User ID is missing. Please start over.');
-      }
-
-      console.log('[PasswordReset] Resetting password with OTP verification...');
+      console.log('[PasswordReset] Verifying OTP and resetting password via backend...');
       console.log('[PasswordReset] UserId:', userId);
       console.log('[PasswordReset] Code length:', code.length);
-      
-      // Import auth function
-      const { verifyEmailAndResetPassword } = await import('@/lib/auth');
 
-      // Verify OTP and reset password using backend function
-      // The backend handles OTP verification and password update with server-side permissions
-      // No client-side session is created, avoiding permission issues
-      console.log('[PasswordReset] Verifying OTP and resetting password...');
+      // Backend will validate the OTP (including expiry) and update the password atomically
       await verifyEmailAndResetPassword(userId, code, password);
       console.log('[PasswordReset] Password reset successfully');
       
@@ -253,9 +270,14 @@ export const usePasswordResetScreen = () => {
     setError('');
   };
 
-  const handleSuccessModalClose = () => {
+  const handleSuccessModalClose = async () => {
     setShowSuccessModal(false);
-    navigation.replace('Login', undefined);
+    try {
+      await login({ email, password });
+      navigation.replace('MainTabs', undefined);
+    } catch {
+      navigation.replace('Login', undefined);
+    }
   };
 
   return {

@@ -6,6 +6,7 @@ import { updateUserProfile } from './users';
 import { fetchTiers, getUserCurrentTier } from './tiers';
 import { BADGE_THRESHOLDS, getLastAchievedBadge } from '@/constants/Badges';
 import { useTierCompletionStore } from '@/stores/tierCompletionStore';
+import { sendNewTierPushNotification, sendNewBadgePushNotification } from '@/lib/notifications/tierNotifications';
 import type { Tier } from '@/screens/tabs/promotions/components';
 
 export const CHECK_INS_TABLE_ID = process.env.APPWRITE_CHECK_INS_TABLE_ID || 'checkins';
@@ -110,8 +111,8 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
         await createUserNotification({
           userId: authUserID,
           type: 'tierChanged',
-          title: `Congratulations! You're now ${newTier.name}! 🎊`,
-          message: `You've unlocked new rewards and benefits. Keep sampling to reach the next tier!`,
+          title: `NEW TIER: ${newTier.name}!`,
+          message: `Congratulations, you've reached the ${newTier.name} tier! Keep earning points to level up!`,
           data: {
             oldTierId: oldTier.$id,
             newTierId: newTier.$id,
@@ -119,6 +120,9 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
             newTierName: newTier.name,
           },
         });
+
+        // Send immediate device push notification for new tier
+        await sendNewTierPushNotification(newTier.name);
 
         // Trigger global tier completion modal
         const cleanImageURL = newTier.imageURL?.replace('&mode=admin', '') ?? null;
@@ -149,14 +153,16 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
         await createUserNotification({
           userId: authUserID,
           type: 'badgeEarned',
-          title: 'Badge Earned! 🎉',
-          message: `Congratulations! You've earned the ${newBadgeThreshold} Events Badge!`,
+          title: `NEW BADGE: SAMPLEFINDER CHECK-IN LEVEL ${newBadgeThreshold}`,
+          message: `Congratulations, you earned the ${newBadgeThreshold} check-in level badge! Keep sampling to earn more points!`,
           data: {
             badgeType: 'events',
             badgeThreshold: newBadgeThreshold,
             achievementCount: newTotalEvents,
           },
         });
+
+        await sendNewBadgePushNotification('checkIn', newBadgeThreshold);
       } catch (badgeError) {
         console.error('[checkIns] Failed to create badge notification:', badgeError);
         // Don't fail the check-in if badge notification fails

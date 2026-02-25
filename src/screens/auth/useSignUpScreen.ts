@@ -135,6 +135,15 @@ export const useSignUpScreen = () => {
     if (!hasDigit || !hasUpperCase || !hasLowerCase || !hasSpecialChar) {
       return 'Password must contain at least 1 digit, 1 uppercase letter, 1 lowercase letter, and 1 special character';
     }
+    
+    // Password should not be the same as the username (case-insensitive, trimmed)
+    if (
+      username.trim() &&
+      value.trim().toLowerCase() === username.trim().toLowerCase()
+    ) {
+      return 'Password cannot be the same as your username';
+    }
+
     return undefined;
   };
 
@@ -304,6 +313,13 @@ export const useSignUpScreen = () => {
     setShowError(false);
     setErrorMessage('');
     // Username validation is handled by useEffect with debounce
+
+    // Re-validate password when username changes, since password
+    // is not allowed to be the same as the username
+    if (password.trim()) {
+      const passwordError = validatePassword(password);
+      updateFieldError('password', passwordError);
+    }
   };
 
   const handleEmailChange = (text: string) => {

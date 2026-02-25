@@ -724,6 +724,11 @@ export const verifyEmailAndResetPassword = async (userId: string, otp: string, n
     if (error?.message?.includes('weak') || error?.message?.includes('requirements') || error?.message?.includes('8 characters')) {
       throw new Error('Password does not meet security requirements. Please choose a stronger password.');
     }
+
+    const msg = error?.message ?? '';
+    if (/same as.*username|username.*same as/i.test(msg)) {
+      throw new Error('Password Cannot be same as Username');
+    }
     
     throw new Error(error.message || 'Failed to reset password. Please try again.');
   }
@@ -781,6 +786,11 @@ export const resetPasswordAfterOTPVerification = async (userId: string, newPassw
     // Provide user-friendly error messages
     if (error?.message?.includes('weak') || error?.message?.includes('requirements') || error?.message?.includes('8 characters')) {
       throw new Error('Password does not meet security requirements. Please choose a stronger password.');
+    }
+
+    const msg = error?.message ?? '';
+    if (/same as.*username|username.*same as/i.test(msg)) {
+      throw new Error('Password Cannot be same as Username');
     }
     
     throw new Error(error.message || 'Failed to reset password. Please try again.');

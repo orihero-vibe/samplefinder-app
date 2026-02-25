@@ -61,6 +61,7 @@ const SignUpScreen = () => {
   return (
     <ScreenWrapper
       contentContainerStyle={styles.contentContainer}
+      footerPaddingBottom={40}
     >
       <StatusBar style="light" />
       <Text style={styles.title}>GET STARTED!</Text>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Platform, ActivityIndicator } from 'react-native';
+import { View, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -43,6 +43,7 @@ const HomeScreen = () => {
     snapPoints,
     initialRegion,
     events,
+    isShowingNearbySuggestions,
     hasAnyFilters,
     activeView,
     isRefreshingEvents,
@@ -62,6 +63,7 @@ const HomeScreen = () => {
     handleRefreshEvents,
     handleZipCodeSubmit,
     handleZipCodeChange,
+    handleZipCodeDismiss,
   } = useHomeScreen();
 
   const renderFilterModal = () => {
@@ -159,6 +161,7 @@ const HomeScreen = () => {
         visible={showZipCodeModal}
         onZipCodeSubmit={handleZipCodeSubmit}
         onZipCodeChange={handleZipCodeChange}
+        onDismiss={handleZipCodeDismiss}
         isLoading={isGeocodingZip}
         error={zipCodeError || undefined}
       />
@@ -193,8 +196,17 @@ const HomeScreen = () => {
             showsVerticalScrollIndicator={false}
             refreshing={isRefreshingEvents}
             onRefresh={handleRefreshEvents}
+            {...(Platform.OS === 'ios' && {
+              refreshControl: (
+                <RefreshControl
+                  refreshing={isRefreshingEvents}
+                  onRefresh={handleRefreshEvents}
+                  tintColor={Colors.brandPurpleDeep}
+                />
+              ),
+            })}
           >
-            <UpcomingEvents events={events} />
+            <UpcomingEvents events={events} isShowingNearbySuggestions={isShowingNearbySuggestions} />
           </BottomSheetScrollView>
         </View>
       </BottomSheet>

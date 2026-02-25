@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignUpScreen from '@/screens/auth/SignUpScreen';
 import ConfirmAccountScreen from '@/screens/auth/ConfirmAccountScreen';
+import NotificationSetupScreen from '@/screens/auth/NotificationSetupScreen';
 import ForgotPasswordScreen from '@/screens/auth/ForgotPasswordScreen';
 import PasswordResetScreen from '@/screens/auth/PasswordResetScreen';
 import TabNavigator from '@/navigation/TabNavigator';
@@ -14,6 +15,7 @@ import { CustomSplashScreen } from '@/components';
 export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
+  NotificationSetup: { phoneNumber?: string };
   ConfirmAccount: { phoneNumber?: string };
   ForgotPassword: { email?: string };
   PasswordReset: { email: string; userId?: string };
@@ -73,6 +75,7 @@ const AppNavigator = () => {
       >
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="NotificationSetup" component={NotificationSetupScreen} />
         <Stack.Screen name="ConfirmAccount" component={ConfirmAccountScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />

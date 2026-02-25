@@ -95,8 +95,8 @@ export const useConfirmAccountScreen = () => {
         // Don't block navigation - push notifications are not critical
       });
 
-      // Navigate to MainTabs after successful verification
-      navigation.replace('MainTabs');
+      // Show Notification Setup first, then user continues to MainTabs
+      navigation.replace('NotificationSetup', {});
     } catch (error: any) {
       console.error('[ConfirmAccount] Verification error:', error);
       const errorMsg = error?.message || 'Failed to verify email. Please check your code.';

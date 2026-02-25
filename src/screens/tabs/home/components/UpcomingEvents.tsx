@@ -28,9 +28,11 @@ export interface EventData {
 
 interface UpcomingEventsProps {
   events: EventData[];
+  /** When true, no events matched the selected filters; we show nearby events as suggestions. */
+  isShowingNearbySuggestions?: boolean;
 }
 
-const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events }) => {
+const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events, isShowingNearbySuggestions = false }) => {
   const navigation = useNavigation<UpcomingEventsNavigationProp>();
 
   const handleEventPress = (event: UnifiedEvent) => {
@@ -38,14 +40,25 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events }) => {
     navigation.navigate('BrandDetails', { eventId: event.id });
   };
 
+  const sectionTitle = isShowingNearbySuggestions ? 'NEARBY EVENT SUGGESTIONS' : 'UPCOMING EVENTS';
+  const emptyMessage = isShowingNearbySuggestions
+    ? 'No nearby events to suggest'
+    : 'No upcoming events found';
+  const emptySubtext = isShowingNearbySuggestions
+    ? 'Try adjusting your filters or check back later'
+    : 'Check back later for new events';
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>UPCOMING EVENTS</Text>
+      <Text style={styles.title}>{sectionTitle}</Text>
+      {isShowingNearbySuggestions && events.length > 0 && (
+        <Text style={styles.suggestionSubtext}>No events match your filters. Here are events near you.</Text>
+      )}
       <View style={styles.eventsContainer}>
         {events.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No upcoming events found</Text>
-            <Text style={styles.emptyStateSubtext}>Check back later for new events</Text>
+            <Text style={styles.emptyStateText}>{emptyMessage}</Text>
+            <Text style={styles.emptyStateSubtext}>{emptySubtext}</Text>
           </View>
         ) : (
           events.map((event) => {
@@ -85,6 +98,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
+  },
+  suggestionSubtext: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_400Regular',
+    color: Colors.grayText,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
   eventsContainer: {
     paddingHorizontal: 20,

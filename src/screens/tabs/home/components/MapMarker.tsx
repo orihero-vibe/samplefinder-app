@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Platform } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { Colors } from '@/constants/Colors';
 import PinIcon from '@/icons/PinIcon';
@@ -45,14 +45,17 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
         }}
         title={marker.title}
         onPress={handlePress}
-        anchor={{ x: 0.5, y: 1 }}
+        anchor={{ x: 0.5, y: ANCHOR_Y }}
+        tracksViewChanges={TRACKS_VIEW_CHANGES}
       >
-        <View style={styles.pinContainer}>
-          <PinIcon width={40} height={62} pinColor={Colors.blueColorMode} />
-          {/* Small number circle at top */}
-          <View style={styles.pinNumberContainer}>
-            <View style={styles.pinNumberCircle}>
-              <Text style={styles.pinNumber}>{marker.pinNumber}</Text>
+        <View style={styles.markerWrapper}>
+          <View style={styles.pinContainer}>
+            <PinIcon width={PIN_WIDTH} height={PIN_HEIGHT} pinColor={Colors.blueColorMode} />
+            {/* Small number circle at top */}
+            <View style={styles.pinNumberContainer}>
+              <View style={styles.pinNumberCircle}>
+                <Text style={styles.pinNumber}>{marker.pinNumber}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -68,24 +71,61 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
         }}
         title={marker.title}
         onPress={handlePress}
-        anchor={{ x: 0.5, y: 1 }}
+        anchor={{ x: 0.5, y: ANCHOR_Y }}
+        tracksViewChanges={TRACKS_VIEW_CHANGES}
       >
-        <View style={styles.pinContainer}>
-          <PinIcon width={40} height={62} pinColor={Colors.blueColorMode} />
-          {/* Event count in center circle */}
-          {eventCount > 0 && (
-            <View style={styles.eventCountContainer}>
-              <Text style={styles.eventCount}>{eventCount}</Text>
-            </View>
-          )}
+        <View style={styles.markerWrapper}>
+          <View style={styles.pinContainer}>
+            <PinIcon width={PIN_WIDTH} height={PIN_HEIGHT} pinColor={Colors.blueColorMode} />
+            {/* Event count in center circle */}
+            {eventCount > 0 && (
+              <View style={styles.eventCountContainer}>
+                <Text style={styles.eventCount}>{eventCount}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </Marker>
     );
   }
 };
 
+const BASE_PIN_HEIGHT = 62;
+const BASE_PIN_WIDTH = 40;
+const ANDROID_SCALE = 0.6;
+
+const PIN_HEIGHT = Platform.OS === 'android' ? BASE_PIN_HEIGHT * ANDROID_SCALE : BASE_PIN_HEIGHT;
+const PIN_WIDTH = Platform.OS === 'android' ? BASE_PIN_WIDTH * ANDROID_SCALE : BASE_PIN_WIDTH;
+
+const PIN_NUMBER_CIRCLE_SIZE = Platform.OS === 'android' ? 12 : 20;
+
+/** Extra space below pin so the tip is not clipped by the map's marker view */
+const BOTTOM_PADDING = Platform.OS === 'android' ? 6 : 12;
+
+// White center circle in the SVG is vertically centered at y≈17.673 in a 62px-tall viewBox
+const CENTER_CIRCLE_Y_RATIO = 17.673 / 62;
+
+// Size and top offset for the event-count circle rendered over the SVG center circle
+const EVENT_CIRCLE_SIZE = Platform.OS === 'android' ? 16 : 24;
+const EVENT_CIRCLE_TOP = PIN_HEIGHT * CENTER_CIRCLE_Y_RATIO - EVENT_CIRCLE_SIZE / 2;
+
+/** Anchor y so the pin tip (not wrapper bottom) is on the coordinate: tip is at PIN_HEIGHT of (PIN_HEIGHT + BOTTOM_PADDING) */
+const ANCHOR_Y = PIN_HEIGHT / (PIN_HEIGHT + BOTTOM_PADDING);
+
+/** Android needs tracksViewChanges=true for custom marker content to render */
+const TRACKS_VIEW_CHANGES = Platform.OS === 'android';
+
 const styles = StyleSheet.create({
+  markerWrapper: {
+    width: PIN_WIDTH,
+    height: PIN_HEIGHT + BOTTOM_PADDING,
+    paddingBottom: BOTTOM_PADDING,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
   pinContainer: {
+    width: PIN_WIDTH,
+    height: PIN_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: Colors.black,
@@ -102,9 +142,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pinNumberCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: PIN_NUMBER_CIRCLE_SIZE,
+    height: PIN_NUMBER_CIRCLE_SIZE,
+    borderRadius: PIN_NUMBER_CIRCLE_SIZE / 2,
     backgroundColor: Colors.blueColorMode,
     borderWidth: 1.5,
     borderColor: Colors.white,
@@ -112,24 +152,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pinNumber: {
-    fontSize: 12,
+    width: PIN_NUMBER_CIRCLE_SIZE,
+    fontSize: Platform.OS === 'android' ? 9 : 12,
+    lineHeight: PIN_NUMBER_CIRCLE_SIZE,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.white,
+    textAlign: 'center',
+    ...(Platform.OS === 'android'
+      ? {
+          includeFontPadding: false,
+          textAlignVertical: 'center',
+        }
+      : {}),
   },
   eventCountContainer: {
     position: 'absolute',
-    // Center circle is at y≈17.67 in viewBox (0-62), same as pin height
-    // Position container so text is centered: 17.67 - (container height / 2) = 17.67 - 12 = 5.67
-    top: 5.67,
+    top: EVENT_CIRCLE_TOP,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 24,
-    height: 24,
+    width: EVENT_CIRCLE_SIZE,
+    height: EVENT_CIRCLE_SIZE,
   },
   eventCount: {
-    fontSize: 14,
+    width: EVENT_CIRCLE_SIZE,
+    fontSize: Platform.OS === 'android' ? 12 : 14,
+    lineHeight: EVENT_CIRCLE_SIZE,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
+    textAlign: 'center',
+    ...(Platform.OS === 'android'
+      ? {
+          includeFontPadding: false,
+          textAlignVertical: 'center',
+        }
+      : {}),
   },
 });
 

@@ -8,7 +8,7 @@ import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCateg
 import { getCurrentUser } from '@/lib/auth';
 import { MapMarkerData, FilterType, EventData, StoreData, FilterButtonLayout, MeasureCallback } from './components';
 import { formatEventDistance } from '@/utils/formatters';
-import { geocodeZipCode, isValidZipCode } from '@/utils/geocoding';
+import { geocodeLocation, isValidLocationInput } from '@/utils/geocoding';
 import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 
 export const useHomeScreen = () => {
@@ -25,6 +25,7 @@ export const useHomeScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [events, setEvents] = useState<EventData[]>([]);
+  const [isShowingNearbySuggestions, setIsShowingNearbySuggestions] = useState(false);
   const [isLoadingUpcomingEvents, setIsLoadingUpcomingEvents] = useState(false);
   const [isRefreshingEvents, setIsRefreshingEvents] = useState(false);
   const [refreshEventsTrigger, setRefreshEventsTrigger] = useState(0);
@@ -177,15 +178,20 @@ export const useHomeScreen = () => {
   );
 
   const handleZipCodeChange = () => {
-    // Clear error when user starts typing
     if (zipCodeError) {
       setZipCodeError(null);
     }
   };
 
-  const handleZipCodeSubmit = async (zipCode: string) => {
-    if (!isValidZipCode(zipCode)) {
-      setZipCodeError('Please enter a valid ZIP code (5 digits)');
+  const handleZipCodeDismiss = useCallback(() => {
+    setShowZipCodeModal(false);
+    setZipCodeError(null);
+  }, []);
+
+  const handleZipCodeSubmit = async (query: string) => {
+    const trimmed = query.trim();
+    if (!isValidLocationInput(trimmed)) {
+      setZipCodeError('Please enter a city, address, or ZIP code.');
       return;
     }
 
@@ -193,7 +199,7 @@ export const useHomeScreen = () => {
     setZipCodeError(null);
 
     try {
-      const result = await geocodeZipCode(zipCode);
+      const result = await geocodeLocation(trimmed);
       
       const userCoords = {
         latitude: result.latitude,
@@ -301,7 +307,7 @@ export const useHomeScreen = () => {
   // State for all locations
   const [allLocations, setAllLocations] = useState<LocationRow[]>([]);
 
-  // Fetch all locations for map markers
+  // Fetch all locations for map markers (refetch on focus/refresh so new locations appear without app restart)
   useEffect(() => {
     const loadLocations = async () => {
       try {
@@ -315,9 +321,9 @@ export const useHomeScreen = () => {
     };
 
     loadLocations();
-  }, []);
+  }, [refreshEventsTrigger]);
 
-  // Fetch all upcoming events (filtered by adult categories)
+  // Fetch all upcoming events for map pins (filtered by adult categories); refetch on focus/refresh so pins update in real time
   useEffect(() => {
     // Only load events after all categories are loaded
     if (allCategoriesForFilter === null) {
@@ -342,7 +348,7 @@ export const useHomeScreen = () => {
     };
 
     loadUpcomingEventsForMap();
-  }, [allCategoriesForFilter, userIsAdult]);
+  }, [allCategoriesForFilter, userIsAdult, refreshEventsTrigger]);
 
   // Create map markers from locations (only locations with Active/Scheduled events)
   useEffect(() => {
@@ -482,6 +488,7 @@ export const useHomeScreen = () => {
 
         if (!eventRows || eventRows.length === 0) {
           setEvents([]);
+          setIsShowingNearbySuggestions(false);
           return;
         }
 
@@ -567,113 +574,77 @@ export const useHomeScreen = () => {
           }
         }
 
-        const transformedEvents: EventData[] = filteredEvents.map((event) => {
-          const eventDate = new Date(event.date);
-          const formattedDate = eventDate.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          });
-
-          const startTime = new Date(event.startTime);
-          const endTime = new Date(event.endTime);
-          const startHour = startTime.getHours();
-          const endHour = endTime.getHours();
-          const startMin = startTime.getMinutes();
-          const endMin = endTime.getMinutes();
-
-          const formatTime = (hour: number, min: number) => {
-            const period = hour >= 12 ? 'pm' : 'am';
-            const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-            return min > 0 ? `${displayHour}:${min.toString().padStart(2, '0')} ${period}` : `${displayHour} ${period}`;
-          };
-
-          const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
-
-          // Calculate distance using event.location (location is now on event, not client)
-          const formattedDistance = formatEventDistance({
-            userLocation,
-            eventCoordinates: event.location 
-              ? { latitude: event.location[1], longitude: event.location[0] }
-              : undefined
-          });
-
-          // Get client info for display - look up from clientsMap
-          const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
-          const clientObj = clientId ? clientsMap.get(clientId) : (typeof event.client === 'object' ? event.client : null);
-          
-          // Debug: Log client lookup
-          console.log('[HomeScreen] Event client lookup:', {
-            eventId: event.$id,
-            eventName: event.name,
-            clientIdFromEvent: clientId,
-            clientFound: !!clientObj,
-            clientName: clientObj?.name,
-            hasLogoURL: !!clientObj?.logoURL,
-            logoURL: clientObj?.logoURL,
-          });
-          
-          const location = clientObj?.name || clientObj?.title || event.city || 'Location';
-          // Brand name comes from event.name (event title/brand)
-          const brandName = event.name || 'Brand';
-          // Product name comes from event.products (what's being sampled)
-          const productName = event.products || event.name || 'Product';
-
-          return {
-            id: event.$id,
-            name: productName,
-            brandName: brandName,
-            location,
-            distance: formattedDistance,
-            date: new Date(event.date),
-            time: formattedTime,
-            logoURL: clientObj?.logoURL || null, // Brand logo from client
-            // Note: event.discountImageURL is available for discount display purposes
-          };
-        });
-
-        // Sort by date first (earliest upcoming first), then by distance (closest first)
-        transformedEvents.sort((a, b) => {
-          // First sort by date (ascending - earliest first)
-          const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
-          const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
-          const dateDiff = dateA - dateB;
-          
-          // If dates are the same, sort by distance (closest first)
-          if (dateDiff === 0) {
-            const parseDistance = (distanceStr: string): number => {
-              if (distanceStr === 'Distance unknown') {
-                return 999999; // Put unknown distances at the end
-              }
-              const numericValue = parseFloat(distanceStr.replace(/[^\d.]/g, '')) || 999999;
-              // Convert feet to miles for consistent comparison (5280 ft = 1 mile)
-              if (distanceStr.includes('ft')) {
-                return numericValue / 5280;
-              }
-              return numericValue;
+        const mapAndSortEventRows = (rows: EventRow[]): EventData[] => {
+          const list: EventData[] = rows.map((event) => {
+            const startTime = new Date(event.startTime);
+            const endTime = new Date(event.endTime);
+            const startHour = startTime.getHours();
+            const endHour = endTime.getHours();
+            const startMin = startTime.getMinutes();
+            const endMin = endTime.getMinutes();
+            const formatTime = (hour: number, min: number) => {
+              const period = hour >= 12 ? 'pm' : 'am';
+              const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+              return min > 0 ? `${displayHour}:${min.toString().padStart(2, '0')} ${period}` : `${displayHour} ${period}`;
             };
-            
-            const distA = parseDistance(a.distance);
-            const distB = parseDistance(b.distance);
-            return distA - distB;
-          }
-          
-          return dateDiff;
-        });
+            const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
+            const formattedDistance = formatEventDistance({
+              userLocation,
+              eventCoordinates: event.location
+                ? { latitude: event.location[1], longitude: event.location[0] }
+                : undefined,
+            });
+            const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
+            const clientObj = clientId ? clientsMap.get(clientId) : (typeof event.client === 'object' ? event.client : null);
+            const location = clientObj?.name || clientObj?.title || event.city || 'Location';
+            const brandName = event.name || 'Brand';
+            const productName = event.products || event.name || 'Product';
+            return {
+              id: event.$id,
+              name: productName,
+              brandName: brandName,
+              location,
+              distance: formattedDistance,
+              date: new Date(event.date),
+              time: formattedTime,
+              logoURL: clientObj?.logoURL || null,
+            };
+          });
+          list.sort((a, b) => {
+            const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+            const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+            const dateDiff = dateA - dateB;
+            if (dateDiff === 0) {
+              const parseDistance = (distanceStr: string): number => {
+                if (distanceStr === 'Distance unknown') return 999999;
+                const numericValue = parseFloat(distanceStr.replace(/[^\d.]/g, '')) || 999999;
+                if (distanceStr.includes('ft')) return numericValue / 5280;
+                return numericValue;
+              };
+              return parseDistance(a.distance) - parseDistance(b.distance);
+            }
+            return dateDiff;
+          });
+          return list;
+        };
 
-        // Debug: Log final transformed events
-        console.log('[HomeScreen] Final events to display:', transformedEvents.map(e => ({
-          id: e.id,
-          name: e.name,
-          logoURL: e.logoURL,
-          hasLogoURL: !!e.logoURL,
-        })));
+        const transformedEvents = mapAndSortEventRows(filteredEvents);
+        const hasDatesFilter = datesValues.length > 0;
+        const hasAnyFilterForFallback = hasCategoryFilter || hasRadiusFilter || hasDatesFilter;
 
-        // Limit to first 10 events
-        setEvents(transformedEvents.slice(0, 10));
+        // When any filter (category, dates, radius) is active but no events match, show nearby event suggestions
+        if (hasAnyFilterForFallback && transformedEvents.length === 0 && eventsFilteredByAdult.length > 0) {
+          const nearbyEvents = mapAndSortEventRows(eventsFilteredByAdult);
+          setEvents(nearbyEvents.slice(0, 10));
+          setIsShowingNearbySuggestions(true);
+        } else {
+          setEvents(transformedEvents.slice(0, 10));
+          setIsShowingNearbySuggestions(false);
+        }
       } catch (error) {
         console.error('Error loading events:', error);
         setEvents([]);
+        setIsShowingNearbySuggestions(false);
       } finally {
         setIsLoadingUpcomingEvents(false);
         setIsRefreshingEvents(false);
@@ -1041,6 +1012,7 @@ export const useHomeScreen = () => {
     snapPoints,
     initialRegion,
     events,
+    isShowingNearbySuggestions,
     hasAnyFilters,
     activeView,
     isRefreshingEvents,
@@ -1061,6 +1033,7 @@ export const useHomeScreen = () => {
     handleRefreshEvents,
     handleZipCodeSubmit,
     handleZipCodeChange,
+    handleZipCodeDismiss,
   };
 };
 
