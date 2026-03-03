@@ -122,8 +122,8 @@ export const useLoginScreen = () => {
 
       // Check if email is already verified
       if (user.emailVerification) {
-        // Email already verified - show Notification Setup then main app
-        console.log('[LoginScreen] Email already verified, navigating to NotificationSetup');
+        // Email already verified - go straight to main app
+        console.log('[LoginScreen] Email already verified, navigating to MainTabs');
         
         // Initialize push notifications for returning verified users
         initializePushNotifications().catch((error) => {
@@ -131,7 +131,10 @@ export const useLoginScreen = () => {
           // Don't block navigation - push notifications are not critical
         });
         
-        navigation.replace('NotificationSetup', {});
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
       } else {
         // Email not verified - require OTP verification
         console.log('[LoginScreen] Email not verified, navigating to ConfirmAccount');

@@ -485,6 +485,43 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
 };
 
 /**
+ * Check if a phone number already exists
+ */
+export const checkPhoneNumberExists = async (phoneNumber: string): Promise<boolean> => {
+  console.log('[database.checkPhoneNumberExists] Checking if phone number exists:', phoneNumber);
+
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.checkPhoneNumberExists]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  if (!phoneNumber || !phoneNumber.trim()) {
+    return false;
+  }
+
+  const trimmedPhone = phoneNumber.trim();
+
+  try {
+    const result = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      queries: [Query.equal('phoneNumber', trimmedPhone)],
+    });
+
+    const exists = Boolean(result.rows && result.rows.length > 0);
+    console.log('[database.checkPhoneNumberExists] Phone number exists:', exists);
+    return exists;
+  } catch (error: any) {
+    console.error('[database.checkPhoneNumberExists] Error checking phone number:', error);
+    console.error('[database.checkPhoneNumberExists] Error message:', error?.message);
+    // Do not block signup on transient errors – let backend enforce any hard constraints
+    console.warn('[database.checkPhoneNumberExists] Error occurred, allowing signup (backend will fail if duplicate).');
+    return false;
+  }
+};
+
+/**
  * Check if a username exists for a different user (used in edit profile)
  * Returns true if username exists and belongs to a different user
  */
@@ -677,12 +714,6 @@ export const getNotificationPreferences = async (authID: string): Promise<Notifi
 
     const preferences: NotificationPreferences = {
       enablePushNotifications: parsedPreferences?.enablePushNotifications ?? true,
-      eventReminders: parsedPreferences?.eventReminders ?? true,
-      checkInConfirmations: parsedPreferences?.checkInConfirmations ?? true,
-      triviaGames: parsedPreferences?.triviaGames ?? true,
-      rewardsUpdates: parsedPreferences?.rewardsUpdates ?? true,
-      newEventsNearby: parsedPreferences?.newEventsNearby ?? true,
-      favoriteBrandUpdates: parsedPreferences?.favoriteBrandUpdates ?? false,
     };
 
     console.log('[database.getNotificationPreferences] Preferences retrieved:', preferences);
@@ -893,12 +924,6 @@ export const updateNotificationPreferences = async (
 
     const currentPreferences: NotificationPreferences = {
       enablePushNotifications: parsedPreferences?.enablePushNotifications ?? true,
-      eventReminders: parsedPreferences?.eventReminders ?? true,
-      checkInConfirmations: parsedPreferences?.checkInConfirmations ?? true,
-      triviaGames: parsedPreferences?.triviaGames ?? true,
-      rewardsUpdates: parsedPreferences?.rewardsUpdates ?? true,
-      newEventsNearby: parsedPreferences?.newEventsNearby ?? true,
-      favoriteBrandUpdates: parsedPreferences?.favoriteBrandUpdates ?? false,
     };
 
     // Merge with new preferences

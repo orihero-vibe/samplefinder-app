@@ -32,7 +32,7 @@ import { useTier1ModalStore } from '@/stores/tier1ModalStore';
 import { useTierCompletionStore } from '@/stores/tierCompletionStore';
 import { AchievementModal } from '@/screens/tabs/promotions/components';
 import type { Tier } from '@/screens/tabs/promotions/components';
-import { Share } from 'react-native';
+import { AppState, AppStateStatus, Share } from 'react-native';
 import { getUserCurrentTier } from '@/lib/database/tiers';
 import './reactotron';
 
@@ -46,7 +46,10 @@ export default function App() {
   const [triviaQueue, setTriviaQueue] = useState<TriviaQuestion[]>([]);
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
   const triviaShownRef = useRef(false);
+  const prevQueueLengthRef = useRef(0);
   const currentTriviaRef = useRef<TriviaQuestion | null>(null);
+  const triviaQueueRef = useRef(triviaQueue);
+  triviaQueueRef.current = triviaQueue;
   const currentQuestion = triviaQueue[0] ?? null;
   currentTriviaRef.current = currentQuestion;
 
@@ -171,6 +174,102 @@ export default function App() {
       setShowTrivia(false);
     }
   }, [triviaQueue.length]);
+
+  // When queue becomes empty (user closed last question), refetch so newly created trivia appears without restart
+  useEffect(() => {
+    if (triviaQueue.length !== 0) {
+      prevQueueLengthRef.current = triviaQueue.length;
+      return;
+    }
+    if (prevQueueLengthRef.current === 0) return; // was already empty (e.g. initial state)
+    prevQueueLengthRef.current = 0;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const user = await getCurrentUser();
+        if (cancelled || !user) return;
+        const profile = await getUserProfile(user.$id);
+        if (cancelled || !profile) return;
+        const triviaQuestions = await getActiveTrivia(profile.$id);
+        if (cancelled) return;
+        if (triviaQuestions.length > 0) {
+          setTriviaQueue(triviaQuestions);
+          setShowTrivia(true);
+        }
+      } catch (error) {
+        if (!cancelled) console.error('[App] Failed to refetch trivia when queue empty:', error);
+      }
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [triviaQueue.length]);
+
+  // When queue is empty, periodically refetch so newly created trivia appears (e.g. admin added while user stayed in app)
+  useEffect(() => {
+    if (!appIsReady || !userProfileId || triviaQueue.length > 0) return;
+
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const triviaQuestions = await getActiveTrivia(userProfileId);
+        if (cancelled) return;
+        if (triviaQuestions.length > 0) {
+          setTriviaQueue(triviaQuestions);
+          setShowTrivia(true);
+        }
+      } catch (error) {
+        if (!cancelled) console.error('[App] Failed to refetch trivia (periodic):', error);
+      }
+    }, 60_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [appIsReady, userProfileId, triviaQueue.length]);
+
+  // Refetch trivia when app comes to foreground so newly created trivia appears without restart
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState: AppStateStatus) => {
+      if (nextState !== 'active') return;
+
+      try {
+        const user = await getCurrentUser();
+        if (!user) return;
+        const profile = await getUserProfile(user.$id);
+        if (!profile) return;
+
+        const triviaQuestions = await getActiveTrivia(profile.$id);
+        const currentQueue = triviaQueueRef.current;
+        const existingIds = new Set(currentQueue.map((q) => q.$id));
+        const newQuestions = triviaQuestions.filter((q) => !existingIds.has(q.$id));
+
+        if (newQuestions.length === 0) return;
+
+        setTriviaQueue((prev) => {
+          const existingIdsInPrev = new Set(prev.map((q) => q.$id));
+          const merged = [...prev];
+          for (const q of triviaQuestions) {
+            if (!existingIdsInPrev.has(q.$id)) {
+              merged.push(q);
+              existingIdsInPrev.add(q.$id);
+            }
+          }
+          return merged;
+        });
+        setShowTrivia(true);
+      } catch (error) {
+        console.error('[App] Failed to refetch trivia on app focus:', error);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   // Show Tier 1 modal for newly signed up users (after email verification)
   useEffect(() => {

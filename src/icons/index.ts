@@ -34,3 +34,4 @@ export { default as SmallBlueStarIcon } from './SmallBlueStarIcon';
 export { default as ReviewStarOutlineIcon } from './ReviewStarOutlineIcon';
 export { default as ReviewStarFilledIcon } from './ReviewStarFilledIcon';
 export { default as BadgeEarnedPopupIcon } from './BadgeEarnedPopupIcon';
+export { default as BellWithStarIcon } from './BellWithStarIcon';

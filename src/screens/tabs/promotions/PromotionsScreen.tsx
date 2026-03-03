@@ -22,6 +22,7 @@ import { usePromotionsScreen } from './usePromotionsScreen';
 import styles from './styles';
 
 const PromotionsScreen = () => {
+  const contentRef = useRef<View>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const historyRef = useRef<View>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -59,7 +60,7 @@ const PromotionsScreen = () => {
     handleShareAchievement,
     handleViewMoreEvents,
     handleHistoryEventPress,
-  } = usePromotionsScreen();
+  } = usePromotionsScreen({ contentRef });
 
   const handleViewHistory = () => {
     setShowHistory(true);
@@ -82,7 +83,7 @@ const PromotionsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View ref={contentRef} style={styles.container} collapsable={false}>
       <StatusBar style="light" />
       <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} />
 

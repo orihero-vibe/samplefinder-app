@@ -4,12 +4,6 @@
 
 export interface NotificationPreferences {
   enablePushNotifications: boolean;
-  eventReminders: boolean;
-  checkInConfirmations: boolean;
-  triviaGames: boolean;
-  rewardsUpdates: boolean;
-  newEventsNearby: boolean;
-  favoriteBrandUpdates: boolean;
 }
 
 export interface NotificationData {

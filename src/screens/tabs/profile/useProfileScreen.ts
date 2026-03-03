@@ -1,13 +1,20 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, type RefObject } from 'react';
+import { View } from 'react-native';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { Alert, Linking, Share } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { logout, getCurrentUser } from '@/lib/auth';
-import { getUserProfile, calculateTierStatus, fetchTiers, getUserCurrentTier, UserProfileRow, getUserCheckInsCount, getUserReviewsCount } from '@/lib/database';
+import { captureAndShareView } from '@/utils/captureAndShare';
+import { getUserProfile, calculateTierStatus, fetchTiers, getUserCurrentTier, UserProfileRow, getUserCheckInsCount, getUserReviewsCount, getUnreadNotificationCount } from '@/lib/database';
 import { formatDateForDisplay } from '@/utils/formatters';
 import { countAchievedBadges } from '@/constants';
 
-export const useProfileScreen = () => {
+interface UseProfileScreenOptions {
+  contentRef?: RefObject<View | null>;
+}
+
+export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
+  const { contentRef } = options;
   const navigation = useNavigation();
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
   const referFriendSuccessBottomSheetRef = useRef<BottomSheet>(null);
@@ -24,6 +31,7 @@ export const useProfileScreen = () => {
     badgeAchievements: 0,
   });
   const [tierStatus, setTierStatus] = useState<string>('NewbieSampler');
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -33,6 +41,7 @@ export const useProfileScreen = () => {
       const user = await getCurrentUser();
       if (!user) {
         setError('Not authenticated. Please log in again.');
+        setHasUnreadNotifications(false);
         setIsLoading(false);
         return;
       }
@@ -42,19 +51,23 @@ export const useProfileScreen = () => {
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
       
-      // Use actual counts from database instead of cached profile fields
-      // This ensures consistency with the Achievements screen
-      if (userProfile) {
-        // Fetch actual counts from database in parallel
-        const [eventCheckIns, samplingReviews] = await Promise.all([
-          getUserCheckInsCount(userProfile.$id),
-          getUserReviewsCount(userProfile.$id),
-        ]);
+        // Use actual counts from database instead of cached profile fields
+        // This ensures consistency with the Achievements screen
+        if (userProfile) {
+          // Fetch actual counts from database in parallel. Use user.$id (authID) for unread count - notifications API looks up profile by authID.
+          const [eventCheckIns, samplingReviews, unreadCount] = await Promise.all([
+            getUserCheckInsCount(userProfile.$id),
+            getUserReviewsCount(userProfile.$id),
+            getUnreadNotificationCount(user.$id),
+          ]);
+          setHasUnreadNotifications(unreadCount > 0);
         
-        // Calculate badge achievements based on thresholds
+        // Calculate badge achievements based on thresholds (includes influencer and ambassador badges)
         const eventBadges = countAchievedBadges(eventCheckIns);
         const reviewBadges = countAchievedBadges(samplingReviews);
-        const totalBadges = eventBadges + reviewBadges;
+        const ambassadorBadge = userProfile.isAmbassador ? 1 : 0;
+        const influencerBadge = userProfile.isInfluencer ? 1 : 0;
+        const totalBadges = eventBadges + reviewBadges + ambassadorBadge + influencerBadge;
         
         const totalPoints = userProfile.totalPoints ?? 0;
         setStatistics({
@@ -72,6 +85,7 @@ export const useProfileScreen = () => {
         }
       } else {
         setTierStatus('NewbieSampler');
+        setHasUnreadNotifications(false);
       }
     } catch (err: any) {
       console.error('Error loading profile:', err);
@@ -81,7 +95,7 @@ export const useProfileScreen = () => {
     }
   }, []);
 
-  // Load profile when screen is focused
+  // Load profile when screen is focused; unread count is set once when loadProfile completes to avoid icon flashing
   useFocusEffect(
     useCallback(() => {
       loadProfile();
@@ -96,9 +110,12 @@ export const useProfileScreen = () => {
   const handleSharePress = async () => {
     try {
       const username = profile?.username || authUser?.name || 'User';
-      await Share.share({
-        message: `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`,
-      });
+      const message = `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`;
+      if (contentRef?.current) {
+        await captureAndShareView(contentRef, message);
+      } else {
+        await Share.share({ message });
+      }
     } catch (error) {
       console.error('Error sharing profile:', error);
     }
@@ -212,6 +229,7 @@ export const useProfileScreen = () => {
     authUser,
     statistics,
     tierStatus,
+    hasUnreadNotifications,
     isLoading,
     error,
     isLoggingOut,

@@ -10,7 +10,7 @@ import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { useSignUpScreen } from './useSignUpScreen';
-import { AgeVerificationModal, TermsModal, PrivacyModal, PushNotificationModal } from './signup/components';
+import { AgeVerificationModal, TermsModal, PushNotificationModal } from './signup/components';
 import styles from './signup/styles';
 import { Colors } from '@/constants/Colors';
 
@@ -30,7 +30,6 @@ const SignUpScreen = () => {
     showPushNotificationModal,
     showAgeVerificationModal,
     showTermsModal,
-    showPrivacyModal,
     isLoading,
     errorMessage,
     isFormValid,
@@ -45,16 +44,13 @@ const SignUpScreen = () => {
     setShowPushNotificationModal,
     setShowAgeVerificationModal,
     setShowTermsModal,
-    setShowPrivacyModal,
     handleSignIn,
     handlePushNotificationEnable,
     handlePushNotificationNotNow,
     handleAgeVerificationAccept,
     handleAgeVerificationDismiss,
     handleTermsAccept,
-    handlePrivacyAccept,
     handleTermsLinkPress,
-    handlePrivacyLinkPress,
     handleSignUp,
   } = useSignUpScreen();
 
@@ -102,7 +98,7 @@ const SignUpScreen = () => {
           inputBorderColor={Colors.blueColorMode}
           inputBorderWidth={3}
           error={!!fieldErrors.phoneNumber}
-  
+          errorMessage={fieldErrors.phoneNumber}
         />
 
         <CustomInput
@@ -168,7 +164,7 @@ const SignUpScreen = () => {
           errorMessage={fieldErrors.password}
         />
 
-        {showError && (
+        {showError && !errorMessage && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>Please fill all fields.</Text>
           </View>
@@ -235,12 +231,6 @@ const SignUpScreen = () => {
         visible={showTermsModal}
         onClose={() => setShowTermsModal(false)}
         onAccept={handleTermsAccept}
-      />
-
-      <PrivacyModal
-        visible={showPrivacyModal}
-        onClose={() => setShowPrivacyModal(false)}
-        onAccept={handlePrivacyAccept}
       />
     </ScreenWrapper>
   );

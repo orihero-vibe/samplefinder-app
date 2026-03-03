@@ -258,7 +258,11 @@ export const useEditProfileScreen = () => {
       if (!currentPassword) {
         return 'Current password is required to update password';
       }
-      
+
+      if (username.trim() && password.trim().toLowerCase() === username.trim().toLowerCase()) {
+        return 'New password must not be the same as your username.';
+      }
+
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
         const errorMessage = `New password must contain:\n• ${passwordValidation.errors.join('\n• ')}`;

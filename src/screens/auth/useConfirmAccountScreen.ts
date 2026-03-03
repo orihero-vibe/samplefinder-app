@@ -95,8 +95,14 @@ export const useConfirmAccountScreen = () => {
         // Don't block navigation - push notifications are not critical
       });
 
-      // Show Notification Setup first, then user continues to MainTabs
-      navigation.replace('NotificationSetup', {});
+      // After successful verification, take the user through the
+      // Notification Setup onboarding screen before entering the main app.
+      // This ensures new users see notification onboarding exactly once
+      // as part of the signup/login verification flow.
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'NotificationSetup' as never }],
+      });
     } catch (error: any) {
       console.error('[ConfirmAccount] Verification error:', error);
       const errorMsg = error?.message || 'Failed to verify email. Please check your code.';

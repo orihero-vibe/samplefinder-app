@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Platform } f
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { BellOutlineIcon } from '@/icons/BellOutlineIcon';
+import BellWithStarIcon from '@/icons/BellWithStarIcon';
 import SampleFinderIcon from '@/icons/SampleFinderIcon';
 import { ShareIcon } from '@/icons';
 
@@ -10,9 +11,10 @@ interface BackShareHeaderProps {
   onBack?: () => void;
   onShare?: () => void;
   onNotifications?: () => void;
+  hasUnreadNotifications?: boolean;
 }
 
-const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNotifications }) => {
+const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNotifications, hasUnreadNotifications }) => {
   const insets = useSafeAreaInsets();
 
   return (
@@ -31,7 +33,11 @@ const BackShareHeader: React.FC<BackShareHeaderProps> = ({ onBack, onShare, onNo
           </TouchableOpacity>
           {onNotifications && (
             <TouchableOpacity onPress={onNotifications} style={styles.iconButton}>
-              <BellOutlineIcon/>
+              {hasUnreadNotifications ? (
+                <BellWithStarIcon size={21} color="#FFFFFF" />
+              ) : (
+                <BellOutlineIcon size={21} color="white" />
+              )}
             </TouchableOpacity>
           )}
         </View>

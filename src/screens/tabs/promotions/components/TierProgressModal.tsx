@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { SmallBlueStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
 import { Tier } from './TierItem';
 import { CloseIcon } from '@/components';
+import { captureAndShareView } from '@/utils/captureAndShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -36,6 +37,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
   onClose,
   onViewMoreEvents,
 }) => {
+  const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [imageError, setImageError] = useState(false);
@@ -67,6 +69,17 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
       onViewMoreEvents();
     }
     onClose();
+  };
+
+  const handleShare = async () => {
+    try {
+      const message = tier
+        ? `I'm earning the ${tierDisplayParts.main} tier on SampleFinder! Join me in discovering amazing samples.`
+        : `I'm earning rewards on SampleFinder! Join me in discovering amazing samples.`;
+      await captureAndShareView(modalRef, message);
+    } catch (error) {
+      console.error('Error sharing tier achievement:', error);
+    }
   };
 
   const tierNumber = tier?.order ?? 1;
@@ -104,6 +117,8 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
     >
       <View style={styles.overlay}>
         <Animated.View
+          ref={modalRef}
+          collapsable={false}
           style={[
             styles.modalContainer,
             {
@@ -165,11 +180,18 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
           </View>
 
           <CustomButton
+            title="Share"
+            onPress={handleShare}
+            variant="dark"
+            size="medium"
+            style={styles.actionButton}
+          />
+          <CustomButton
             title="View More Events"
             onPress={handleViewMoreEvents}
             variant="dark"
             size="medium"
-            style={styles.actionButton}
+            style={[styles.actionButton, styles.actionButtonSecondary]}
           />
         </Animated.View>
       </View>
@@ -289,6 +311,9 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     width: '100%',
+    marginTop: 8,
+  },
+  actionButtonSecondary: {
     marginTop: 8,
   },
 });

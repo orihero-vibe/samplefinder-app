@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Share } from 'react-native';
+import { useState, useRef, useEffect, useCallback, type RefObject } from 'react';
+import { View, Share } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { captureAndShareView } from '@/utils/captureAndShare';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
 import { getCurrentUser } from '@/lib/auth';
@@ -18,7 +19,12 @@ import {
 
 export type TabType = 'inProgress' | 'earned';
 
-export const usePromotionsScreen = () => {
+interface UsePromotionsScreenOptions {
+  contentRef?: RefObject<View | null>;
+}
+
+export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) => {
+  const { contentRef } = options;
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('inProgress');
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
@@ -169,10 +175,12 @@ export const usePromotionsScreen = () => {
     try {
       const earnedBadges = [...eventBadges, ...reviewBadges].filter(badge => badge.achieved).length;
       const earnedTiers = tiers.filter(tier => tier.badgeEarned).length;
-      
-      await Share.share({
-        message: `I've earned ${totalPoints} points, ${earnedBadges} badges, and ${earnedTiers} tiers on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
-      });
+      const message = `I've earned ${totalPoints} points, ${earnedBadges} badges, and ${earnedTiers} tiers on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+      if (contentRef?.current) {
+        await captureAndShareView(contentRef, message);
+      } else {
+        await Share.share({ message });
+      }
     } catch (error) {
       console.error('Error sharing achievements:', error);
     }

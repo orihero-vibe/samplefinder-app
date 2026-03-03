@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
+import { Alert, Linking, Platform, AppState, AppStateStatus } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { NotificationSetting, Notification } from './components';
 import { getCurrentUser } from '@/lib/auth';
 import { getUserProfile, getNotificationPreferences, updateNotificationPreferences } from '@/lib/database/users';
@@ -9,8 +11,8 @@ export const useNotificationsScreen = () => {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Notification settings
-  const [enablePushNotifications, setEnablePushNotifications] = useState(true);
+  // Notification settings - synced with system permission
+  const [enablePushNotifications, setEnablePushNotifications] = useState(false);
   
   // Current notifications (unread)
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -18,91 +20,75 @@ export const useNotificationsScreen = () => {
   // Previously seen notifications (read)
   const [previousNotifications, setPreviousNotifications] = useState<Notification[]>([]);
 
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>([
-    {
-      id: 'eventReminders',
-      label: 'Event Reminders',
-      description: 'Get notified before events you favorited start.',
-      enabled: true,
-    },
-    {
-      id: 'checkInConfirmations',
-      label: 'Check-in Confirmations',
-      description: 'Confirmation when you successfully check in.',
-      enabled: true,
-    },
-    {
-      id: 'triviaGames',
-      label: 'Trivia & Games',
-      description: 'Daily trivia and game opportunities.',
-      enabled: true,
-    },
-    {
-      id: 'rewardsUpdates',
-      label: 'Rewards Updates',
-      description: 'Tier progression and reward milestones.',
-      enabled: true,
-    },
-    {
-      id: 'newEventsNearby',
-      label: 'New Events Nearby',
-      description: 'When new events are added near you.',
-      enabled: true,
-    },
-    {
-      id: 'favoriteBrandUpdates',
-      label: 'Favorite Brand Updates',
-      description: 'News from your favorite brands.',
-      enabled: false,
-    },
-  ]);
+  // We don't need individual notification settings anymore
+  const [notificationSettings] = useState<NotificationSetting[]>([]);
 
-  // Load preferences and notifications from database on mount
+  // Sync with system permission status when screen is focused or app returns from background
   useEffect(() => {
-    loadData();
+    const checkAndSyncPermissions = async () => {
+      try {
+        // Always check system permission first
+        const { status } = await Notifications.getPermissionsAsync();
+        const systemEnabled = status === 'granted';
+        
+        console.log('[notifications] System permission status:', status, 'systemEnabled:', systemEnabled);
+        
+        // Update UI to match system permission
+        setEnablePushNotifications(systemEnabled);
+        
+        // Update database to match system permission
+        const user = await getCurrentUser();
+        if (user) {
+          await updateNotificationPreferences(user.$id, {
+            enablePushNotifications: systemEnabled,
+          });
+        }
+      } catch (error) {
+        console.error('[notifications] Error checking system permissions:', error);
+      }
+    };
+
+    // Check immediately when screen is focused
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      checkAndSyncPermissions();
+    });
+
+    // Check when app comes back from background (e.g., returning from system settings)
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        console.log('[notifications] App became active, checking permissions');
+        checkAndSyncPermissions();
+      }
+    };
+
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Also check on mount
+    checkAndSyncPermissions();
+
+    return () => {
+      unsubscribeFocus();
+      appStateSubscription.remove();
+    };
+  }, [navigation]);
+
+  // Load notifications from database on mount
+  useEffect(() => {
+    loadNotifications();
   }, []);
 
-  const loadData = async () => {
+  const loadNotifications = async () => {
     try {
       setIsLoading(true);
       const user = await getCurrentUser();
       if (!user) {
-        console.warn('[notifications] No user logged in, using default preferences');
+        console.warn('[notifications] No user logged in');
         setIsLoading(false);
         return;
       }
 
-      // Load preferences
-      const preferences = await getNotificationPreferences(user.$id);
-      if (preferences) {
-        setEnablePushNotifications(preferences.enablePushNotifications);
-        
-        // If push notifications are off, all individual settings should be disabled
-        // If push notifications are on, use the saved individual preferences
-        setNotificationSettings((prev) =>
-          prev.map((setting) => ({
-            ...setting,
-            enabled: preferences.enablePushNotifications 
-              ? (preferences[setting.id as keyof typeof preferences] ?? setting.enabled)
-              : false,
-          }))
-        );
-      }
-
-      // Load notifications
-      await loadNotifications(user.$id);
-    } catch (error: any) {
-      console.error('[notifications] Error loading data:', error);
-      // Continue with default preferences on error
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadNotifications = async (userId: string) => {
-    try {
       // Load unread notifications
-      const unreadNotifs = await getUnreadNotifications(userId, 10);
+      const unreadNotifs = await getUnreadNotifications(user.$id, 10);
       setNotifications(
         unreadNotifs.map((notif) => ({
           id: notif.id,
@@ -113,7 +99,7 @@ export const useNotificationsScreen = () => {
       );
 
       // Load all notifications (for read ones)
-      const allNotifs = await getUserNotifications(userId, 20);
+      const allNotifs = await getUserNotifications(user.$id, 20);
       const readNotifs = allNotifs.filter((notif) => notif.isRead);
       setPreviousNotifications(
         readNotifs.map((notif) => ({
@@ -125,6 +111,8 @@ export const useNotificationsScreen = () => {
       );
     } catch (error: any) {
       console.error('[notifications] Error loading notifications:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -133,47 +121,85 @@ export const useNotificationsScreen = () => {
   };
 
   const handleNotificationToggle = async (id: string) => {
-    // Don't allow toggling individual settings when push notifications are off
-    if (!enablePushNotifications) {
-      console.log('[notifications] Cannot toggle individual settings when push notifications are disabled');
-      return;
-    }
-
-    const updatedSettings = notificationSettings.map((setting) =>
-      setting.id === id ? { ...setting, enabled: !setting.enabled } : setting
-    );
-    setNotificationSettings(updatedSettings);
-
-    // Save to database
-    try {
-      const user = await getCurrentUser();
-      if (!user) {
-        console.warn('[notifications] No user logged in, cannot save preferences');
-        return;
-      }
-
-      const setting = updatedSettings.find((s) => s.id === id);
-      if (setting) {
-        await updateNotificationPreferences(user.$id, {
-          [id]: setting.enabled,
-        });
-      }
-    } catch (error: any) {
-      console.error('[notifications] Error saving preference:', error);
-      // Revert on error
-      setNotificationSettings(notificationSettings);
-    }
+    // No longer needed - we removed individual notification settings
+    console.log('[notifications] Individual notification settings are no longer used');
   };
 
   const handlePushNotificationsChange = async (value: boolean) => {
-    setEnablePushNotifications(value);
+    // If user is trying to disable notifications, guide them to system settings
+    if (!value) {
+      Alert.alert(
+        'Disable Notifications',
+        'To completely turn off notifications, you need to disable them in your device settings. Would you like to open settings now?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Open Settings',
+            onPress: async () => {
+              // Open system settings for the app
+              if (Platform.OS === 'ios') {
+                await Linking.openURL('app-settings:');
+              } else {
+                await Linking.openSettings();
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      // If enabling, check current permission status
+      const { status: currentStatus } = await Notifications.getPermissionsAsync();
+      
+      if (currentStatus === 'granted') {
+        // Already granted, just update preferences
+        await updatePreferences(value);
+        return;
+      }
+      
+      // If permission was never asked or denied, request it
+      if (currentStatus === 'undetermined' || currentStatus === 'denied') {
+        console.log('[notifications] Requesting notification permissions...');
+        
+        // Request permissions - this will show the native system dialog
+        const { status: newStatus } = await Notifications.requestPermissionsAsync();
+        
+        if (newStatus === 'granted') {
+          console.log('[notifications] Permission granted');
+          await updatePreferences(true);
+        } else {
+          console.log('[notifications] Permission denied:', newStatus);
+          // Permission was denied, guide user to settings
+          Alert.alert(
+            'Permission Required',
+            'Notifications are required to keep you updated. Please enable them in your device settings.',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+              {
+                text: 'Open Settings',
+                onPress: async () => {
+                  if (Platform.OS === 'ios') {
+                    await Linking.openURL('app-settings:');
+                  } else {
+                    await Linking.openSettings();
+                  }
+                },
+              },
+            ]
+          );
+        }
+        return;
+      }
+    }
+  };
 
-    // Update all individual notification settings to match the main toggle
-    const updatedSettings = notificationSettings.map((setting) => ({
-      ...setting,
-      enabled: value,
-    }));
-    setNotificationSettings(updatedSettings);
+  const updatePreferences = async (value: boolean) => {
+    setEnablePushNotifications(value);
 
     // Save to database
     try {
@@ -183,26 +209,31 @@ export const useNotificationsScreen = () => {
         return;
       }
 
-      // Build preferences object with all settings
-      const allPreferences: any = {
+      await updateNotificationPreferences(user.$id, {
         enablePushNotifications: value,
-      };
-      
-      // Set all individual notification preferences to the same value
-      updatedSettings.forEach((setting) => {
-        allPreferences[setting.id] = value;
       });
-
-      await updateNotificationPreferences(user.$id, allPreferences);
     } catch (error: any) {
       console.error('[notifications] Error saving push notifications preference:', error);
       // Revert on error
       setEnablePushNotifications(!value);
-      setNotificationSettings(notificationSettings);
     }
   };
 
   const handleNotificationPress = async (notificationId: string) => {
+    // Optimistically move notification to "Previously Seen" for snappy UI
+    setNotifications((currentNotifications) => {
+      const tappedNotification = currentNotifications.find((n) => n.id === notificationId);
+
+      if (tappedNotification) {
+        setPreviousNotifications((currentPrevious) => [
+          { ...tappedNotification, isRead: true },
+          ...currentPrevious,
+        ]);
+      }
+
+      return currentNotifications.filter((n) => n.id !== notificationId);
+    });
+
     try {
       const user = await getCurrentUser();
       if (!user) {
@@ -210,13 +241,13 @@ export const useNotificationsScreen = () => {
         return;
       }
 
-      // Mark notification as read
+      // Persist read state in the background
       await markNotificationAsRead(user.$id, notificationId);
-
-      // Reload notifications to update the UI
-      await loadNotifications(user.$id);
     } catch (error: any) {
       console.error('[notifications] Error marking notification as read:', error);
+
+      // If something goes wrong, reload from server to resync state
+      loadNotifications();
     }
   };
 

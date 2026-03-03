@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   logoContainerWithBg: {
-    backgroundColor: Colors.orangeBA,
+    backgroundColor: Colors.white,
   },
   logoImage: {
     width: '100%',

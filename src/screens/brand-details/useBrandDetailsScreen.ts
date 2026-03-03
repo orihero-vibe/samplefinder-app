@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, type RefObject } from 'react';
+import { View } from 'react-native';
 import { CommonActions, CompositeNavigationProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Share, Alert } from 'react-native';
+import { captureAndShareView } from '@/utils/captureAndShare';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { getCurrentUser } from '@/lib/auth';
 import {
@@ -61,9 +63,10 @@ interface BrandDetailsScreenProps {
   route: {
     params: { eventId?: string; brand?: BrandDetailsData; fromFavorites?: boolean };
   };
+  contentRef?: RefObject<View | null>;
 }
 
-export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
+export const useBrandDetailsScreen = ({ route, contentRef }: BrandDetailsScreenProps) => {
   const navigation = useNavigation<BrandDetailsScreenNavigationProp>();
   const { eventId, brand: brandParam, fromFavorites } = route.params;
   
@@ -112,12 +115,6 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const [badgeNumber, setBadgeNumber] = useState(0);
   const [badgeAchievementCount, setBadgeAchievementCount] = useState(0);
   
-  // Calendar alert modal state
-  const [calendarAlertVisible, setCalendarAlertVisible] = useState(false);
-  const [calendarAlertType, setCalendarAlertType] = useState<'added' | 'removed'>('added');
-  
-  // Remove from calendar confirmation modal state
-  const [removeConfirmVisible, setRemoveConfirmVisible] = useState(false);
   
   // Initialize calendar state from store
   useEffect(() => {
@@ -320,9 +317,12 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
   const handleShare = async () => {
     if (!brand) return;
     try {
-      await Share.share({
-        message: `Check out ${brand.brandName} at ${brand.storeName} on ${brand.date} from ${brand.time}`,
-      });
+      const message = `Check out ${brand.brandName} at ${brand.storeName} on ${brand.date} from ${brand.time}`;
+      if (contentRef?.current) {
+        await captureAndShareView(contentRef, message);
+      } else {
+        await Share.share({ message });
+      }
     } catch (error) {
       console.error('Error sharing:', error);
     }
@@ -332,9 +332,11 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     if (!brand?.id) return;
 
     try {
-      // If already added, show confirmation before removing
+      // If already added, remove directly (no confirmation)
       if (isAddedToCalendar) {
-        setRemoveConfirmVisible(true);
+        await removeSavedEventFromStore(brand.id);
+        setIsAddedToCalendar(false);
+        await cancelEventReminders(brand.id);
         return;
       }
 
@@ -359,10 +361,6 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
           console.log('[handleAddToCalendar] Scheduled reminders:', scheduledReminders);
         }
       }
-      
-      // Show custom calendar alert modal
-      setCalendarAlertType('added');
-      setCalendarAlertVisible(true);
     } catch (error) {
       console.error('Error updating calendar:', error);
       Alert.alert(
@@ -536,38 +534,6 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     }
   };
 
-  const handleCloseCalendarAlert = () => {
-    setCalendarAlertVisible(false);
-  };
-
-  const handleConfirmRemoveFromCalendar = async () => {
-    if (!brand?.id) return;
-    
-    try {
-      setRemoveConfirmVisible(false);
-      await removeSavedEventFromStore(brand.id);
-      setIsAddedToCalendar(false);
-      
-      // Cancel scheduled reminders for this event
-      await cancelEventReminders(brand.id);
-      
-      // Show custom calendar alert modal
-      setCalendarAlertType('removed');
-      setCalendarAlertVisible(true);
-    } catch (error) {
-      console.error('Error removing from calendar:', error);
-      Alert.alert(
-        'Error',
-        'Failed to remove from calendar. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  const handleCancelRemoveFromCalendar = () => {
-    setRemoveConfirmVisible(false);
-  };
-
   const handleViewRewards = () => {
     setPointsModalVisible(false);
     // Show tier completion modal after earned modal closes (if user completed a tier)
@@ -578,7 +544,12 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     }
   };
 
-  const handleSubmitReview = async (reviewText: string, rating: number) => {
+  const handleSubmitReview = async (
+    reviewText: string,
+    rating: number,
+    tags?: string[],
+    purchased?: boolean
+  ) => {
     if (isSubmittingReview) {
       return;
     }
@@ -609,12 +580,18 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
         return;
       }
 
+      // Map first selected "What Did You Like?" tag to liked (backend enum is lowercase)
+      const liked =
+        tags && tags.length > 0 ? tags[0].toLowerCase() : undefined;
+
       const reviewData = {
         user: userProfile.$id,
         event: eventId || '',
         review: reviewText || undefined,
         rating: rating,
         pointsEarned: eventData?.reviewPoints || 0,
+        liked,
+        hasPurchased: purchased,
       };
 
       const reviewResult = await createReview(reviewData);
@@ -663,9 +640,6 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     hasReviewed,
     checkInPoints,
     totalEarnedPoints,
-    calendarAlertVisible,
-    calendarAlertType,
-    removeConfirmVisible,
     badgeModalVisible,
     badgeType,
     badgeNumber,
@@ -680,9 +654,6 @@ export const useBrandDetailsScreen = ({ route }: BrandDetailsScreenProps) => {
     handleSubmitReview,
     handleClosePointsModal,
     handleViewRewards,
-    handleCloseCalendarAlert,
-    handleConfirmRemoveFromCalendar,
-    handleCancelRemoveFromCalendar,
     handleCloseBadgeModal,
     handleShareBadge,
     isRefreshing,

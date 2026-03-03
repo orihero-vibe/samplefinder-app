@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainerWithBg: {
-    backgroundColor: Colors.brandPurpleDeep,
+    backgroundColor: Colors.white,
   },
   logoImage: {
     width: '100%',

@@ -3,7 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { login, sendPasswordRecoveryOTP, verifyEmail, verifyEmailAndResetPassword } from '@/lib/auth';
+import { login, sendPasswordRecoveryOTP, verifyEmailAndResetPassword } from '@/lib/auth';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 
 type PasswordResetScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PasswordReset'>;
@@ -33,9 +33,13 @@ export const usePasswordResetScreen = () => {
   const navigation = useNavigation<PasswordResetScreenNavigationProp>();
   const route = useRoute<PasswordResetScreenRouteProp>();
   const email = route?.params?.email || '';
-  const userId = route?.params?.userId;
+  const initialUserId = route?.params?.userId;
   const maskedEmail = maskEmail(email);
-  
+
+  // Keep userId in state so that after Resend we use the latest (same user, but ensures we're in sync with the OTP just sent)
+  const [userId, setUserId] = useState<string | undefined>(initialUserId);
+  const effectiveUserId = userId ?? initialUserId;
+
   const [step, setStep] = useState<'code' | 'password'>('code'); // Two steps: code verification, then password
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -44,8 +48,12 @@ export const usePasswordResetScreen = () => {
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(60); // 60 seconds countdown
   const [canResend, setCanResend] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const codeInputRef = useRef<CodeInputRef>(null);
+
+  // Sync from route when it becomes available on initial load only
+  useEffect(() => {
+    if (initialUserId) setUserId((prev) => prev ?? initialUserId);
+  }, [initialUserId]);
 
   useEffect(() => {
     // Focus code input when screen mounts
@@ -115,7 +123,7 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
-    if (!userId) {
+    if (!effectiveUserId) {
       setError('User information is missing. Please start over.');
       setTimeout(() => {
         navigation.replace('ForgotPassword', {});
@@ -123,24 +131,15 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
-    setIsLoading(true);
+    // For password reset, we don't need to create a session when verifying the OTP.
+    // The actual OTP verification happens in verifyEmailAndResetPassword when the user submits a new password.
+    // Here we only validate the code format and move to the password step.
+    setIsLoading(false);
     setError('');
-
-    try {
-      console.log('[PasswordReset] Verifying recovery OTP with backend...');
-      await verifyEmail(userId, verificationCode);
-      console.log('[PasswordReset] OTP verified successfully, moving to password step');
-      setStep('password');
-    } catch (error: any) {
-      console.error('[PasswordReset] OTP verification error:', error);
-      const errorMessage =
-        error?.message || 'Invalid or expired code. Please request a new password reset.';
-      setError(errorMessage);
-      setCode('');
-      codeInputRef.current?.focus();
-    } finally {
-      setIsLoading(false);
-    }
+    console.log(
+      '[PasswordReset] Code validated locally, proceeding to password step. OTP will be verified during password reset.'
+    );
+    setStep('password');
   };
 
   const handleResendCode = async () => {
@@ -162,16 +161,10 @@ export const usePasswordResetScreen = () => {
       const newUserId = await sendPasswordRecoveryOTP(email);
       console.log('[PasswordReset] Recovery email resent successfully, userId:', newUserId);
       setError(''); // Clear any previous errors
-      
+      if (newUserId) setUserId(newUserId);
       // Reset timer after successful resend
       setResendTimer(60);
       setCanResend(false);
-      
-      // Update userId if we got a new one
-      if (newUserId && !userId) {
-        // Note: We can't update route params, but we can store it in state
-        // For now, we'll use the userId we have or the new one
-      }
     } catch (error: any) {
       console.error('[PasswordReset] Resend error:', error);
       const errorMsg = error?.message || 'Failed to resend recovery code. Please try again.';
@@ -208,7 +201,7 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
-    if (!userId) {
+    if (!effectiveUserId) {
       setError('User information is missing. Please start over.');
       setTimeout(() => {
         navigation.replace('ForgotPassword', {});
@@ -221,15 +214,23 @@ export const usePasswordResetScreen = () => {
 
     try {
       console.log('[PasswordReset] Verifying OTP and resetting password via backend...');
-      console.log('[PasswordReset] UserId:', userId);
+      console.log('[PasswordReset] UserId:', effectiveUserId);
       console.log('[PasswordReset] Code length:', code.length);
 
-      // Backend will validate the OTP (including expiry) and update the password atomically
-      await verifyEmailAndResetPassword(userId, code, password);
+      // Backend validates the OTP (including expiry) and updates the password atomically
+      await verifyEmailAndResetPassword(effectiveUserId, code, password);
       console.log('[PasswordReset] Password reset successfully');
-      
-      // Show success modal
-      setShowSuccessModal(true);
+
+      try {
+        await login({ email, password });
+        setUserId(undefined);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      } catch {
+        navigation.replace('Login', undefined);
+      }
     } catch (error: any) {
       console.error('[PasswordReset] Password update error:', error);
       const errorMsg = error?.message || 'Failed to reset password. Please try again.';
@@ -270,16 +271,6 @@ export const usePasswordResetScreen = () => {
     setError('');
   };
 
-  const handleSuccessModalClose = async () => {
-    setShowSuccessModal(false);
-    try {
-      await login({ email, password });
-      navigation.replace('MainTabs', undefined);
-    } catch {
-      navigation.replace('Login', undefined);
-    }
-  };
-
   return {
     email,
     maskedEmail,
@@ -291,7 +282,6 @@ export const usePasswordResetScreen = () => {
     error,
     resendTimer,
     canResend,
-    showSuccessModal,
     codeInputRef,
     handleCodeChange,
     handleCodeComplete,
@@ -300,7 +290,6 @@ export const usePasswordResetScreen = () => {
     handleResendCode,
     handleCreatePassword,
     handleBackToCode,
-    handleSuccessModalClose,
   };
 };
 

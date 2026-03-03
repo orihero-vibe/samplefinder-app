@@ -24,6 +24,12 @@ export interface CalendarEventDetail {
   time: string;
   logoURL?: string | null;
   /**
+   * Start time and end time are included for precise scheduling logic
+   * (e.g., showing events only between their scheduled start and end).
+   */
+  startTime?: Date;
+  endTime?: Date;
+  /**
    * Alternative logo format for generating placeholder logos when logoURL is not available.
    * Currently not used by EventCard (which uses logoURL), but reserved for future use
    * to display branded placeholder logos with custom colors and text.

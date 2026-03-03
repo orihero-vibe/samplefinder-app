@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
@@ -28,7 +29,18 @@ import ErrorModal from '@/components/shared/ErrorModal';
 const EditProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const {handleLogOutPress, showLogoutModal, handleConfirmLogout, handleCancelLogout, isLoggingOut } = useProfileScreen();
-  
+  const appVersion =
+    Constants.nativeAppVersion ||
+    Constants.expoConfig?.version ||
+    'Unknown';
+  const appBuildNumber =
+    Constants.nativeBuildVersion ||
+    // @ts-expect-error expoConfig platform-specific fields
+    (Constants.expoConfig as any)?.ios?.buildNumber ||
+    // @ts-expect-error expoConfig platform-specific fields
+    (Constants.expoConfig as any)?.android?.versionCode ||
+    'Unknown';
+
   const {
     isLoading,
     isSaving,
@@ -253,10 +265,15 @@ const EditProfileScreen = () => {
               disabled={isDeleting}
             />
           </View>
+      <View style={styles.appVersionContainer}>
+        <Text style={styles.appVersionText}>
+          App version {appVersion}({appBuildNumber})
+        </Text>
+      </View>
         </ScrollView>
       </KeyboardAvoidingView>
-        {/* Logout Confirmation Modal */}
-        <ConfirmationModal
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
         visible={showLogoutModal}
         title="Are you sure you want to logout?"
         description="You will need to sign in again to access your account."

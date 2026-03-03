@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { Colors } from '../../constants/Colors';
 import CloseIcon from '../shared/CloseIcon';
 import SparkleIcon from '@/icons/SparkleIcon';
 import { AchievementStartIcon, MediumStarIcon, SmallStarIcon, } from '@/icons';
+import { captureAndShareView } from '@/utils/captureAndShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -52,6 +53,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   const [pointsAwarded, setPointsAwarded] = useState<number>(0);
   const [countdown, setCountdown] = useState<number>(5);
   const [closeEnabledAfterWin, setCloseEnabledAfterWin] = useState(true);
+  const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
 
@@ -117,8 +119,12 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       const result = await onSubmitAnswer(index);
       
       if (result.success) {
-        const isCorrect = result.isCorrect ?? false;
+        // Derive isCorrect robustly: API may omit it or send wrong type; pointsAwarded > 0 implies correct
         const points = result.pointsAwarded ?? 0;
+        const isCorrect =
+          result.isCorrect === true ||
+          (points > 0) ||
+          (result.correctAnswerIndex != null && result.correctAnswerIndex === index);
         const correctIndex =
           result.correctAnswerIndex ?? (isCorrect ? index : null);
         
@@ -160,6 +166,15 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       onSkipped?.();
     }
     onClose();
+  };
+
+  const handleShare = async () => {
+    try {
+      const message = `I just won trivia and earned ${pointsAwarded} points on SampleFinder! 🎉`;
+      await captureAndShareView(modalRef, message);
+    } catch (error) {
+      console.error('Error sharing trivia win:', error);
+    }
   };
 
   const renderLocationIcon = () => (
@@ -276,6 +291,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     if (answerState === 'submitting') {
       return (
         <View style={styles.resultContainer}>
+          <ActivityIndicator size="small" color={Colors.pinDarkBlue} style={styles.checkingSpinner} />
           <Text style={styles.instructionText}>Checking your answer...</Text>
         </View>
       );
@@ -291,6 +307,9 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           <View style={styles.sparkleContainerTopRight}>
             <SmallStarIcon size={40} />
           </View>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
+            <Text style={styles.shareButtonText}>Share</Text>
+          </TouchableOpacity>
         </View>
       );
     } else if (answerState === 'incorrect') {
@@ -364,6 +383,8 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     >
       <View style={styles.overlay}>
         <Animated.View
+          ref={modalRef}
+          collapsable={false}
           style={[
             styles.modalContainer,
             {
@@ -438,6 +459,7 @@ const styles = StyleSheet.create({
   locationIconContainer: {
     marginTop: 8,
     marginBottom: 16,
+    alignSelf: 'center',
     alignItems: 'center',
   },
   locationImage: {
@@ -445,9 +467,15 @@ const styles = StyleSheet.create({
     height: 80,
   },
   brandLogoContainer: {
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.white,
+    overflow: 'hidden',
   },
   brandLogo: {
     width: 80,
@@ -578,6 +606,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  checkingSpinner: {
+    marginBottom: 8,
+  },
   instructionText: {
     fontSize: 14,
     color: Colors.pinDarkBlue,
@@ -585,10 +616,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontWeight: '400',
     fontFamily: 'Quicksand_500Medium',
+    textAlign: 'center',
   },
   countdownContainer: {
     width: 80,
     height: 80,
+    alignSelf: 'center',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -643,5 +676,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_500Medium',
     color: Colors.pinDarkBlue,
     textAlign: 'center',
+  },
+  shareButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: Colors.pinDarkBlue,
+    borderRadius: 12,
+  },
+  shareButtonText: {
+    fontSize: 16,
+    fontFamily: 'Quicksand_600SemiBold',
+    color: '#FFFFFF',
   },
 });

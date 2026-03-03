@@ -4,13 +4,13 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomButton from '@/components/shared/CustomButton';
 import CustomInput from '@/components/shared/CustomInput';
 import CodeInput from '@/components/shared/CodeInput';
-import SuccessModal from '@/components/modals/SuccessModal';
 import { usePasswordResetScreen } from './usePasswordResetScreen';
 import styles from './password-reset/styles';
 
@@ -26,7 +26,6 @@ const PasswordResetScreen = () => {
     error,
     resendTimer,
     canResend,
-    showSuccessModal,
     codeInputRef,
     handleCodeChange,
     handleCodeComplete,
@@ -35,7 +34,6 @@ const PasswordResetScreen = () => {
     handleResendCode,
     handleCreatePassword,
     handleBackToCode,
-    handleSuccessModalClose,
   } = usePasswordResetScreen();
 
   return (
@@ -107,7 +105,11 @@ const PasswordResetScreen = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.needHelpContainer}>
+            <TouchableOpacity
+              style={styles.needHelpContainer}
+              onPress={() => Linking.openURL('https://samplefinder.com/support')}
+              activeOpacity={0.7}
+            >
               <Text style={styles.needHelpText}>Need help?</Text>
             </TouchableOpacity>
           </>
@@ -157,14 +159,6 @@ const PasswordResetScreen = () => {
           </>
         )}
       </View>
-
-      <SuccessModal
-        visible={showSuccessModal}
-        title="Password Reset Complete!"
-        message="Your password has been reset successfully. Taking you to the home screen."
-        buttonText="Go to Home"
-        onClose={handleSuccessModalClose}
-      />
     </ScreenWrapper>
   );
 };

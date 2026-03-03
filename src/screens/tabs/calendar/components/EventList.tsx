@@ -42,12 +42,32 @@ const EventList: React.FC<EventListProps> = ({ events, selectedDate, showUpcomin
   
   // Filter events based on mode
   const filteredEvents = showUpcoming
-    ? events.filter((event) => {
-        const eventDate = new Date(event.date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return eventDate >= today;
-      }).sort((a, b) => {
+    ? events
+        .filter((event) => {
+          const now = new Date();
+          const start = event.startTime;
+          const end = event.endTime;
+
+          if (start && end) {
+            return now >= start && now <= end;
+          }
+
+          if (start && !end) {
+            return now >= start;
+          }
+
+          if (!start && end) {
+            return now <= end;
+          }
+
+          // Fallback for events without explicit times: keep existing "date >= today" behavior
+          const eventDate = new Date(event.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          eventDate.setHours(0, 0, 0, 0);
+          return eventDate >= today;
+        })
+        .sort((a, b) => {
         // First sort by date (ascending)
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
@@ -61,7 +81,7 @@ const EventList: React.FC<EventListProps> = ({ events, selectedDate, showUpcomin
         }
         
         return dateDiff;
-      })
+        })
     : selectedDate
     ? events.filter((event) => {
         const eventDate = new Date(event.date);

@@ -99,7 +99,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-
+    backgroundColor: Colors.white,
+    overflow: 'hidden',
+    borderRadius: 20,
   },
   logoImage: {
     width: '100%',

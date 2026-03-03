@@ -1,7 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Monicon } from '@monicon/native';
 import { SparkleNotificationIcon } from '@/icons/SparkleNotificationIcon';
 import { Colors } from '@/constants/Colors';
+
+const STAR_CHAR = '⭐';
+const STAR_ALT = '★';
 
 export interface Notification {
   id: string;
@@ -17,6 +21,31 @@ interface NotificationItemProps {
   onPress?: (id: string) => void;
 }
 
+function NotificationTitle({ title }: { title: string }) {
+  const hasStar = title.includes(STAR_CHAR) || title.includes(STAR_ALT);
+  if (!hasStar) {
+    return (
+      <View style={styles.titleWrapper}>
+        <Text style={styles.title}>{title}</Text>
+      </View>
+    );
+  }
+  const starIdx = title.indexOf(STAR_CHAR) >= 0 ? title.indexOf(STAR_CHAR) : title.indexOf(STAR_ALT);
+  const starLength = title.indexOf(STAR_CHAR) >= 0 ? STAR_CHAR.length : STAR_ALT.length;
+  const beforeStar = title.slice(0, starIdx).trimEnd();
+  const afterStar = title.slice(starIdx + starLength).trimStart();
+
+  return (
+    <View style={styles.titleRow}>
+      <Text style={styles.title}>{beforeStar}</Text>
+      <View style={styles.titleStarWrapper}>
+        <Monicon name="mdi:star" size={18} color="#E6B800" />
+      </View>
+      {afterStar ? <Text style={styles.title}>{afterStar}</Text> : null}
+    </View>
+  );
+}
+
 export const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPress }) => {
   const handlePress = () => {
     if (onPress) {
@@ -30,12 +59,16 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
       activeOpacity={0.7}
       onPress={handlePress}
     >
-      {!notification.isRead && <View style={styles.unreadIndicator} />}
+      {!notification.isRead && (
+        <View style={styles.unreadDotColumn}>
+          <View style={styles.unreadIndicator} />
+        </View>
+      )}
       <View style={styles.iconContainer}>
-        <SparkleNotificationIcon size={56} />
+        <SparkleNotificationIcon size={46} />
       </View>
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>{notification.title}</Text>
+        <NotificationTitle title={notification.title} />
         <Text style={styles.description}>{notification.description}</Text>
       </View>
     </TouchableOpacity>
@@ -45,30 +78,28 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingVertical: 20,
-    // paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#E8E8E8',
-    position: 'relative',
-    marginHorizontal:30
+    marginHorizontal: 30,
   },
-  unreadContainer: {
-    // backgroundColor: '#F8F5FF',
+  unreadContainer: {},
+  unreadDotColumn: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
   },
   unreadIndicator: {
-    position: 'absolute',
-    left: 8,
-    top: '50%',
-    marginTop: -4,
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#1D0A74',
   },
   iconContainer: {
-    width: 56,
-    height: 56,
+    width: 46,
+    height: 46,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -77,11 +108,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  titleWrapper: {
+    marginBottom: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  titleStarWrapper: {
+    marginLeft: 2,
+    marginRight: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
     fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.black,
-    marginBottom: 4,
   },
   description: {
     fontSize: 14,

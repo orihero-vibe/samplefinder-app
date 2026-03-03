@@ -92,12 +92,12 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
 
 const BASE_PIN_HEIGHT = 62;
 const BASE_PIN_WIDTH = 40;
-const ANDROID_SCALE = 0.6;
+const ANDROID_SCALE = 0.63;
 
 const PIN_HEIGHT = Platform.OS === 'android' ? BASE_PIN_HEIGHT * ANDROID_SCALE : BASE_PIN_HEIGHT;
 const PIN_WIDTH = Platform.OS === 'android' ? BASE_PIN_WIDTH * ANDROID_SCALE : BASE_PIN_WIDTH;
 
-const PIN_NUMBER_CIRCLE_SIZE = Platform.OS === 'android' ? 12 : 20;
+const PIN_NUMBER_CIRCLE_SIZE = Platform.OS === 'android' ? 20 : 20;
 
 /** Extra space below pin so the tip is not clipped by the map's marker view */
 const BOTTOM_PADDING = Platform.OS === 'android' ? 6 : 12;
@@ -106,7 +106,7 @@ const BOTTOM_PADDING = Platform.OS === 'android' ? 6 : 12;
 const CENTER_CIRCLE_Y_RATIO = 17.673 / 62;
 
 // Size and top offset for the event-count circle rendered over the SVG center circle
-const EVENT_CIRCLE_SIZE = Platform.OS === 'android' ? 16 : 24;
+const EVENT_CIRCLE_SIZE = Platform.OS === 'android' ? 20 : 24;
 const EVENT_CIRCLE_TOP = PIN_HEIGHT * CENTER_CIRCLE_Y_RATIO - EVENT_CIRCLE_SIZE / 2;
 
 /** Anchor y so the pin tip (not wrapper bottom) is on the coordinate: tip is at PIN_HEIGHT of (PIN_HEIGHT + BOTTOM_PADDING) */
@@ -152,9 +152,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pinNumber: {
-    width: PIN_NUMBER_CIRCLE_SIZE,
-    fontSize: Platform.OS === 'android' ? 9 : 12,
-    lineHeight: PIN_NUMBER_CIRCLE_SIZE,
+    fontSize: Platform.OS === 'android' ? 8 : 12,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.white,
     textAlign: 'center',
@@ -174,9 +172,7 @@ const styles = StyleSheet.create({
     height: EVENT_CIRCLE_SIZE,
   },
   eventCount: {
-    width: EVENT_CIRCLE_SIZE,
-    fontSize: Platform.OS === 'android' ? 12 : 14,
-    lineHeight: EVENT_CIRCLE_SIZE,
+    fontSize: Platform.OS === 'android' ? 10 : 14,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
     textAlign: 'center',

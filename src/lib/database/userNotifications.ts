@@ -108,8 +108,19 @@ export const createUserNotification = async (
     // Send push notification (respects user preferences)
     try {
       // Check if user has push notifications enabled
-      const notificationPreferences = (profile as any).notificationPreferences || {};
-      const pushEnabled = notificationPreferences.enablePushNotifications !== false; // Default to true
+      let pushEnabled = true; // Default to true
+      const preferencesRaw = (profile as any).notificationPreferences;
+      
+      if (preferencesRaw) {
+        try {
+          const notificationPreferences = typeof preferencesRaw === 'string'
+            ? JSON.parse(preferencesRaw)
+            : preferencesRaw;
+          pushEnabled = notificationPreferences.enablePushNotifications !== false;
+        } catch (error) {
+          console.warn('[notifications] Error parsing notification preferences, defaulting to enabled');
+        }
+      }
 
       if (pushEnabled) {
         console.log('[notifications] Sending push notification to user:', notificationData.userId);

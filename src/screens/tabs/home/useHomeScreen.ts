@@ -34,6 +34,7 @@ export const useHomeScreen = () => {
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [isMapWithoutLocation, setIsMapWithoutLocation] = useState(false);
   const [showZipCodeModal, setShowZipCodeModal] = useState(false);
   const [isGeocodingZip, setIsGeocodingZip] = useState(false);
   const [zipCodeError, setZipCodeError] = useState<string | null>(null);
@@ -99,15 +100,18 @@ export const useHomeScreen = () => {
 
   const resolveLocation = useCallback(async () => {
     try {
-      // Check current status first - if already denied, show ZIP modal immediately
-      const { status } = await Location.getForegroundPermissionsAsync();
+      // Check current status first
+      const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
 
-      if (status === 'denied') {
+      // If permission was previously denied and we can't ask again, fall back to ZIP immediately
+      if (status === 'denied' && canAskAgain === false) {
         setHasLocationPermission(false);
         setShowZipCodeModal(true);
         return;
       }
 
+      // If we don't currently have permission, and the OS will still show the dialog,
+      // request permission so the user sees the native "Turn On Location" popup.
       if (status !== 'granted') {
         const { status: requestedStatus } = await Location.requestForegroundPermissionsAsync();
 
@@ -119,6 +123,7 @@ export const useHomeScreen = () => {
       }
 
       setHasLocationPermission(true);
+      setIsMapWithoutLocation(false);
 
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -156,18 +161,13 @@ export const useHomeScreen = () => {
     resolveLocation();
   }, [resolveLocation]);
 
-  // Re-check when Home gains focus - ensures ZIP modal shows if user denied and navigated away
+  // Re-check when Home gains focus - ensures permission dialog/ZIP modal logic is reapplied if needed
   useFocusEffect(
     useCallback(() => {
       if (!userLocation) {
-        Location.getForegroundPermissionsAsync().then(({ status }) => {
-          if (status === 'denied') {
-            setHasLocationPermission(false);
-            setShowZipCodeModal(true);
-          }
-        });
+        resolveLocation();
       }
-    }, [userLocation])
+    }, [userLocation, resolveLocation])
   );
 
   // Refetch events when Home tab gains focus so admin changes (create/edit/hide/archive) appear without app restart
@@ -186,6 +186,7 @@ export const useHomeScreen = () => {
   const handleZipCodeDismiss = useCallback(() => {
     setShowZipCodeModal(false);
     setZipCodeError(null);
+    setIsMapWithoutLocation(true);
   }, []);
 
   const handleZipCodeSubmit = async (query: string) => {
@@ -207,6 +208,7 @@ export const useHomeScreen = () => {
       };
 
       setUserLocation(userCoords);
+      setIsMapWithoutLocation(false);
       setHasLocationPermission(false); // Still false since we don't have actual permission
       setShowZipCodeModal(false);
 
@@ -335,12 +337,15 @@ export const useHomeScreen = () => {
         const eventRows = await fetchAllUpcomingEvents();
         // Filter events based on user's adult status and category adult flags
         const filteredByAdult = filterEventsByAdultCategories(eventRows, allCategoriesForFilter, userIsAdult);
+        // Only keep events that are currently active based on their scheduled start/end times
+        const activeEvents = filteredByAdult.filter(isEventActiveNow);
         console.log('[HomeScreen] Events for map filtered:', {
           before: eventRows.length,
-          after: filteredByAdult.length,
-          userIsAdult
+          afterAdultFilter: filteredByAdult.length,
+          afterScheduleFilter: activeEvents.length,
+          userIsAdult,
         });
-        setAllUpcomingEvents(filteredByAdult);
+        setAllUpcomingEvents(activeEvents);
       } catch (error) {
         console.error('Error loading events for map:', error);
         setAllUpcomingEvents([]);
@@ -390,6 +395,11 @@ export const useHomeScreen = () => {
 
     setMarkers(locationMarkers);
   }, [allLocations, allUpcomingEvents]);
+
+  const visibleMarkers = useMemo(
+    () => (isMapWithoutLocation ? [] : markers),
+    [isMapWithoutLocation, markers]
+  );
 
   // Fetch user profile to check isAdult field
   useEffect(() => {
@@ -457,10 +467,6 @@ export const useHomeScreen = () => {
 
   useEffect(() => {
     const loadEvents = async () => {
-      if (!userLocation) {
-        return;
-      }
-
       // Wait until categories are loaded for adult filtering
       if (allCategoriesForFilter === null) {
         return;
@@ -468,7 +474,7 @@ export const useHomeScreen = () => {
 
       // Wait for clients to finish loading if filters are active
       const hasCategoryFilter = categoriesValues.length > 0;
-      const hasRadiusFilter = radiusValues.length > 0;
+      const hasRadiusFilter = radiusValues.length > 0 && !!userLocation;
       const hasActiveFilters = hasCategoryFilter || hasRadiusFilter;
       
       if (hasActiveFilters && isLoadingClients) {
@@ -494,9 +500,12 @@ export const useHomeScreen = () => {
 
         // Filter events based on user's adult status and category adult flags
         const eventsFilteredByAdult = filterEventsByAdultCategories(eventRows, allCategoriesForFilter, userIsAdult);
+        // Only keep events that are currently active based on their scheduled start/end times
+        const eventsActiveNow = eventsFilteredByAdult.filter(isEventActiveNow);
         console.log('[HomeScreen] Events list filtered by adult:', {
           before: eventRows.length,
-          after: eventsFilteredByAdult.length,
+          afterAdultFilter: eventsFilteredByAdult.length,
+          afterScheduleFilter: eventsActiveNow.length,
           userIsAdult,
           adultCategoriesCount: allCategoriesForFilter.filter(c => c.isAdult).length
         });
@@ -515,7 +524,7 @@ export const useHomeScreen = () => {
           });
         }
 
-        let filteredEvents = eventsFilteredByAdult;
+        let filteredEvents = eventsActiveNow;
 
         // Apply date filter to events - event must fall within ANY of the selected date ranges
         if (datesValues.length > 0) {
@@ -536,8 +545,8 @@ export const useHomeScreen = () => {
           }
         }
 
-        // Apply radius filter using event.location
-        if (hasRadiusFilter && radiusValues.length > 0) {
+        // Apply radius filter using event.location (only when we have a user location)
+        if (hasRadiusFilter && radiusValues.length > 0 && userLocation) {
           const maxRadiusMiles = Math.max(...radiusValues.map(v => parseFloat(v)));
           const maxRadiusMeters = maxRadiusMiles * 1609.34;
           
@@ -588,12 +597,14 @@ export const useHomeScreen = () => {
               return min > 0 ? `${displayHour}:${min.toString().padStart(2, '0')} ${period}` : `${displayHour} ${period}`;
             };
             const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
-            const formattedDistance = formatEventDistance({
-              userLocation,
-              eventCoordinates: event.location
-                ? { latitude: event.location[1], longitude: event.location[0] }
-                : undefined,
-            });
+            const formattedDistance = userLocation
+              ? formatEventDistance({
+                  userLocation,
+                  eventCoordinates: event.location
+                    ? { latitude: event.location[1], longitude: event.location[0] }
+                    : undefined,
+                })
+              : 'Distance unknown';
             const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
             const clientObj = clientId ? clientsMap.get(clientId) : (typeof event.client === 'object' ? event.client : null);
             const location = clientObj?.name || clientObj?.title || event.city || 'Location';
@@ -632,13 +643,14 @@ export const useHomeScreen = () => {
         const hasDatesFilter = datesValues.length > 0;
         const hasAnyFilterForFallback = hasCategoryFilter || hasRadiusFilter || hasDatesFilter;
 
-        // When any filter (category, dates, radius) is active but no events match, show nearby event suggestions
+        // When any filter (category, dates, radius) is active but no events match, show nearby event suggestions.
+        // Do not limit the number of events shown; the UI should display all valid upcoming events.
         if (hasAnyFilterForFallback && transformedEvents.length === 0 && eventsFilteredByAdult.length > 0) {
           const nearbyEvents = mapAndSortEventRows(eventsFilteredByAdult);
-          setEvents(nearbyEvents.slice(0, 10));
+          setEvents(nearbyEvents);
           setIsShowingNearbySuggestions(true);
         } else {
-          setEvents(transformedEvents.slice(0, 10));
+          setEvents(transformedEvents);
           setIsShowingNearbySuggestions(false);
         }
       } catch (error) {
@@ -693,6 +705,42 @@ export const useHomeScreen = () => {
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  };
+
+  // Helper: determine if an event should be considered active based on its scheduled start/end times
+  const isEventActiveNow = (event: EventRow): boolean => {
+    const now = new Date();
+
+    const hasStart = !!event.startTime;
+    const hasEnd = !!event.endTime;
+
+    if (hasStart && hasEnd) {
+      const start = new Date(event.startTime as string);
+      const end = new Date(event.endTime as string);
+      return now >= start && now <= end;
+    }
+
+    if (hasStart && !hasEnd) {
+      const start = new Date(event.startTime as string);
+      return now >= start;
+    }
+
+    if (!hasStart && hasEnd) {
+      const end = new Date(event.endTime as string);
+      return now <= end;
+    }
+
+    // If no explicit times are set, fall back to treating the event as active
+    // when its date is today or later (matches previous behavior).
+    if (event.date) {
+      const eventDate = new Date(event.date as string);
+      const today = new Date();
+      eventDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      return eventDate >= today;
+    }
+
+    return false;
   };
 
   const initialRegion = useMemo(() => {
@@ -999,7 +1047,7 @@ export const useHomeScreen = () => {
     selectedStore,
     isModalVisible,
     isLoadingEvents,
-    markers,
+    markers: visibleMarkers,
     isLoadingClients,
     userLocation,
     hasLocationPermission,

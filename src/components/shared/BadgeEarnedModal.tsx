@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { Colors } from '@/constants/Colors';
 import { SmallBlueStarIcon } from '@/icons';
 import BadgeEarnedPopupIcon from '@/icons/BadgeEarnedPopupIcon';
 import { CloseIcon } from '@/components';
+import { captureAndShareView } from '@/utils/captureAndShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
   onClose,
   onShare,
 }) => {
+  const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
 
@@ -61,9 +63,12 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
 
   const handleShare = async () => {
     try {
-      if (onShare) {
-        await onShare();
+      const badgeName = getBadgeName();
+      const message = `I just earned the ${badgeNumber} ${badgeName} on SampleFinder! 🎉`;
+      if (modalRef.current) {
+        await captureAndShareView(modalRef, message);
       }
+      onShare?.();
       onClose();
     } catch (error) {
       console.error('Error in handleShare:', error);
@@ -89,6 +94,8 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
     >
       <View style={styles.overlay}>
         <Animated.View
+          ref={modalRef}
+          collapsable={false}
           style={[
             styles.modalContainer,
             {

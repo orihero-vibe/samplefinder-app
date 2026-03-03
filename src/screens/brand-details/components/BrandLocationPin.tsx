@@ -11,15 +11,17 @@ interface BrandLocationPinProps {
 const BrandLocationPin: React.FC<BrandLocationPinProps> = ({ logoUrl }) => {
   return (
     <View style={styles.pinContainer}>
-      {logoUrl ? (
-        <Image source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="cover" />
-      ) : (
-        <Image
-        source={require('@/assets/locationImage.png')}
-        style={styles.logoImage}
-        resizeMode="contain"
-      />
-      )}
+      <View style={[styles.logoWrapper, logoUrl && styles.logoWrapperWithBg]}>
+        {logoUrl ? (
+          <Image source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="contain" />
+        ) : (
+          <Image
+            source={require('@/assets/locationImage.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        )}
+      </View>
     </View>
   );
 };
@@ -29,6 +31,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 40,
     marginBottom: 8,
+  },
+  logoWrapper: {
+    width: 75,
+    height: 75,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoWrapperWithBg: {
+    backgroundColor: Colors.white,
   },
   logoImage: {
     width: 75,

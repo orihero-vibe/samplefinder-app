@@ -221,6 +221,8 @@ export const convertEventToCalendarEventDetail = (
     location,             // Location is client/store name
     distance,
     time: formattedTime,
+    startTime: event.startTime ? new Date(event.startTime) : undefined,
+    endTime: event.endTime ? new Date(event.endTime) : undefined,
     logoURL,
     logo,
   };

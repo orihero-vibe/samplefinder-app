@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ScrollView, View, ActivityIndicator, Text, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -14,8 +14,6 @@ import {
 import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import ReviewModal from '@/components/shared/ReviewModal';
 import PointsEarnedModal from '@/components/shared/PointsEarnedModal';
-import CalendarAlertModal from '@/components/shared/CalendarAlertModal';
-import ConfirmationModal from '@/components/shared/ConfirmationModal';
 import BadgeEarnedModal from '@/components/shared/BadgeEarnedModal';
 import { useBrandDetailsScreen, BrandDetailsData } from './useBrandDetailsScreen';
 import styles from './styles';
@@ -29,6 +27,7 @@ interface BrandDetailsScreenProps {
 }
 
 const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
+  const contentRef = useRef<View>(null);
   const {
     brand,
     isLoading,
@@ -46,9 +45,6 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     hasReviewed,
     checkInPoints,
     totalEarnedPoints,
-    calendarAlertVisible,
-    calendarAlertType,
-    removeConfirmVisible,
     badgeModalVisible,
     badgeType,
     badgeNumber,
@@ -63,19 +59,16 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     handleSubmitReview,
     handleClosePointsModal,
     handleViewRewards,
-    handleCloseCalendarAlert,
-    handleConfirmRemoveFromCalendar,
-    handleCancelRemoveFromCalendar,
     handleCloseBadgeModal,
     handleShareBadge,
     isRefreshing,
     handleRefreshDetails,
-  } = useBrandDetailsScreen({ route });
+  } = useBrandDetailsScreen({ route, contentRef });
 
   // Show loading state
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View ref={contentRef} style={styles.container} collapsable={false}>
         <StatusBar style="light" />
         <BackShareHeader onBack={handleBack} onShare={handleShare} />
         <View style={styles.loadingContainer}>
@@ -89,7 +82,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   // Show error state
   if (error || !brand) {
     return (
-      <View style={styles.container}>
+      <View ref={contentRef} style={styles.container} collapsable={false}>
         <StatusBar style="light" />
         <BackShareHeader onBack={handleBack} onShare={handleShare} />
         <View style={styles.errorContainer}>
@@ -105,7 +98,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <View ref={contentRef} style={styles.container} collapsable={false}>
       <StatusBar style="light" />
       <BackShareHeader onBack={handleBack} onShare={handleShare}  />
 
@@ -170,22 +163,6 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         title={pointsModalTitle}
         onClose={handleClosePointsModal}
         onViewRewards={handleViewRewards}
-      />
-
-      <CalendarAlertModal
-        visible={calendarAlertVisible}
-        type={calendarAlertType}
-        onClose={handleCloseCalendarAlert}
-      />
-
-      <ConfirmationModal
-        visible={removeConfirmVisible}
-        title="Remove Event"
-        description="Are you sure you want to remove this event from your calendar? You will no longer receive reminders."
-        confirmText="Yes, Remove"
-        cancelText="Cancel"
-        onConfirm={handleConfirmRemoveFromCalendar}
-        onCancel={handleCancelRemoveFromCalendar}
       />
 
       <BadgeEarnedModal

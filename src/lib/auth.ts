@@ -208,50 +208,24 @@ export const signup = async (credentials: SignUpCredentials): Promise<User> => {
     console.error('[auth.signup] Error response:', error?.response);
     console.error('[auth.signup] Error stack:', error?.stack);
     
-    // If user already exists (409 error), try to log them in instead
-    if (error?.code === 409 || error?.message?.includes('already exists')) {
-      console.log('[auth.signup] User already exists (409 error), attempting to log in...');
-      console.log('[auth.signup] Attempting login with email:', credentials.email.trim());
-      console.log('[auth.signup] This could mean:');
-      console.log('[auth.signup] - Email already registered');
-      console.log('[auth.signup] - Phone number already registered');
-      console.log('[auth.signup] - User ID collision (unlikely)');
-      try {
-        // Try to create a session with the provided credentials
-        const trimmedEmail = credentials.email.trim();
-        await account.createEmailPasswordSession(trimmedEmail, credentials.password);
-        console.log('[auth.signup] Login successful for existing user');
-        
-        // Get user details
-        const existingUser = await account.get();
-        console.log('[auth.signup] Existing user details:', {
-          id: existingUser.$id,
-          email: existingUser.email,
-          name: existingUser.name,
-          emailVerification: existingUser.emailVerification,
-          phoneVerification: existingUser.phoneVerification,
-        });
-        
-        // TODO: Implement database module for user profile creation
-        console.log('[auth.signup] User profile creation skipped (database module not yet implemented)');
-        
-        return {
-          $id: existingUser.$id,
-          email: existingUser.email,
-          name: existingUser.name,
-          emailVerification: existingUser.emailVerification,
-          phoneVerification: existingUser.phoneVerification,
-        };
-      } catch (loginError: any) {
-        console.error('[auth.signup] Login attempt failed:', loginError);
-        console.error('[auth.signup] Login error message:', loginError?.message);
-        console.error('[auth.signup] Login error code:', loginError?.code);
-        // If login fails, the account exists but password might be wrong, or there's another issue
-        if (loginError?.message?.includes('password') || loginError?.message?.includes('credentials')) {
-          throw new Error('An account with this email already exists, but the password is incorrect. Please use the login page or reset your password.');
-        }
-        throw new Error('An account with this email or phone number already exists. Please use the login page to sign in.');
+    // Handle duplicate account errors (409 Conflict)
+    if (error?.code === 409 || error?.message?.toLowerCase().includes('already exists') || 
+        error?.message?.toLowerCase().includes('user with the same email')) {
+      console.log('[auth.signup] Account already exists (409 error)');
+      
+      // Check if error message specifies what's duplicate
+      const errorMsg = error?.message?.toLowerCase() || '';
+      
+      if (errorMsg.includes('email')) {
+        throw new Error('An account with this email already exists. Please use the login page to sign in.');
       }
+      
+      if (errorMsg.includes('phone')) {
+        throw new Error('An account with this phone number already exists. Please use the login page to sign in.');
+      }
+      
+      // Generic message if we can't determine what's duplicate
+      throw new Error('An account with these details already exists. Please use the login page to sign in.');
     }
     
     // For other errors, throw the original error message

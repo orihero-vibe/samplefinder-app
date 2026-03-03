@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, ScrollView, ActivityIndicator, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -21,6 +21,7 @@ import { useProfileScreen } from './useProfileScreen';
 import styles from './styles';
 
 const ProfileScreen = () => {
+  const contentRef = useRef<View>(null);
   const {
     profile,
     authUser,
@@ -48,13 +49,14 @@ const ProfileScreen = () => {
     handleViewRewardsPress,
     handleNotificationsPress,
     handleApplyHerePress,
-  } = useProfileScreen();
+    hasUnreadNotifications,
+  } = useProfileScreen({ contentRef });
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View ref={contentRef} style={styles.container} collapsable={false}>
         <StatusBar style="light" />
-        <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} />
+        <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} onNotifications={handleNotificationsPress} hasUnreadNotifications={hasUnreadNotifications} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.brandPurpleDeep} />
           <Text style={styles.loadingText}>Loading profile...</Text>
@@ -65,9 +67,9 @@ const ProfileScreen = () => {
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View ref={contentRef} style={styles.container} collapsable={false}>
         <StatusBar style="light" />
-        <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} />
+        <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} onNotifications={handleNotificationsPress} hasUnreadNotifications={hasUnreadNotifications} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
@@ -76,9 +78,9 @@ const ProfileScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View ref={contentRef} style={styles.container} collapsable={false}>
       <StatusBar style="light" />
-      <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} onNotifications={handleNotificationsPress} />
+      <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} onNotifications={handleNotificationsPress} hasUnreadNotifications={hasUnreadNotifications} />
 
       <ScrollView
         style={styles.scrollView}

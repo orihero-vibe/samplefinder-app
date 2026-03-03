@@ -118,6 +118,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_500Medium',
     color: Colors.grayText,
   },
+  appVersionContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appVersionText: {
+    fontSize: 12,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.grayText,
+  },
 });
 
 export default styles;

@@ -5,7 +5,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 import * as Notifications from 'expo-notifications';
 import { signup } from '@/lib/auth';
 import { isValidEmail, isValidPhoneNumber, isValidDate } from '@/utils/formatters';
-import { checkUsernameExists } from '@/lib/database/users';
+import { checkUsernameExists, checkPhoneNumberExists } from '@/lib/database/users';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -36,15 +36,21 @@ export const useSignUpScreen = () => {
   const [showPushNotificationModal, setShowPushNotificationModal] = useState(false);
   const [showAgeVerificationModal, setShowAgeVerificationModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
   // Debounce timer for username checking
   const usernameCheckTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  // Store original signup data to allow re-submission with same credentials
+  // This is set after initial signup attempt and cleared on unmount
+  const originalSignupData = useRef<{
+    username: string;
+    email: string;
+    phoneNumber: string;
+  } | null>(null);
 
   // Validation functions
   const validateFirstName = (value: string): string | undefined => {
@@ -153,7 +159,22 @@ export const useSignUpScreen = () => {
     }
     // Check if username exists (debounced)
     try {
-      const exists = await checkUsernameExists(value.trim());
+      const trimmedValue = value.trim();
+      
+      // Only skip the "already exists" check if ALL key fields match the original signup
+      // (username + email + phone). This allows re-submission with same credentials,
+      // but prevents creating duplicate usernames with different email/phone.
+      const isExactOriginalSignup = 
+        originalSignupData.current?.username === trimmedValue &&
+        originalSignupData.current?.email === email.trim() &&
+        originalSignupData.current?.phoneNumber === phoneNumber.trim();
+      
+      if (isExactOriginalSignup) {
+        console.log('[validateUsername] All credentials match original signup data, skipping duplicate check');
+        return undefined;
+      }
+      
+      const exists = await checkUsernameExists(trimmedValue);
       if (exists) {
         return 'Username already taken';
       }
@@ -188,7 +209,33 @@ export const useSignUpScreen = () => {
     if (lastNameError) errors.lastName = lastNameError;
     
     const phoneError = validatePhoneNumber(phoneNumber);
-    if (phoneError) errors.phoneNumber = phoneError;
+    if (phoneError) {
+      errors.phoneNumber = phoneError;
+    } else if (phoneNumber.trim()) {
+      // Check if phone number is already in use.
+      try {
+        const trimmedPhone = phoneNumber.trim();
+
+        // Only skip the "already exists" check if ALL key fields match the original signup
+        // (username + email + phone). This allows re-submission with same credentials,
+        // but prevents creating duplicate accounts with the same phone number.
+        const isExactOriginalSignup =
+          originalSignupData.current?.username === username.trim() &&
+          originalSignupData.current?.email === email.trim() &&
+          originalSignupData.current?.phoneNumber === trimmedPhone;
+
+        if (!isExactOriginalSignup) {
+          const phoneExists = await checkPhoneNumberExists(trimmedPhone);
+          if (phoneExists) {
+            errors.phoneNumber =
+              'An account with this phone number already exists. Please use the login page to sign in.';
+          }
+        }
+      } catch (error) {
+        console.error('Error checking phone number:', error);
+        // Do not block signup if phone uniqueness check fails.
+      }
+    }
     
     const zipCodeError = validateZipCode(zipCode);
     if (zipCodeError) errors.zipCode = zipCodeError;
@@ -209,9 +256,25 @@ export const useSignUpScreen = () => {
     } else {
       errors.username = 'Username is required';
     }
+
+    // Decide which high-level error message to show
+    const hasErrors = Object.keys(errors).length > 0;
+    if (hasErrors) {
+      if (errors.phoneNumber) {
+        setErrorMessage(errors.phoneNumber);
+      } else if (errors.email) {
+        setErrorMessage(errors.email);
+      } else if (errors.username) {
+        setErrorMessage(errors.username);
+      } else {
+        setErrorMessage('Please fill all fields.');
+      }
+    } else {
+      setErrorMessage('');
+    }
     
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return !hasErrors;
   };
 
   // Debounced username check
@@ -253,18 +316,27 @@ export const useSignUpScreen = () => {
   const showPushOrAgeModal = useCallback(async () => {
     try {
       const { status } = await Notifications.getPermissionsAsync();
-      if (status !== 'granted') {
+      // Only show our custom explainer modal when permission has never been requested (undetermined).
+      // Once the user has seen the native iOS dialog (granted or denied), we must not show our custom
+      // modal again—Apple may reject the app for replacing the system permission experience.
+      if (status === 'undetermined') {
         setShowPushNotificationModal(true);
       }
+      // When status is 'denied' or 'granted': do nothing. Native dialog was already shown.
     } catch (error) {
       console.error('Error checking notification permissions:', error);
-      setShowPushNotificationModal(true);
+      // On error, do not show custom modal to avoid risking App Store rejection.
     }
   }, []);
 
-  // On mount: show modals in order Age → Privacy (Terms) → Push Notification
+  // On mount: show Age Verification modal first
   useEffect(() => {
     setShowAgeVerificationModal(true);
+    
+    // Cleanup: clear original signup data when component unmounts
+    return () => {
+      originalSignupData.current = null;
+    };
   }, []);
 
   // Real-time validation for fields (except username which is debounced)
@@ -373,6 +445,14 @@ export const useSignUpScreen = () => {
     setIsLoading(true);
 
     try {
+      // Store the signup data before attempting signup
+      // This allows re-submission if user navigates back from OTP page
+      originalSignupData.current = {
+        username: username.trim(),
+        email: email.trim(),
+        phoneNumber: phoneNumber.trim(),
+      };
+      
       await signup({
         email: email.trim(),
         password: password,
@@ -389,6 +469,9 @@ export const useSignUpScreen = () => {
       console.error('Sign up error:', error);
       const errorMsg = getUserFriendlyErrorMessage(error);
       setErrorMessage(errorMsg);
+      
+      // Clear original signup data on error since signup failed
+      originalSignupData.current = null;
     } finally {
       setIsLoading(false);
     }
@@ -405,7 +488,7 @@ export const useSignUpScreen = () => {
   const handleAgeVerificationAccept = () => {
     setShowAgeVerificationModal(false);
     setAgeVerified(true);
-    setShowPrivacyModal(true);
+    setShowTermsModal(true);
   };
 
   const handleAgeVerificationDismiss = () => {
@@ -419,18 +502,8 @@ export const useSignUpScreen = () => {
     showPushOrAgeModal();
   };
 
-  const handlePrivacyAccept = () => {
-    setShowPrivacyModal(false);
-    setPrivacyAccepted(true);
-    showPushOrAgeModal();
-  };
-
   const handleTermsLinkPress = () => {
     setShowTermsModal(true);
-  };
-
-  const handlePrivacyLinkPress = () => {
-    setShowPrivacyModal(true);
   };
 
   const getUserFriendlyErrorMessage = (error: any): string => {
@@ -445,17 +518,58 @@ export const useSignUpScreen = () => {
         : 'Please enter a valid email address.';
     }
     
-    // Check for duplicate email/username
+    // Check for duplicate email/username/phone
     if (errorMessage.toLowerCase().includes('already exists') || 
         errorMessage.toLowerCase().includes('duplicate') ||
         errorMessage.toLowerCase().includes('already registered')) {
+      
+      // Check if ALL credentials match the original signup data
+      // Only redirect to OTP if user is re-submitting the EXACT same account
+      const isExactOriginalSignup = 
+        originalSignupData.current?.username === username.trim() &&
+        originalSignupData.current?.email === email.trim() &&
+        originalSignupData.current?.phoneNumber === phoneNumber.trim();
+      
       if (errorMessage.toLowerCase().includes('email')) {
-        return 'This email is already registered. Please use a different email or sign in.';
+        if (isExactOriginalSignup) {
+          // User is re-submitting exact same credentials - redirect to OTP
+          console.log('[getUserFriendlyErrorMessage] Exact match with original signup, redirecting to OTP');
+          setTimeout(() => {
+            navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
+          }, 500);
+          return 'Account already created. Please verify your email to continue.';
+        }
+        // Different user's email - show error
+        return 'An account with this email already exists. Please use the login page to sign in.';
       }
+      
       if (errorMessage.toLowerCase().includes('username')) {
+        if (isExactOriginalSignup) {
+          // User is re-submitting exact same credentials - redirect to OTP
+          console.log('[getUserFriendlyErrorMessage] Exact match with original signup, redirecting to OTP');
+          setTimeout(() => {
+            navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
+          }, 500);
+          return 'Account already created. Please verify your email to continue.';
+        }
+        // Different user's username - show error
         return 'This username is already taken. Please choose a different username.';
       }
-      return 'An account with these details already exists.';
+      
+      if (errorMessage.toLowerCase().includes('phone')) {
+        if (isExactOriginalSignup) {
+          // User is re-submitting exact same credentials - redirect to OTP
+          console.log('[getUserFriendlyErrorMessage] Exact match with original signup, redirecting to OTP');
+          setTimeout(() => {
+            navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
+          }, 500);
+          return 'Account already created. Please verify your email to continue.';
+        }
+        // Different user's phone - show error
+        return 'An account with this phone number already exists. Please use the login page to sign in.';
+      }
+      
+      return 'An account with these details already exists. Please use the login page to sign in.';
     }
     
     // Check for password errors
@@ -492,11 +606,6 @@ export const useSignUpScreen = () => {
       return;
     }
 
-    if (!privacyAccepted) {
-      setShowPrivacyModal(true);
-      return;
-    }
-
     if (!termsAccepted) {
       setErrorMessage('Please accept the Terms & Conditions to continue.');
       setShowTermsModal(true);
@@ -521,7 +630,6 @@ export const useSignUpScreen = () => {
     showPushNotificationModal,
     showAgeVerificationModal,
     showTermsModal,
-    showPrivacyModal,
     ageVerified,
     isLoading,
     errorMessage,
@@ -537,16 +645,13 @@ export const useSignUpScreen = () => {
     setShowPushNotificationModal,
     setShowAgeVerificationModal,
     setShowTermsModal,
-    setShowPrivacyModal,
     handleSignIn,
     handlePushNotificationEnable,
     handlePushNotificationNotNow,
     handleAgeVerificationAccept,
     handleAgeVerificationDismiss,
     handleTermsAccept,
-    handlePrivacyAccept,
     handleTermsLinkPress,
-    handlePrivacyLinkPress,
     handleSignUp,
   };
 };
