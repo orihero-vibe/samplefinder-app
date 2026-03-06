@@ -222,7 +222,7 @@ export interface CheckInRow extends CheckInData {
 export interface ReviewData {
   rating: number; // 0-5, required
   review?: string; // Optional review text
-  liked?: string; // Enum field for liked status
+  liked?: string[]; // Array of enum values (e.g. staff, swag, sample)
   hasPurchased?: boolean; // Whether user purchased the product
   user: string; // User ID (relationship)
   event: string; // Event ID (relationship)

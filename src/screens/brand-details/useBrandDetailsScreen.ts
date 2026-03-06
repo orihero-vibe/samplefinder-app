@@ -580,9 +580,11 @@ export const useBrandDetailsScreen = ({ route, contentRef }: BrandDetailsScreenP
         return;
       }
 
-      // Map first selected "What Did You Like?" tag to liked (backend enum is lowercase)
+      // Map all selected "What Did You Like?" tags to liked (backend enum array, lowercase)
       const liked =
-        tags && tags.length > 0 ? tags[0].toLowerCase() : undefined;
+        tags && tags.length > 0
+          ? tags.map((t) => t.toLowerCase())
+          : undefined;
 
       const reviewData = {
         user: userProfile.$id,
