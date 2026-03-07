@@ -332,6 +332,36 @@ export const isEventTodayOrLater = (eventDate: string | Date): boolean => {
 };
 
 /**
+ * Event-like object with date and optional start/end times (ISO strings or Date).
+ */
+export interface EventWithDateAndTimes {
+  date: string | Date;
+  startTime?: string | Date;
+  endTime?: string | Date;
+}
+
+/**
+ * Returns true if the event is "upcoming": not in the past and not ended.
+ * - Excludes events with date before today.
+ * - Excludes events with date === today when endTime is already past.
+ * Use this for "Upcoming Events" lists so only future dates and today's not-yet-ended events show.
+ */
+export const isEventUpcoming = (event: EventWithDateAndTimes): boolean => {
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  eventDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  if (eventDate < today) return false;
+  if (eventDate > today) return true;
+  // Same calendar day as today
+  if (event.endTime) {
+    const end = new Date(event.endTime);
+    return end > new Date();
+  }
+  return true;
+};
+
+/**
  * Parses products string (comma-separated or single string) into array
  */
 export const parseProducts = (products: string): string[] => {

@@ -46,6 +46,10 @@ export interface UserNotificationData {
   title: string;
   message: string;
   data?: Record<string, any>;
+  /** When true, only add to in-app list; do not send push (e.g. for local event reminders). */
+  skipPush?: boolean;
+  /** When true, create as read (e.g. user already saw the content in a modal). */
+  isRead?: boolean;
 }
 
 /**
@@ -77,7 +81,7 @@ export const createUserNotification = async (
       type: notificationData.type,
       title: notificationData.title,
       message: notificationData.message,
-      isRead: false,
+      isRead: notificationData.isRead ?? false,
       createdAt: new Date().toISOString(),
       data: notificationData.data || {},
     };
@@ -105,7 +109,11 @@ export const createUserNotification = async (
 
     console.log('[notifications] Notification created successfully');
 
-    // Send push notification (respects user preferences)
+    // Send push notification (respects user preferences) unless skipPush
+    if (notificationData.skipPush) {
+      return newNotification;
+    }
+
     try {
       // Check if user has push notifications enabled
       let pushEnabled = true; // Default to true

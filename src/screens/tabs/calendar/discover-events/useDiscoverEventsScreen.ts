@@ -6,7 +6,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
 import { fetchAllUpcomingEvents, EventRow, fetchClients, ClientData, fetchCategories, CategoryData, getUserProfile } from '@/lib/database';
 import { convertEventToCalendarEventDetail, extractClientFromEvent, filterEventsByAdultCategories } from '@/utils/brandUtils';
-import { formatEventTime, formatEventDistance } from '@/utils/formatters';
+import { formatEventTime, formatEventDistance, isEventUpcoming } from '@/utils/formatters';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
 import { UnifiedEvent } from '@/components';
@@ -120,11 +120,14 @@ export const useDiscoverEventsScreen = () => {
         // Filter events based on user's adult status and category adult flags
         const eventsFilteredByAdult = filterEventsByAdultCategories(eventRows, categories, userIsAdult);
 
+        // Only show upcoming events (not past dates, and not today's events that have already ended)
+        const upcomingEventRows = eventsFilteredByAdult.filter(isEventUpcoming);
+
         // Get user's saved event IDs from store to filter them out
         const savedEventIds = useCalendarEventsStore.getState().savedEvents.map((e) => e.eventId);
 
         // Filter out events that user has already added to their calendar
-        const availableEventRows = eventsFilteredByAdult.filter((event) => !savedEventIds.includes(event.$id));
+        const availableEventRows = upcomingEventRows.filter((event) => !savedEventIds.includes(event.$id));
 
         const eventsWithClient: EventWithClient[] = availableEventRows.map((event: EventRow) => {
           let client: ClientData | null = extractClientFromEvent(event);

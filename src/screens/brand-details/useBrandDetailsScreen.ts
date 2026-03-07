@@ -18,7 +18,8 @@ import {
   getUserProfile,
   addFavoriteBrand,
   removeFavoriteBrand,
-  getUserReviewForEvent
+  getUserReviewForEvent,
+  createUserNotification,
 } from '@/lib/database';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import { TabParamList } from '@/navigation/TabNavigator';
@@ -344,10 +345,25 @@ export const useBrandDetailsScreen = ({ route, contentRef }: BrandDetailsScreenP
       await addSavedEventToStore(brand.id);
       setIsAddedToCalendar(true);
       
+      const eventTitle = eventData?.name || brand.brandName;
+      const authUser = await getCurrentUser();
+      if (authUser) {
+        try {
+          await createUserNotification({
+            userId: authUser.$id,
+            type: 'eventAdded',
+            title: 'Event Added to Calendar',
+            message: `You added "${eventTitle}" to your calendar. We'll remind you 24h and 1h before!`,
+            data: { eventId: brand.id, eventTitle },
+          });
+        } catch (notifErr) {
+          console.warn('[handleAddToCalendar] Failed to create event-added notification:', notifErr);
+        }
+      }
+      
       // Schedule push notification reminders (24h and 1h before event)
       if (eventData?.startTime) {
         const eventStartDate = new Date(eventData.startTime);
-        const eventTitle = eventData.name || brand.brandName;
         const eventLocation = eventData.city ? `${eventData.address}, ${eventData.city}` : undefined;
         
         const scheduledReminders = await scheduleEventReminders(

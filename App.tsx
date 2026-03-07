@@ -26,6 +26,7 @@ import type { TriviaQuestion } from '@/lib/database/trivia';
 import { getActiveTrivia, submitTriviaAnswer, dismissTrivia, fetchTiers, getUserProfile } from '@/lib/database';
 import { setupTokenRefreshListener, initializePushNotifications, cleanupPastEventReminders } from '@/lib/notifications';
 import { getCurrentUser } from '@/lib/auth';
+import { createUserNotification } from '@/lib/database';
 import { CustomSplashScreen } from '@/components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 import { useTier1ModalStore } from '@/stores/tier1ModalStore';
@@ -304,6 +305,8 @@ export default function App() {
         if (!cancelled) {
           setTier1Tier(tier1);
           setTier1ModalVisible(true);
+          // Welcome notification is created in ConfirmAccountScreen before navigating to NotificationSetup
+          // so it appears immediately on the notification onboarding screen.
         }
       } catch (error) {
         if (!cancelled) console.error('[App] Failed to load Tier 1 modal data:', error);
@@ -397,7 +400,7 @@ export default function App() {
         const oldTier = getUserCurrentTier(tiers, oldTotalPoints);
         const newTier = getUserCurrentTier(tiers, newTotalPoints);
 
-        // If tier changed, show the achievement modal
+        // If tier changed, show the achievement modal and add to notifications
         if (newTier && oldTier && newTier.$id !== oldTier.$id) {
           const cleanImageURL = newTier.imageURL?.replace('&mode=admin', '') ?? null;
           const tierForModal: Tier = {
@@ -415,6 +418,25 @@ export default function App() {
             pointsAwarded,
             'trivia'
           );
+
+          try {
+            const user = await getCurrentUser();
+            if (user) {
+              await createUserNotification({
+                userId: user.$id,
+                type: 'tierChanged',
+                title: `Tier Earned: ${newTier.name}!`,
+                message: `Congratulations, you've reached the ${newTier.name} tier! Keep earning points to level up!`,
+                data: {
+                  oldTierId: oldTier.$id,
+                  newTierId: newTier.$id,
+                  newTierName: newTier.name,
+                },
+              });
+            }
+          } catch (notifErr) {
+            console.warn('[App] Failed to create tier notification:', notifErr);
+          }
         }
       } catch (error) {
         console.error('[App] Failed to check tier completion after trivia:', error);

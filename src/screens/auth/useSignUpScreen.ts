@@ -518,54 +518,22 @@ export const useSignUpScreen = () => {
         : 'Please enter a valid email address.';
     }
     
-    // Check for duplicate email/username/phone
+    // Check for duplicate email/username/phone (409 / user_already_exists)
+    // Always stay on sign-up and show error — never redirect to OTP, since there is no session.
     if (errorMessage.toLowerCase().includes('already exists') || 
         errorMessage.toLowerCase().includes('duplicate') ||
-        errorMessage.toLowerCase().includes('already registered')) {
-      
-      // Check if ALL credentials match the original signup data
-      // Only redirect to OTP if user is re-submitting the EXACT same account
-      const isExactOriginalSignup = 
-        originalSignupData.current?.username === username.trim() &&
-        originalSignupData.current?.email === email.trim() &&
-        originalSignupData.current?.phoneNumber === phoneNumber.trim();
+        errorMessage.toLowerCase().includes('already registered') ||
+        error?.code === 409) {
       
       if (errorMessage.toLowerCase().includes('email')) {
-        if (isExactOriginalSignup) {
-          // User is re-submitting exact same credentials - redirect to OTP
-          console.log('[getUserFriendlyErrorMessage] Exact match with original signup, redirecting to OTP');
-          setTimeout(() => {
-            navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
-          }, 500);
-          return 'Account already created. Please verify your email to continue.';
-        }
-        // Different user's email - show error
         return 'An account with this email already exists. Please use the login page to sign in.';
       }
       
       if (errorMessage.toLowerCase().includes('username')) {
-        if (isExactOriginalSignup) {
-          // User is re-submitting exact same credentials - redirect to OTP
-          console.log('[getUserFriendlyErrorMessage] Exact match with original signup, redirecting to OTP');
-          setTimeout(() => {
-            navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
-          }, 500);
-          return 'Account already created. Please verify your email to continue.';
-        }
-        // Different user's username - show error
         return 'This username is already taken. Please choose a different username.';
       }
       
       if (errorMessage.toLowerCase().includes('phone')) {
-        if (isExactOriginalSignup) {
-          // User is re-submitting exact same credentials - redirect to OTP
-          console.log('[getUserFriendlyErrorMessage] Exact match with original signup, redirecting to OTP');
-          setTimeout(() => {
-            navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
-          }, 500);
-          return 'Account already created. Please verify your email to continue.';
-        }
-        // Different user's phone - show error
         return 'An account with this phone number already exists. Please use the login page to sign in.';
       }
       

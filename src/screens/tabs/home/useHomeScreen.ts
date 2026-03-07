@@ -7,7 +7,7 @@ import * as Location from 'expo-location';
 import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile, fetchLocations, LocationRow } from '@/lib/database';
 import { getCurrentUser } from '@/lib/auth';
 import { MapMarkerData, FilterType, EventData, StoreData, FilterButtonLayout, MeasureCallback } from './components';
-import { formatEventDistance } from '@/utils/formatters';
+import { formatEventDistance, isEventUpcoming } from '@/utils/formatters';
 import { geocodeLocation, isValidLocationInput } from '@/utils/geocoding';
 import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 
@@ -337,8 +337,8 @@ export const useHomeScreen = () => {
         const eventRows = await fetchAllUpcomingEvents();
         // Filter events based on user's adult status and category adult flags
         const filteredByAdult = filterEventsByAdultCategories(eventRows, allCategoriesForFilter, userIsAdult);
-        // Only keep events that are currently active based on their scheduled start/end times
-        const activeEvents = filteredByAdult.filter(isEventActiveNow);
+        // Only keep upcoming events (not past dates, and not today's events that have already ended)
+        const activeEvents = filteredByAdult.filter(isEventUpcoming);
         console.log('[HomeScreen] Events for map filtered:', {
           before: eventRows.length,
           afterAdultFilter: filteredByAdult.length,
@@ -500,8 +500,8 @@ export const useHomeScreen = () => {
 
         // Filter events based on user's adult status and category adult flags
         const eventsFilteredByAdult = filterEventsByAdultCategories(eventRows, allCategoriesForFilter, userIsAdult);
-        // Only keep events that are currently active based on their scheduled start/end times
-        const eventsActiveNow = eventsFilteredByAdult.filter(isEventActiveNow);
+        // Only keep upcoming events (not past dates, and not today's events that have already ended)
+        const eventsActiveNow = eventsFilteredByAdult.filter(isEventUpcoming);
         console.log('[HomeScreen] Events list filtered by adult:', {
           before: eventRows.length,
           afterAdultFilter: eventsFilteredByAdult.length,
@@ -644,9 +644,9 @@ export const useHomeScreen = () => {
         const hasAnyFilterForFallback = hasCategoryFilter || hasRadiusFilter || hasDatesFilter;
 
         // When any filter (category, dates, radius) is active but no events match, show nearby event suggestions.
-        // Do not limit the number of events shown; the UI should display all valid upcoming events.
-        if (hasAnyFilterForFallback && transformedEvents.length === 0 && eventsFilteredByAdult.length > 0) {
-          const nearbyEvents = mapAndSortEventRows(eventsFilteredByAdult);
+        // Only suggest upcoming events (exclude past dates and today's events whose end time has passed).
+        if (hasAnyFilterForFallback && transformedEvents.length === 0 && eventsActiveNow.length > 0) {
+          const nearbyEvents = mapAndSortEventRows(eventsActiveNow);
           setEvents(nearbyEvents);
           setIsShowingNearbySuggestions(true);
         } else {
@@ -705,42 +705,6 @@ export const useHomeScreen = () => {
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
-  };
-
-  // Helper: determine if an event should be considered active based on its scheduled start/end times
-  const isEventActiveNow = (event: EventRow): boolean => {
-    const now = new Date();
-
-    const hasStart = !!event.startTime;
-    const hasEnd = !!event.endTime;
-
-    if (hasStart && hasEnd) {
-      const start = new Date(event.startTime as string);
-      const end = new Date(event.endTime as string);
-      return now >= start && now <= end;
-    }
-
-    if (hasStart && !hasEnd) {
-      const start = new Date(event.startTime as string);
-      return now >= start;
-    }
-
-    if (!hasStart && hasEnd) {
-      const end = new Date(event.endTime as string);
-      return now <= end;
-    }
-
-    // If no explicit times are set, fall back to treating the event as active
-    // when its date is today or later (matches previous behavior).
-    if (event.date) {
-      const eventDate = new Date(event.date as string);
-      const today = new Date();
-      eventDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      return eventDate >= today;
-    }
-
-    return false;
   };
 
   const initialRegion = useMemo(() => {

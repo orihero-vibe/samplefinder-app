@@ -48,9 +48,10 @@ export const useNotificationsScreen = () => {
       }
     };
 
-    // Check immediately when screen is focused
+    // Check immediately when screen is focused and refetch notifications (e.g. so onboarding list updates)
     const unsubscribeFocus = navigation.addListener('focus', () => {
       checkAndSyncPermissions();
+      loadNotifications();
     });
 
     // Check when app comes back from background (e.g., returning from system settings)

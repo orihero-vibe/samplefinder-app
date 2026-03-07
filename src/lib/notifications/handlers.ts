@@ -1,8 +1,35 @@
 import * as Notifications from 'expo-notifications';
 import { NavigationContainerRef } from '@react-navigation/native';
 import type { NotificationData } from './types';
+import { getCurrentUser } from '@/lib/auth';
+import { createUserNotification } from '@/lib/database';
 
 let navigationRef: NavigationContainerRef<any> | null = null;
+
+/**
+ * Add an event reminder to the user's in-app notifications list (e.g. "Sampling Today").
+ * Used when a local event reminder is received or tapped so it appears in the Notifications screen.
+ */
+const addEventReminderToNotifications = async (notification: Notifications.Notification) => {
+  const data = notification.request.content.data as NotificationData & { type?: string; eventId?: string; reminderType?: string };
+  if (data?.type !== 'event_reminder' || !data?.eventId) return;
+  try {
+    const user = await getCurrentUser();
+    if (!user) return;
+    const title = notification.request.content.title || 'Sampling Today';
+    const body = notification.request.content.body || 'Event reminder';
+    await createUserNotification({
+      userId: user.$id,
+      type: 'eventReminder',
+      title,
+      message: body,
+      data: { eventId: data.eventId, reminderType: data.reminderType },
+      skipPush: true,
+    });
+  } catch (err) {
+    console.warn('[notifications] Failed to add event reminder to list:', err);
+  }
+};
 
 /**
  * Set navigation reference for deep linking
@@ -114,12 +141,13 @@ export const setupNotificationHandlers = () => {
   // Handle notifications received while app is in foreground
   Notifications.addNotificationReceivedListener((notification) => {
     console.log('[notifications] Notification received (foreground):', notification);
-    // The notification will be shown automatically based on our handler configuration
+    addEventReminderToNotifications(notification);
   });
   
-  // Handle notification taps
+  // Handle notification taps (add to in-app list when user taps event reminder)
   Notifications.addNotificationResponseReceivedListener((response) => {
     console.log('[notifications] Notification response received:', response);
+    addEventReminderToNotifications(response.notification);
     handleNotificationTap(response.notification);
   });
   
@@ -134,6 +162,7 @@ export const getLastNotificationResponse = async (): Promise<Notifications.Notif
     const response = await Notifications.getLastNotificationResponseAsync();
     if (response) {
       console.log('[notifications] Last notification response found:', response);
+      addEventReminderToNotifications(response.notification);
       // Handle the notification after a short delay to ensure navigation is ready
       setTimeout(() => {
         handleNotificationTap(response.notification);

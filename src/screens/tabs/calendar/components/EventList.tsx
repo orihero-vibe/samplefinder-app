@@ -5,6 +5,7 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Colors } from '@/constants/Colors';
+import { isEventUpcoming } from '@/utils/formatters';
 import { CalendarEventDetail } from './SelectedDateEvents';
 import { EventCard, UnifiedEvent } from '@/components';
 import { TabParamList } from '@/navigation/TabNavigator';
@@ -40,33 +41,10 @@ const EventList: React.FC<EventListProps> = ({ events, selectedDate, showUpcomin
     return numericValue;
   };
   
-  // Filter events based on mode
+  // Filter events based on mode: upcoming = not past date, and if today then end time must not be past
   const filteredEvents = showUpcoming
     ? events
-        .filter((event) => {
-          const now = new Date();
-          const start = event.startTime;
-          const end = event.endTime;
-
-          if (start && end) {
-            return now >= start && now <= end;
-          }
-
-          if (start && !end) {
-            return now >= start;
-          }
-
-          if (!start && end) {
-            return now <= end;
-          }
-
-          // Fallback for events without explicit times: keep existing "date >= today" behavior
-          const eventDate = new Date(event.date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          eventDate.setHours(0, 0, 0, 0);
-          return eventDate >= today;
-        })
+        .filter((event) => isEventUpcoming({ date: event.date, startTime: event.startTime, endTime: event.endTime }))
         .sort((a, b) => {
         // First sort by date (ascending)
         const dateA = new Date(a.date).getTime();

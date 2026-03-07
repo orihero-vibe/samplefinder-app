@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { getCurrentUser, verifyEmail, sendEmailOTP, resendVerificationEmail, logout } from '@/lib/auth';
 import { initializePushNotifications } from '@/lib/notifications';
+import { createUserNotification } from '@/lib/database';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 import { useTier1ModalStore } from '@/stores/tier1ModalStore';
 
@@ -84,6 +85,21 @@ export const useConfirmAccountScreen = () => {
 
     try {
       await verifyEmail(userId, code);
+
+      // Create welcome notification *before* navigating to NotificationSetup so it appears
+      // immediately on the notification onboarding screen (not only after opening from Profile).
+      try {
+        await createUserNotification({
+          userId,
+          type: 'tierChanged',
+          title: 'Welcome to SampleFinder!',
+          message: "You've joined! Start discovering samples and earning rewards.",
+          data: { source: 'signup' },
+          isRead: true, // User already saw the welcome modal
+        });
+      } catch (notifErr) {
+        console.warn('[ConfirmAccount] Failed to create welcome notification:', notifErr);
+      }
 
       // Trigger Tier 1 modal for newly signed up users
       useTier1ModalStore.getState().setShouldShowTier1Modal(true);

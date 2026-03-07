@@ -105,8 +105,8 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
           ]}
         >
           <LinearGradient
-            colors={['#95268B','#6C0331','#090188','#090188']}
-            locations={[0, 0.5, 1]}
+            colors={['#95268B', '#6C0331', '#090188', '#090188']}
+            locations={[0, 0.33, 0.66, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradientContainer}
@@ -174,6 +174,7 @@ const styles = StyleSheet.create({
   },
   gradientContainer: {
     width: '100%',
+    minHeight: 240,
     padding: 24,
     alignItems: 'center',
     paddingTop: 40,
