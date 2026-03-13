@@ -165,7 +165,7 @@ export const useDiscoverEventsScreen = () => {
             location,
             distance,
             time,
-            date: new Date(event.date),
+            date: new Date(event.startTime || event.date),
             logoURL,
           };
         });

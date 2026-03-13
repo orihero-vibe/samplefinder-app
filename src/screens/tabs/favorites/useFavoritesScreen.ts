@@ -141,10 +141,10 @@ export const useFavoritesScreen = () => {
             : event.client?.$id;
           return clientId === brandId;
         })
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
       
       // Get brandDescription from the most recent event (prioritize upcoming events, then past events)
-      const upcomingEvents = allBrandEvents.filter((event) => isEventTodayOrLater(event.date));
+      const upcomingEvents = allBrandEvents.filter((event) => isEventTodayOrLater(event.startTime || event.date));
       const mostRelevantEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : allBrandEvents[allBrandEvents.length - 1];
       const brandDescription = mostRelevantEvent?.brandDescription || null;
       
@@ -165,7 +165,7 @@ export const useFavoritesScreen = () => {
             brandName: brandName,
             location,
             distance: city && state ? `${city}, ${state}` : (city || state || ''), // Use distance field for city, state
-            date: formatEventDate(event.date),
+            date: formatEventDate(event.startTime || event.date),
             time: formatEventTime(event.startTime, event.endTime),
             logoURL: client.logoURL || null, // Brand logo from client
           };

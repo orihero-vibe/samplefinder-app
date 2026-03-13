@@ -123,7 +123,7 @@ export const useCalendarScreen = () => {
 
         const simpleEvents: CalendarEvent[] = userSavedEventRows.map((event) => ({
           id: event.$id,
-          date: new Date(event.date),
+          date: new Date(event.startTime || event.date),
         }));
 
         const detailed: CalendarEventDetail[] = userSavedEventRows.map((event) => {
