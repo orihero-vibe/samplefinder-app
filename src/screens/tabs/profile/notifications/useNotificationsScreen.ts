@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Alert, Linking, Platform, AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { NotificationSetting, Notification } from './components';
 import { getCurrentUser } from '@/lib/auth';
-import { getUserProfile, getNotificationPreferences, updateNotificationPreferences } from '@/lib/database/users';
-import { getUserNotifications, getUnreadNotifications, markNotificationAsRead, type UserNotification } from '@/lib/database';
+import { updateNotificationPreferences } from '@/lib/database/users';
+import { getUserNotifications, markNotificationsAsRead } from '@/lib/database';
 
 export const useNotificationsScreen = () => {
   const navigation = useNavigation();
@@ -22,6 +22,75 @@ export const useNotificationsScreen = () => {
 
   // We don't need individual notification settings anymore
   const [notificationSettings] = useState<NotificationSetting[]>([]);
+
+  const pendingReadIdsRef = useRef<Set<string>>(new Set());
+  const isFlushingReadIdsRef = useRef(false);
+
+  const mapNotificationToItem = useCallback(
+    (notif: { id: string; title: string; message: string; isRead: boolean }): Notification => ({
+      id: notif.id,
+      title: notif.title,
+      description: notif.message,
+      isRead: notif.isRead,
+    }),
+    []
+  );
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const user = await getCurrentUser();
+      if (!user) {
+        console.warn('[notifications] No user logged in');
+        return;
+      }
+
+      const allNotifs = await getUserNotifications(user.$id, 100);
+      const unreadNotifs = allNotifs.filter((notif) => !notif.isRead).slice(0, 10);
+      const readNotifs = allNotifs.filter((notif) => notif.isRead).slice(0, 20);
+
+      setNotifications(unreadNotifs.map(mapNotificationToItem));
+      setPreviousNotifications(readNotifs.map(mapNotificationToItem));
+    } catch (error: any) {
+      console.error('[notifications] Error loading notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mapNotificationToItem]);
+
+  const flushPendingReadNotifications = useCallback(async () => {
+    if (isFlushingReadIdsRef.current) {
+      return;
+    }
+
+    isFlushingReadIdsRef.current = true;
+
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        console.warn('[notifications] No user logged in, cannot mark notifications as read');
+        pendingReadIdsRef.current.clear();
+        await loadNotifications();
+        return;
+      }
+
+      while (pendingReadIdsRef.current.size > 0) {
+        const notificationIds = Array.from(pendingReadIdsRef.current);
+        pendingReadIdsRef.current.clear();
+        await markNotificationsAsRead(user.$id, notificationIds);
+      }
+    } catch (error: any) {
+      console.error('[notifications] Error marking notifications as read:', error);
+      pendingReadIdsRef.current.clear();
+      await loadNotifications();
+    } finally {
+      isFlushingReadIdsRef.current = false;
+
+      if (pendingReadIdsRef.current.size > 0) {
+        void flushPendingReadNotifications();
+      }
+    }
+  }, [loadNotifications]);
 
   // Sync with system permission status when screen is focused or app returns from background
   useEffect(() => {
@@ -71,51 +140,12 @@ export const useNotificationsScreen = () => {
       unsubscribeFocus();
       appStateSubscription.remove();
     };
-  }, [navigation]);
+  }, [loadNotifications, navigation]);
 
   // Load notifications from database on mount
   useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
-    try {
-      setIsLoading(true);
-      const user = await getCurrentUser();
-      if (!user) {
-        console.warn('[notifications] No user logged in');
-        setIsLoading(false);
-        return;
-      }
-
-      // Load unread notifications
-      const unreadNotifs = await getUnreadNotifications(user.$id, 10);
-      setNotifications(
-        unreadNotifs.map((notif) => ({
-          id: notif.id,
-          title: notif.title,
-          description: notif.message,
-          isRead: notif.isRead,
-        }))
-      );
-
-      // Load all notifications (for read ones)
-      const allNotifs = await getUserNotifications(user.$id, 20);
-      const readNotifs = allNotifs.filter((notif) => notif.isRead);
-      setPreviousNotifications(
-        readNotifs.map((notif) => ({
-          id: notif.id,
-          title: notif.title,
-          description: notif.message,
-          isRead: notif.isRead,
-        }))
-      );
-    } catch (error: any) {
-      console.error('[notifications] Error loading notifications:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    void loadNotifications();
+  }, [loadNotifications]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -220,7 +250,7 @@ export const useNotificationsScreen = () => {
     }
   };
 
-  const handleNotificationPress = async (notificationId: string) => {
+  const handleNotificationPress = (notificationId: string) => {
     // Optimistically move notification to "Previously Seen" for snappy UI
     setNotifications((currentNotifications) => {
       const tappedNotification = currentNotifications.find((n) => n.id === notificationId);
@@ -228,28 +258,15 @@ export const useNotificationsScreen = () => {
       if (tappedNotification) {
         setPreviousNotifications((currentPrevious) => [
           { ...tappedNotification, isRead: true },
-          ...currentPrevious,
+          ...currentPrevious.filter((n) => n.id !== notificationId),
         ]);
       }
 
       return currentNotifications.filter((n) => n.id !== notificationId);
     });
 
-    try {
-      const user = await getCurrentUser();
-      if (!user) {
-        console.warn('[notifications] No user logged in, cannot mark notification as read');
-        return;
-      }
-
-      // Persist read state in the background
-      await markNotificationAsRead(user.$id, notificationId);
-    } catch (error: any) {
-      console.error('[notifications] Error marking notification as read:', error);
-
-      // If something goes wrong, reload from server to resync state
-      loadNotifications();
-    }
+    pendingReadIdsRef.current.add(notificationId);
+    void flushPendingReadNotifications();
   };
 
   return {

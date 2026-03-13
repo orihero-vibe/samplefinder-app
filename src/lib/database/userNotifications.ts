@@ -38,6 +38,37 @@ const serializeNotifications = (notifications: UserNotification[]): string[] => 
   return notifications.map(n => JSON.stringify(n));
 };
 
+const ensureNotificationsConfig = () => {
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    throw new Error('Database ID or User Profiles Table ID not configured.');
+  }
+};
+
+const updateStoredNotifications = async (
+  userId: string,
+  updater: (notifications: UserNotification[]) => UserNotification[]
+): Promise<void> => {
+  ensureNotificationsConfig();
+
+  const profile = await getUserProfile(userId);
+  if (!profile) {
+    throw new Error('User profile not found');
+  }
+
+  const notificationsRaw = (profile as any).notifications || [];
+  const notifications = deserializeNotifications(notificationsRaw);
+  const updatedNotifications = updater(notifications);
+
+  await tablesDB.updateRow({
+    databaseId: DATABASE_ID,
+    tableId: USER_PROFILES_TABLE_ID,
+    rowId: profile.$id,
+    data: {
+      notifications: serializeNotifications(updatedNotifications),
+    },
+  });
+};
+
 export type { NotificationType, UserNotification } from './types';
 
 export interface UserNotificationData {
@@ -216,38 +247,9 @@ export const markNotificationAsRead = async (
   userId: string,
   notificationId: string
 ): Promise<void> => {
-  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
-    throw new Error('Database ID or User Profiles Table ID not configured.');
-  }
-
   try {
     console.log('[notifications] Marking notification as read:', notificationId);
-
-    const profile = await getUserProfile(userId);
-    if (!profile) {
-      throw new Error('User profile not found');
-    }
-
-    const notificationsRaw = (profile as any).notifications || [];
-    const notifications = deserializeNotifications(notificationsRaw);
-    
-    // Find and update the notification
-    const updatedNotifications = notifications.map((notif: UserNotification) =>
-      notif.id === notificationId ? { ...notif, isRead: true } : notif
-    );
-
-    // Serialize back to JSON strings
-    const serializedNotifications = serializeNotifications(updatedNotifications);
-
-    // Update user profile
-    await tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: USER_PROFILES_TABLE_ID,
-      rowId: profile.$id,
-      data: {
-        notifications: serializedNotifications,
-      },
-    });
+    await markNotificationsAsRead(userId, [notificationId]);
 
     console.log('[notifications] Notification marked as read');
   } catch (error: any) {
@@ -257,42 +259,44 @@ export const markNotificationAsRead = async (
 };
 
 /**
- * Mark all notifications as read for a user
+ * Mark multiple notifications as read for a user
  */
-export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
-  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
-    throw new Error('Database ID or User Profiles Table ID not configured.');
+export const markNotificationsAsRead = async (
+  userId: string,
+  notificationIds: string[]
+): Promise<void> => {
+  if (notificationIds.length === 0) {
+    return;
   }
 
   try {
+    console.log('[notifications] Marking notifications as read:', notificationIds);
+
+    const notificationIdsToMark = new Set(notificationIds);
+
+    await updateStoredNotifications(userId, (notifications) =>
+      notifications.map((notif: UserNotification) =>
+        notificationIdsToMark.has(notif.id) ? { ...notif, isRead: true } : notif
+      )
+    );
+  } catch (error: any) {
+    console.error('[notifications] Error marking notifications as read:', error);
+    throw new Error(error.message || 'Failed to mark notifications as read');
+  }
+};
+
+/**
+ * Mark all notifications as read for a user
+ */
+export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
+  try {
     console.log('[notifications] Marking all notifications as read for user:', userId);
-
-    const profile = await getUserProfile(userId);
-    if (!profile) {
-      throw new Error('User profile not found');
-    }
-
-    const notificationsRaw = (profile as any).notifications || [];
-    const notifications = deserializeNotifications(notificationsRaw);
-    
-    // Mark all as read
-    const updatedNotifications = notifications.map((notif: UserNotification) => ({
-      ...notif,
-      isRead: true,
-    }));
-
-    // Serialize back to JSON strings
-    const serializedNotifications = serializeNotifications(updatedNotifications);
-
-    // Update user profile
-    await tablesDB.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: USER_PROFILES_TABLE_ID,
-      rowId: profile.$id,
-      data: {
-        notifications: serializedNotifications,
-      },
-    });
+    await updateStoredNotifications(userId, (notifications) =>
+      notifications.map((notif: UserNotification) => ({
+        ...notif,
+        isRead: true,
+      }))
+    );
 
     console.log('[notifications] All notifications marked as read');
   } catch (error: any) {

@@ -86,8 +86,8 @@ export const useConfirmAccountScreen = () => {
     try {
       await verifyEmail(userId, code);
 
-      // Create welcome notification *before* navigating to NotificationSetup so it appears
-      // immediately on the notification onboarding screen (not only after opening from Profile).
+      // Create a welcome notification after verification so the user can
+      // access it later from the Profile notifications screen.
       try {
         await createUserNotification({
           userId,
@@ -111,13 +111,11 @@ export const useConfirmAccountScreen = () => {
         // Don't block navigation - push notifications are not critical
       });
 
-      // After successful verification, take the user through the
-      // Notification Setup onboarding screen before entering the main app.
-      // This ensures new users see notification onboarding exactly once
-      // as part of the signup/login verification flow.
+      // After successful verification, go straight into the app.
+      // Notifications should only be accessed from the Profile section.
       navigation.reset({
         index: 0,
-        routes: [{ name: 'NotificationSetup' as never }],
+        routes: [{ name: 'MainTabs' as never }],
       });
     } catch (error: any) {
       console.error('[ConfirmAccount] Verification error:', error);

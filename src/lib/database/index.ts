@@ -31,6 +31,8 @@ export {
   getUserSavedEventIds,
   checkUsernameExists,
   checkUsernameExistsForDifferentUser,
+  checkPhoneNumberExists,
+  checkPhoneNumberExistsForDifferentUser,
 } from './users';
 
 // Re-export client functions
@@ -116,6 +118,7 @@ export {
   getUserNotifications,
   getUnreadNotifications,
   markNotificationAsRead,
+  markNotificationsAsRead,
   markAllNotificationsAsRead,
   deleteUserNotification,
   getUnreadNotificationCount,
