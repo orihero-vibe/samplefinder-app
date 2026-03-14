@@ -21,7 +21,7 @@ export const geocodeLocation = async (query: string): Promise<GeocodeResult> => 
   }
 
   try {
-    const apiKey = 'AIzaSyBJB8PG5CP2Sn4aIKxvAB8R1P8KVAoyJEo';
+    const apiKey = 'AIzaSyAywmgeNZsxezVKVV8k3w3v9K8tssxh4mc';
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(trimmed)}&key=${apiKey}`;
 
     const response = await fetch(url);

@@ -11,19 +11,21 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { SmallBlueStarIcon } from '@/icons';
+import CertifiedBrandAmbassadorIcon from '@/icons/CertifiedBrandAmbassadorIcon';
+import CertifiedInfluencerIcon from '@/icons/CertifiedInfluencerIcon';
 import BadgeEarnedPopupIcon from '@/icons/BadgeEarnedPopupIcon';
 import { CloseIcon } from '@/components';
 import { captureAndShareView } from '@/utils/captureAndShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export type BadgeType = 'events' | 'reviews';
+export type BadgeType = 'events' | 'reviews' | 'ambassador' | 'influencer';
 
 interface BadgeEarnedModalProps {
   visible: boolean;
   badgeType: BadgeType;
-  badgeNumber: number;
-  achievementCount: number;
+  badgeNumber?: number;
+  achievementCount?: number;
   onClose: () => void;
   onShare?: () => void;
 }
@@ -31,8 +33,8 @@ interface BadgeEarnedModalProps {
 const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
   visible,
   badgeType,
-  badgeNumber,
-  achievementCount,
+  badgeNumber = 0,
+  achievementCount = 0,
   onClose,
   onShare,
 }) => {
@@ -64,7 +66,9 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
   const handleShare = async () => {
     try {
       const badgeName = getBadgeName();
-      const message = `I just earned the ${badgeNumber} ${badgeName} on SampleFinder! 🎉`;
+      const message = badgeType === 'events' || badgeType === 'reviews'
+        ? `I just earned the ${badgeNumber} ${badgeName} on SampleFinder! 🎉`
+        : `I just earned the ${badgeName} on SampleFinder! 🎉`;
       if (modalRef.current) {
         await captureAndShareView(modalRef, message);
       }
@@ -77,12 +81,32 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
   };
 
   const getBadgeName = (): string => {
-    return badgeType === 'events' ? 'Events Badge' : 'Review Badge';
+    if (badgeType === 'events') return 'Events Badge';
+    if (badgeType === 'reviews') return 'Review Badge';
+    if (badgeType === 'ambassador') return 'Certified Brand Ambassador';
+    return 'Certified Influencer';
   };
 
   const getAchievementMessage = (): string => {
+    if (badgeType === 'ambassador') {
+      return 'You earned your Certified Brand Ambassador badge on SampleFinder!';
+    }
+    if (badgeType === 'influencer') {
+      return 'You earned your Certified Influencer badge on SampleFinder!';
+    }
+
     const activity = badgeType === 'events' ? 'events' : 'reviews';
     return `You made it to ${achievementCount} ${activity} using SampleFinder!`;
+  };
+
+  const getEarnedIndicatorText = (): string => {
+    if (badgeType === 'ambassador') {
+      return 'You earned Ambassador!';
+    }
+    if (badgeType === 'influencer') {
+      return 'You earned Influencer!';
+    }
+    return 'You earned points!';
   };
 
   return (
@@ -120,7 +144,13 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
 
             {/* Badge Icon */}
             <View style={styles.badgeContainer}>
-              <BadgeEarnedPopupIcon value={badgeNumber} size={165} />
+              {badgeType === 'events' || badgeType === 'reviews' ? (
+                <BadgeEarnedPopupIcon value={badgeNumber} size={165} />
+              ) : badgeType === 'ambassador' ? (
+                <CertifiedBrandAmbassadorIcon size={165} color={Colors.white} transparentBackground />
+              ) : (
+                <CertifiedInfluencerIcon size={165} color={Colors.white} transparentBackground />
+              )}
             </View>
             <Text style={styles.badgeName}>{getBadgeName()}</Text>
             </LinearGradient>
@@ -136,7 +166,7 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
               {/* Points Earned Indicator */}
               <View style={styles.pointsIndicatorContainer}>
                 <SmallBlueStarIcon />
-                <Text style={styles.pointsIndicatorText}>You earned points!</Text>
+                <Text style={styles.pointsIndicatorText}>{getEarnedIndicatorText()}</Text>
               </View>
             </View>
 

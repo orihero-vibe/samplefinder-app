@@ -5,12 +5,14 @@ interface CertifiedBrandAmbassadorIconProps {
   size?: number;
   color?: string;
   disabled?: boolean;
+  transparentBackground?: boolean;
 }
 
 const CertifiedBrandAmbassadorIcon: React.FC<CertifiedBrandAmbassadorIconProps> = ({
   size = 34,
   color = '#F16F30',
   disabled = false,
+  transparentBackground = false,
 }) => {
   const opacity = disabled ? 0.4 : 1;
 
@@ -20,7 +22,7 @@ const CertifiedBrandAmbassadorIcon: React.FC<CertifiedBrandAmbassadorIconProps> 
         cx="17"
         cy="17"
         r="16"
-        fill="white"
+        fill={transparentBackground ? 'none' : 'white'}
         stroke={color}
         strokeWidth="2"
       />
