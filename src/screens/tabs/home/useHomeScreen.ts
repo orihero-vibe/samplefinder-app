@@ -103,16 +103,23 @@ export const useHomeScreen = () => {
       // Check current status first
       const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
 
-      // If permission was previously denied and we can't ask again, fall back to ZIP immediately
-      if (status === 'denied' && canAskAgain === false) {
+      // On iOS, denied + cannot ask again means the system prompt will not reappear.
+      // On Android, this combination can still occur in "ask every time" style flows,
+      // so we still attempt a request below to let the OS decide.
+      const shouldFallbackToZipImmediately =
+        Platform.OS === 'ios' && status === 'denied' && canAskAgain === false;
+
+      if (shouldFallbackToZipImmediately) {
         setHasLocationPermission(false);
         setShowZipCodeModal(true);
         return;
       }
 
-      // If we don't currently have permission, and the OS will still show the dialog,
-      // request permission so the user sees the native "Turn On Location" popup.
-      if (status !== 'granted') {
+      // Android "Ask every time" may report transient granted/denied states across app resumes.
+      // Always request on Android to let the OS decide whether to show the permission prompt.
+      // On iOS, request only when not currently granted.
+      const shouldRequestPermission = Platform.OS === 'android' || status !== 'granted';
+      if (shouldRequestPermission) {
         const { status: requestedStatus } = await Location.requestForegroundPermissionsAsync();
 
         if (requestedStatus !== 'granted') {
@@ -164,10 +171,8 @@ export const useHomeScreen = () => {
   // Re-check when Home gains focus - ensures permission dialog/ZIP modal logic is reapplied if needed
   useFocusEffect(
     useCallback(() => {
-      if (!userLocation) {
-        resolveLocation();
-      }
-    }, [userLocation, resolveLocation])
+      resolveLocation();
+    }, [resolveLocation])
   );
 
   // Refetch events when Home tab gains focus so admin changes (create/edit/hide/archive) appear without app restart

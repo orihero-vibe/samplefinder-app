@@ -5,12 +5,14 @@ interface CertifiedInfluencerIconProps {
   size?: number;
   color?: string;
   disabled?: boolean;
+  transparentBackground?: boolean;
 }
 
 const CertifiedInfluencerIcon: React.FC<CertifiedInfluencerIconProps> = ({
   size = 34,
   color = '#FF0066',
   disabled = false,
+  transparentBackground = false,
 }) => {
   const opacity = disabled ? 0.4 : 1;
 
@@ -20,7 +22,7 @@ const CertifiedInfluencerIcon: React.FC<CertifiedInfluencerIconProps> = ({
         cx="17"
         cy="17"
         r="16"
-        fill="white"
+        fill={transparentBackground ? 'none' : 'white'}
         stroke={color}
         strokeWidth="2"
       />
@@ -30,7 +32,7 @@ const CertifiedInfluencerIcon: React.FC<CertifiedInfluencerIconProps> = ({
       />
       <Path
         d="M21.8571 9.24219L22.6192 10.7663C22.8771 11.2821 23.006 11.54 23.1783 11.7635C23.3312 11.9618 23.509 12.1396 23.7073 12.2924C23.9308 12.4647 24.1887 12.5937 24.7045 12.8516L26.2286 13.6136L24.7045 14.3757C24.1887 14.6336 23.9308 14.7625 23.7073 14.9348C23.509 15.0877 23.3312 15.2654 23.1783 15.4638C23.006 15.6872 22.8771 15.9451 22.6192 16.461L21.8571 17.985L21.0951 16.461C20.8372 15.9451 20.7082 15.6872 20.536 15.4638C20.3831 15.2654 20.2053 15.0877 20.007 14.9348C19.7835 14.7625 19.5256 14.6336 19.0098 14.3757L17.4857 13.6136L19.0098 12.8516C19.5256 12.5937 19.7835 12.4647 20.007 12.2924C20.2053 12.1396 20.3831 11.9618 20.536 11.7635C20.7082 11.54 20.8372 11.2821 21.0951 10.7663L21.8571 9.24219Z"
-        fill="white"
+        fill="transparent"
         stroke={color}
         strokeWidth="2"
         strokeLinecap="round"
