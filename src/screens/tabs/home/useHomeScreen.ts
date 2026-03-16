@@ -539,7 +539,7 @@ export const useHomeScreen = () => {
           
           if (dateRanges.length > 0) {
             filteredEvents = filteredEvents.filter((event) => {
-              const eventDate = new Date(event.date);
+              const eventDate = new Date(event.startTime || event.date);
               // Event passes filter if it falls within ANY of the selected date ranges
               return dateRanges.some(dateRange => {
                 const startDate = new Date(dateRange.start);
@@ -621,7 +621,7 @@ export const useHomeScreen = () => {
               brandName: brandName,
               location,
               distance: formattedDistance,
-              date: new Date(event.date),
+              date: new Date(event.startTime || event.date),
               time: formattedTime,
               logoURL: clientObj?.logoURL || null,
             };
@@ -820,7 +820,7 @@ export const useHomeScreen = () => {
         
         if (dateRanges.length > 0) {
           locationEvents = locationEvents.filter((event) => {
-            const eventDate = new Date(event.date);
+            const eventDate = new Date(event.startTime || event.date);
             // Event passes filter if it falls within ANY of the selected date ranges
             return dateRanges.some(dateRange => {
               const startDate = new Date(dateRange.start);
@@ -909,7 +909,7 @@ export const useHomeScreen = () => {
             brandName: brandName,
             location: clientObj?.name || clientObj?.title || event.city || 'Location',
             distance: formattedDistance,
-            date: new Date(event.date),
+            date: new Date(event.startTime || event.date),
             time: formattedTime,
             logoURL: clientObj?.logoURL || null,
             productTypes: Array.isArray(productTypes) ? productTypes : [],

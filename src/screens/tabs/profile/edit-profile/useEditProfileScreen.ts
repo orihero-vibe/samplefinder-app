@@ -3,7 +3,7 @@ import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/
 import { Alert, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, deleteAccount } from '@/lib/auth';
-import { getUserProfile, updateUserProfile, UserProfileRow, checkUsernameExistsForDifferentUser } from '@/lib/database';
+import { getUserProfile, updateUserProfile, UserProfileRow, checkUsernameExistsForDifferentUser, checkPhoneNumberExistsForDifferentUser } from '@/lib/database';
 import { updateEmail, updatePassword } from '@/lib/auth';
 import { uploadAvatar, deleteAvatar, extractFileIdFromUrl } from '@/lib/storage';
 
@@ -284,13 +284,6 @@ export const useEditProfileScreen = () => {
       return;
     }
 
-    const validationError = validateForm();
-    if (validationError) {
-      setErrorModalMessage(validationError);
-      setShowErrorModal(true);
-      return;
-    }
-
     try {
       setIsSaving(true);
       setError('');
@@ -311,6 +304,36 @@ export const useEditProfileScreen = () => {
       }
       if (phoneNumber !== (profile.phoneNumber || '')) {
         profileUpdates.phoneNumber = phoneNumber.trim();
+
+        // Check for duplicate phone number before attempting update
+        const phoneExistsForOtherUser = await checkPhoneNumberExistsForDifferentUser(
+          phoneNumber.trim(),
+          profile.$id
+        );
+
+        if (phoneExistsForOtherUser) {
+          const message = 'This phone number is already associated with another account. Please enter a different phone number.';
+          setValidationErrors((prev) => ({
+            ...prev,
+            phoneNumber: message,
+          }));
+          setErrorModalMessage(message);
+          setShowErrorModal(true);
+          return;
+        } else {
+          // Clear any previous phone validation error if the new number is valid and unique
+          setValidationErrors((prev) => {
+            const { phoneNumber: _phone, ...rest } = prev;
+            return rest;
+          });
+        }
+      }
+
+      const validationError = validateForm();
+      if (validationError) {
+        setErrorModalMessage(validationError);
+        setShowErrorModal(true);
+        return;
       }
 
       if (Object.keys(profileUpdates).length > 0) {

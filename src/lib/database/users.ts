@@ -77,6 +77,15 @@ const parseSavedEventIds = (savedEventIds: any): Array<{ eventId: string; addedA
 };
 
 /**
+ * Normalize phone numbers by stripping all non-digit characters.
+ * Used for duplicate detection so that formatting differences
+ * like "(555) 123-4567" vs "5551234567" are treated as equal.
+ */
+const getPhoneDigits = (phone: string): string => {
+  return phone.replace(/\D/g, '');
+};
+
+/**
  * Create a user profile in the database
  */
 export const createUserProfile = async (profileData: UserProfileData): Promise<void> => {
@@ -98,6 +107,14 @@ export const createUserProfile = async (profileData: UserProfileData): Promise<v
   }
 
   try {
+    // Before creating the profile, enforce unique phone number (normalized by digits)
+    if (profileData.phoneNumber && profileData.phoneNumber.trim()) {
+      const phoneExists = await checkPhoneNumberExists(profileData.phoneNumber);
+      if (phoneExists) {
+        throw new Error('An account with this phone number already exists. Please use the login page to sign in.');
+      }
+    }
+
     // Convert date string to ISO 8601 format if needed
     let dobISO = profileData.dob;
     console.log('[database.createUserProfile] Original DOB:', dobISO);
@@ -274,7 +291,24 @@ export const updateUserProfile = async (
       updateData.lastname = updates.lastname.trim();
     }
     if (updates.phoneNumber !== undefined) {
-      updateData.phoneNumber = updates.phoneNumber.trim();
+      const trimmedPhone = updates.phoneNumber.trim();
+
+      if (trimmedPhone) {
+        // Enforce unique phone number for other users (normalized by digits)
+        const profile = await tablesDB.getRow({
+          databaseId: DATABASE_ID,
+          tableId: USER_PROFILES_TABLE_ID,
+          rowId: profileId,
+        });
+
+        const currentProfileId = profile.$id;
+        const existsForDifferentUser = await checkPhoneNumberExistsForDifferentUser(trimmedPhone, currentProfileId);
+        if (existsForDifferentUser) {
+          throw new Error('This phone number is already associated with another account. Please enter a different phone number.');
+        }
+      }
+
+      updateData.phoneNumber = trimmedPhone;
     }
     if (updates.username !== undefined) {
       updateData.username = updates.username.trim();
@@ -485,7 +519,7 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
 };
 
 /**
- * Check if a phone number already exists
+ * Check if a phone number already exists (normalized by digits)
  */
 export const checkPhoneNumberExists = async (phoneNumber: string): Promise<boolean> => {
   console.log('[database.checkPhoneNumberExists] Checking if phone number exists:', phoneNumber);
@@ -501,22 +535,87 @@ export const checkPhoneNumberExists = async (phoneNumber: string): Promise<boole
   }
 
   const trimmedPhone = phoneNumber.trim();
+  const targetDigits = getPhoneDigits(trimmedPhone);
+  if (!targetDigits) {
+    return false;
+  }
 
   try {
+    // Fetch a reasonable batch of profiles and compare by digits
     const result = await tablesDB.listRows({
       databaseId: DATABASE_ID,
       tableId: USER_PROFILES_TABLE_ID,
-      queries: [Query.equal('phoneNumber', trimmedPhone)],
+      queries: [Query.limit(1000)],
     });
 
-    const exists = Boolean(result.rows && result.rows.length > 0);
-    console.log('[database.checkPhoneNumberExists] Phone number exists:', exists);
+    const exists =
+      !!result.rows &&
+      result.rows.some((row: any) => {
+        const rowDigits = row.phoneNumber ? getPhoneDigits(String(row.phoneNumber)) : '';
+        return rowDigits && rowDigits === targetDigits;
+      });
+
+    console.log('[database.checkPhoneNumberExists] Phone number exists (normalized):', exists);
     return exists;
   } catch (error: any) {
     console.error('[database.checkPhoneNumberExists] Error checking phone number:', error);
     console.error('[database.checkPhoneNumberExists] Error message:', error?.message);
     // Do not block signup on transient errors – let backend enforce any hard constraints
     console.warn('[database.checkPhoneNumberExists] Error occurred, allowing signup (backend will fail if duplicate).');
+    return false;
+  }
+};
+
+/**
+ * Check if a phone number exists for a different user (used in edit profile)
+ * Returns true if the normalized phone exists and belongs to a different profile.
+ */
+export const checkPhoneNumberExistsForDifferentUser = async (
+  phoneNumber: string,
+  currentUserProfileId: string
+): Promise<boolean> => {
+  console.log('[database.checkPhoneNumberExistsForDifferentUser] Checking phone:', phoneNumber, 'excluding profile:', currentUserProfileId);
+
+  if (!DATABASE_ID || !USER_PROFILES_TABLE_ID) {
+    const errorMsg = 'Database ID or Table ID not configured. Please check your .env file.';
+    console.error('[database.checkPhoneNumberExistsForDifferentUser]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  if (!phoneNumber || !phoneNumber.trim()) {
+    return false;
+  }
+
+  const targetDigits = getPhoneDigits(phoneNumber.trim());
+  if (!targetDigits) {
+    return false;
+  }
+
+  try {
+    const result = await tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId: USER_PROFILES_TABLE_ID,
+      queries: [Query.limit(1000)],
+    });
+
+    if (result.rows && result.rows.length > 0) {
+      const existsForDifferentUser = result.rows.some((row: any) => {
+        if (!row.phoneNumber || row.$id === currentUserProfileId) {
+          return false;
+        }
+        const rowDigits = getPhoneDigits(String(row.phoneNumber));
+        return rowDigits && rowDigits === targetDigits && row.$id !== currentUserProfileId;
+      });
+
+      console.log('[database.checkPhoneNumberExistsForDifferentUser] Result:', existsForDifferentUser);
+      return existsForDifferentUser;
+    }
+
+    console.log('[database.checkPhoneNumberExistsForDifferentUser] Phone does not exist for other users');
+    return false;
+  } catch (error: any) {
+    console.error('[database.checkPhoneNumberExistsForDifferentUser] Error:', error);
+    console.warn('[database.checkPhoneNumberExistsForDifferentUser] Error occurred, allowing update.');
     return false;
   }
 };

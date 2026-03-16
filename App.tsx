@@ -50,9 +50,14 @@ export default function App() {
   const prevQueueLengthRef = useRef(0);
   const currentTriviaRef = useRef<TriviaQuestion | null>(null);
   const triviaQueueRef = useRef(triviaQueue);
+  /** Client-side set of trivia IDs already answered/skipped this session; prevents re-showing before backend propagates */
+  const processedTriviaIdsRef = useRef<Set<string>>(new Set());
   triviaQueueRef.current = triviaQueue;
   const currentQuestion = triviaQueue[0] ?? null;
   currentTriviaRef.current = currentQuestion;
+
+  const filterProcessedTrivia = useCallback((questions: TriviaQuestion[]) =>
+    questions.filter((q) => !processedTriviaIdsRef.current.has(q.$id)), []);
 
   const shouldShowTier1Modal = useTier1ModalStore((s) => s.shouldShowTier1Modal);
   const setShouldShowTier1Modal = useTier1ModalStore((s) => s.setShouldShowTier1Modal);
@@ -150,7 +155,7 @@ export default function App() {
         if (cancelled || !profile) return;
 
         setUserProfileId(profile.$id); // for submit handler
-        const triviaQuestions = await getActiveTrivia(profile.$id);
+        const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
 
         if (triviaQuestions.length > 0) {
@@ -192,7 +197,7 @@ export default function App() {
         if (cancelled || !user) return;
         const profile = await getUserProfile(user.$id);
         if (cancelled || !profile) return;
-        const triviaQuestions = await getActiveTrivia(profile.$id);
+        const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
@@ -217,7 +222,7 @@ export default function App() {
     const interval = setInterval(async () => {
       if (cancelled) return;
       try {
-        const triviaQuestions = await getActiveTrivia(userProfileId);
+        const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(userProfileId));
         if (cancelled) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
@@ -245,7 +250,7 @@ export default function App() {
         const profile = await getUserProfile(user.$id);
         if (!profile) return;
 
-        const triviaQuestions = await getActiveTrivia(profile.$id);
+        const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         const currentQueue = triviaQueueRef.current;
         const existingIds = new Set(currentQueue.map((q) => q.$id));
         const newQuestions = triviaQuestions.filter((q) => !existingIds.has(q.$id));
@@ -368,6 +373,10 @@ export default function App() {
   }
 
   const handleTriviaClose = () => {
+    const q = currentTriviaRef.current;
+    if (q) {
+      processedTriviaIdsRef.current.add(q.$id);
+    }
     setTriviaQueue((prev) => prev.slice(1));
   };
 

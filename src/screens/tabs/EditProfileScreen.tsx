@@ -212,6 +212,8 @@ const EditProfileScreen = () => {
               labelColor={Colors.blueColorMode}
               inputBorderColor={Colors.blueColorMode}
               autoFormat={true}
+              error={!!validationErrors.phoneNumber}
+              errorMessage={validationErrors.phoneNumber}
             />
 
             <CustomInput

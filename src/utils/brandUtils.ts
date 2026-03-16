@@ -100,8 +100,8 @@ export const convertEventToBrandDetails = (
   event: EventRow,
   client: ClientData | null
 ): BrandDetailsData => {
-  // Format date from ISO to "Aug 1, 2025"
-  const formattedDate = formatEventDate(event.date);
+  // Format date from ISO to "Aug 1, 2025" (use startTime for timezone-accurate date)
+  const formattedDate = formatEventDate(event.startTime || event.date);
   
   // Format time from ISO to "3 - 5 pm"
   const formattedTime = formatEventTime(event.startTime, event.endTime);
@@ -215,7 +215,7 @@ export const convertEventToCalendarEventDetail = (
 
   return {
     id: event.$id,
-    date: new Date(event.date),
+    date: new Date(event.startTime || event.date),
     name: brandName,
     brandName: brandName, // Use event name as brand name (not client name)
     location,             // Location is client/store name
@@ -303,8 +303,8 @@ export const convertClientsToBrands = (
       const productTypesSet = new Set<string>();
       
       // Prefer client's brand description (from clients table), then event-level brandDescription
-      const sortedEvents = clientEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      const upcomingEvents = sortedEvents.filter((event) => isEventTodayOrLater(event.date));
+      const sortedEvents = clientEvents.sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
+      const upcomingEvents = sortedEvents.filter((event) => isEventTodayOrLater(event.startTime || event.date));
       const mostRelevantEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : sortedEvents[sortedEvents.length - 1];
       const eventBrandDescription = mostRelevantEvent?.brandDescription || null;
       const description =
