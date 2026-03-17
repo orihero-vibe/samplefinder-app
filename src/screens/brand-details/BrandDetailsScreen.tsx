@@ -28,6 +28,7 @@ interface BrandDetailsScreenProps {
 
 const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   const contentRef = useRef<View>(null);
+  const shareContentRef = useRef<View>(null);
   const {
     brand,
     isLoading,
@@ -63,7 +64,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     handleShareBadge,
     isRefreshing,
     handleRefreshDetails,
-  } = useBrandDetailsScreen({ route, contentRef });
+  } = useBrandDetailsScreen({ route, contentRef, shareContentRef });
 
   // Show loading state
   if (isLoading) {
@@ -116,36 +117,43 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
           ) : undefined
         }
       >
-        <BrandLocationPin logoUrl={brandLogoUrl} />
-        <BrandInfo brand={brand} />
-        <ProductsSection products={brand.products} />
-        <EventInfoSection eventInfo={brand.eventInfo} />
-        <DiscountMessage />
-        
-        {(checkInStatus === 'input' || checkInStatus === 'incorrect') && (
-          <CheckInCodeInput
-            onCodeSubmit={handleCodeSubmit}
-            showError={checkInStatus === 'incorrect'}
-            isSubmitting={isSubmittingCheckIn}
+        {/* Wrapper for sharing full content (not just visible viewport) */}
+        <View
+          ref={shareContentRef}
+          collapsable={false}
+          style={{ backgroundColor: '#FFFFFF', paddingVertical: 12 }}
+        >
+          <BrandLocationPin logoUrl={brandLogoUrl} />
+          <BrandInfo brand={brand} />
+          <ProductsSection products={brand.products} />
+          <EventInfoSection eventInfo={brand.eventInfo} />
+          <DiscountMessage />
+          
+          {(checkInStatus === 'input' || checkInStatus === 'incorrect') && (
+            <CheckInCodeInput
+              onCodeSubmit={handleCodeSubmit}
+              showError={checkInStatus === 'incorrect'}
+              isSubmitting={isSubmittingCheckIn}
+            />
+          )}
+  
+          {checkInStatus === 'success' && (
+            <CheckInSuccess
+              onLeaveReview={handleLeaveReview}
+              pointsEarned={totalEarnedPoints}
+              showReviewButton={!hasReviewed}
+              discount={brand?.discount}
+              discountImageURL={brand?.discountImageURL}
+            />
+          )}
+  
+          <ActionButtons
+            onAddToCalendar={handleAddToCalendar}
+            onAddFavorite={handleAddFavorite}
+            isFavorite={isFavorite}
+            isAddedToCalendar={isAddedToCalendar}
           />
-        )}
-
-        {checkInStatus === 'success' && (
-          <CheckInSuccess
-            onLeaveReview={handleLeaveReview}
-            pointsEarned={totalEarnedPoints}
-            showReviewButton={!hasReviewed}
-            discount={brand?.discount}
-            discountImageURL={brand?.discountImageURL}
-          />
-        )}
-
-        <ActionButtons
-          onAddToCalendar={handleAddToCalendar}
-          onAddFavorite={handleAddFavorite}
-          isFavorite={isFavorite}
-          isAddedToCalendar={isAddedToCalendar}
-        />
+        </View>
       </ScrollView>
 
       <ReviewModal

@@ -1,5 +1,5 @@
 import { type RefObject } from 'react';
-import { View, Share, Platform } from 'react-native';
+import { Share, Platform } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -40,8 +40,9 @@ function toFileUri(uri: string): string {
  * with the image and optional message.
  */
 export async function captureAndShareView(
-  viewRef: RefObject<View | null>,
-  message: string = DEFAULT_MESSAGE
+  viewRef: RefObject<any>,
+  message: string = DEFAULT_MESSAGE,
+  captureOptions?: Omit<Parameters<typeof captureRef>[1], 'format' | 'quality' | 'result'>
 ): Promise<void> {
   const node = viewRef?.current;
   if (!node) {
@@ -56,6 +57,7 @@ export async function captureAndShareView(
       format: 'png',
       quality: 1,
       result: 'tmpfile',
+      ...(captureOptions ?? {}),
     });
 
     let shareUri = tmpUri;

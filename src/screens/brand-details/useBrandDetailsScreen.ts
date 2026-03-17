@@ -65,9 +65,10 @@ interface BrandDetailsScreenProps {
     params: { eventId?: string; brand?: BrandDetailsData; fromFavorites?: boolean };
   };
   contentRef?: RefObject<View | null>;
+  shareContentRef?: RefObject<View | null>;
 }
 
-export const useBrandDetailsScreen = ({ route, contentRef }: BrandDetailsScreenProps) => {
+export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: BrandDetailsScreenProps) => {
   const navigation = useNavigation<BrandDetailsScreenNavigationProp>();
   const { eventId, brand: brandParam, fromFavorites } = route.params;
   
@@ -319,11 +320,22 @@ export const useBrandDetailsScreen = ({ route, contentRef }: BrandDetailsScreenP
     if (!brand) return;
     try {
       const message = `Check out ${brand.brandName} at ${brand.storeName} on ${brand.date} from ${brand.time}`;
+      if (shareContentRef?.current) {
+        try {
+          // Capture full event details content (not just the visible viewport).
+          await captureAndShareView(shareContentRef, message, { useRenderInContext: true });
+          return;
+        } catch (e) {
+          console.warn('[BrandDetails] Full-content share capture failed, falling back to viewport capture.', e);
+        }
+      }
+
       if (contentRef?.current) {
         await captureAndShareView(contentRef, message);
-      } else {
-        await Share.share({ message });
+        return;
       }
+
+      await Share.share({ message });
     } catch (error) {
       console.error('Error sharing:', error);
     }
