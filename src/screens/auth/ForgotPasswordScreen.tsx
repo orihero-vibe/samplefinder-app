@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, Dimensions } from 'react-native';
+import { View, Text, Dimensions, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Monicon } from '@monicon/native';
 import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
@@ -16,6 +17,7 @@ const ForgotPasswordScreen = () => {
     isLoading,
     error,
     handleEmailChange,
+    handleBack,
     handleSubmit,
   } = useForgotPasswordScreen();
 
@@ -26,6 +28,12 @@ const ForgotPasswordScreen = () => {
     >
       <StatusBar style="dark" />
       <View style={styles.content}>
+        <View style={styles.backRow}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.8}>
+            <Monicon name="mdi:arrow-left" size={22} color="#2D1B69" />
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>FORGOT PASSWORD?</Text>
         <Text style={styles.instructions}>
           Enter your email below to reset your password.
