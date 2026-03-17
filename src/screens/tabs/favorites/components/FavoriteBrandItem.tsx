@@ -6,7 +6,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { HeartIcon } from '@/icons';
 import BrandUpcomingEvents from './BrandUpcomingEvents';
 import type { EventData } from './BrandUpcomingEvents';
 import SmallHeartIcon from '@/icons/SmallHeartIcon';
@@ -99,7 +98,7 @@ const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFa
 
       {isExpanded && (
         <View style={styles.expandedContent}>
-          <Text numberOfLines={3} style={styles.description}>{brand.description}</Text>
+          <Text style={styles.description}>{brand.description}</Text>
           {brand.events && brand.events.length > 0 && (
             <BrandUpcomingEvents events={brand.events} onEventPress={handleEventPress} />
           )}
