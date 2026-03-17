@@ -9,6 +9,7 @@ export { default as EventCard } from './shared/EventCard';
 export type { UnifiedEvent } from './shared/EventCard';
 export { default as StoreEventCard } from './shared/StoreEventCard';
 export type { StoreEventData } from './shared/StoreEventCard';
+export { default as RoundedLogoImage } from './shared/RoundedLogoImage';
 export { default as ReviewModal } from './shared/ReviewModal';
 export { default as PointsEarnedModal } from './shared/PointsEarnedModal';
 export { default as CustomSplashScreen } from './shared/CustomSplashScreen';

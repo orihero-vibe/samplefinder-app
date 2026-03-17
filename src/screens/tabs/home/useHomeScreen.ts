@@ -11,6 +11,8 @@ import { formatEventDistance, isEventUpcoming } from '@/utils/formatters';
 import { geocodeLocation, isValidLocationInput } from '@/utils/geocoding';
 import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 
+let hasAutoShownZipModalThisSession = false;
+
 export const useHomeScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null);
   const [filterButtonLayout, setFilterButtonLayout] = useState<FilterButtonLayout | undefined>(undefined);
@@ -44,6 +46,16 @@ export const useHomeScreen = () => {
   const [userIsAdult, setUserIsAdult] = useState<boolean>(false);
   const bottomSheetRef = useRef<any>(null);
   const mapRef = useRef<ClusteredMapView>(null);
+
+  const showZipModalOncePerSession = useCallback(() => {
+    if (hasAutoShownZipModalThisSession) return;
+    hasAutoShownZipModalThisSession = true;
+    setShowZipCodeModal(true);
+  }, []);
+
+  const openZipCodeModalManually = useCallback(() => {
+    setShowZipCodeModal(true);
+  }, []);
 
   // Snap points for the bottom sheet - collapsed shows only filters, expanded shows events + filters
   const snapPoints = useMemo(() => ['12%', '76%'], []);
@@ -111,7 +123,7 @@ export const useHomeScreen = () => {
 
       if (shouldFallbackToZipImmediately) {
         setHasLocationPermission(false);
-        setShowZipCodeModal(true);
+        showZipModalOncePerSession();
         return;
       }
 
@@ -124,7 +136,7 @@ export const useHomeScreen = () => {
 
         if (requestedStatus !== 'granted') {
           setHasLocationPermission(false);
-          setShowZipCodeModal(true);
+          showZipModalOncePerSession();
           return;
         }
       }
@@ -160,9 +172,9 @@ export const useHomeScreen = () => {
     } catch (error) {
       console.error('Error getting location:', error);
       setHasLocationPermission(false);
-      setShowZipCodeModal(true);
+      showZipModalOncePerSession();
     }
-  }, []);
+  }, [showZipModalOncePerSession]);
 
   useEffect(() => {
     resolveLocation();
@@ -1051,6 +1063,7 @@ export const useHomeScreen = () => {
     handleZipCodeSubmit,
     handleZipCodeChange,
     handleZipCodeDismiss,
+    openZipCodeModalManually,
   };
 };
 

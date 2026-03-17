@@ -76,12 +76,19 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
           samplingReviews,
           badgeAchievements: totalBadges,
         });
-        try {
-          const tiers = await fetchTiers();
-          const currentTier = getUserCurrentTier(tiers, totalPoints);
-          setTierStatus(currentTier?.name ?? 'NewbieSampler');
-        } catch (tierErr) {
-          setTierStatus(calculateTierStatus(totalPoints));
+
+        // Prefer stored tierLevel from profile as the canonical tier,
+        // falling back to points-based calculation for legacy profiles.
+        if (userProfile.tierLevel && userProfile.tierLevel.trim().length > 0) {
+          setTierStatus(userProfile.tierLevel);
+        } else {
+          try {
+            const tiers = await fetchTiers();
+            const currentTier = getUserCurrentTier(tiers, totalPoints);
+            setTierStatus(currentTier?.name ?? 'NewbieSampler');
+          } catch (tierErr) {
+            setTierStatus(calculateTierStatus(totalPoints));
+          }
         }
       } else {
         setTierStatus('NewbieSampler');

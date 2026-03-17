@@ -106,13 +106,18 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     checkIns: CheckInRow[],
     reviews: ReviewRow[]
   ): Promise<HistoryItemData[]> => {
-    // Early return if no check-ins
-    if (checkIns.length === 0) {
+    if (checkIns.length === 0 && reviews.length === 0) {
       return [];
     }
 
-    // Extract unique event IDs
-    const uniqueEventIds = [...new Set(checkIns.map(checkIn => checkIn.eventID))];
+    // Extract unique event IDs from both sources so we can render history
+    // even if a user only reviewed (or if check-ins and reviews are out of sync).
+    const uniqueEventIds = [
+      ...new Set([
+        ...checkIns.map(checkIn => checkIn.eventID),
+        ...reviews.map(review => (typeof review.event === 'string' ? review.event : (review.event as any)?.$id)),
+      ].filter(Boolean)),
+    ];
 
     // Fetch all events in parallel instead of sequentially
     const eventPromises = uniqueEventIds.map(eventId => 
@@ -131,34 +136,76 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
         .map(event => [event!.$id, event!])
     );
 
-    // Build history items using the event map
+    const reviewByEventId = new Map<string, ReviewRow[]>();
+    for (const review of reviews) {
+      const eventId =
+        typeof review.event === 'string' ? review.event : (review.event as any)?.$id;
+      if (!eventId) continue;
+      const list = reviewByEventId.get(eventId) ?? [];
+      list.push(review);
+      reviewByEventId.set(eventId, list);
+    }
+
+    const checkInEventIds = new Set(checkIns.map(c => c.eventID));
+
+    // Build history items using the event map.
+    // Important: if the event no longer exists (deleted from admin),
+    // we still show the history row with a fallback label.
     const items: { item: HistoryItemData; timestamp: number }[] = [];
     
     for (const checkIn of checkIns) {
       const event = eventMap.get(checkIn.eventID);
-      
-      if (event) {
-        const reviewForEvent = reviews.find(r => r.event === checkIn.eventID);
-        const timestamp = new Date(checkIn.$createdAt).getTime();
-        
-        items.push({
-          item: {
-            id: checkIn.$id,
-            eventId: checkIn.eventID,
-            brandProduct: event.client?.name || 'Brand',
-            storeName: event.name || 'Event',
-            date: new Date(checkIn.$createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            }),
-            points: checkIn.pointsEarned + (reviewForEvent?.pointsEarned || 0),
-            review: reviewForEvent?.review,
-            brandPhotoURL: event.client?.logoURL || null,
-          },
-          timestamp,
-        });
-      }
+
+      const reviewsForEvent = reviewByEventId.get(checkIn.eventID) ?? [];
+      const reviewForEvent = reviewsForEvent[0];
+      const timestamp = new Date(checkIn.$createdAt).getTime();
+
+      items.push({
+        item: {
+          id: checkIn.$id,
+          eventId: checkIn.eventID,
+          brandProduct: event?.client?.name || 'Deleted event',
+          storeName: event?.name || 'Deleted event',
+          date: new Date(checkIn.$createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          }),
+          points: checkIn.pointsEarned + (reviewForEvent?.pointsEarned || 0),
+          review: reviewForEvent?.review,
+          brandPhotoURL: event?.client?.logoURL || null,
+        },
+        timestamp,
+      });
+    }
+
+    // Add review-only entries (when a review exists but no check-in row is present)
+    for (const review of reviews) {
+      const eventId =
+        typeof review.event === 'string' ? review.event : (review.event as any)?.$id;
+      if (!eventId) continue;
+      if (checkInEventIds.has(eventId)) continue;
+
+      const event = eventMap.get(eventId);
+      const timestamp = new Date(review.$createdAt).getTime();
+
+      items.push({
+        item: {
+          id: review.$id,
+          eventId,
+          brandProduct: event?.client?.name || 'Deleted event',
+          storeName: event?.name || 'Deleted event',
+          date: new Date(review.$createdAt).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          }),
+          points: review.pointsEarned || 0,
+          review: review.review,
+          brandPhotoURL: event?.client?.logoURL || null,
+        },
+        timestamp,
+      });
     }
 
     // Sort by timestamp (newest first) then extract just the items

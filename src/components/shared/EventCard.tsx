@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import RoundedLogoImage from './RoundedLogoImage';
 
 const locationPin = require('@/assets/locationImage.png');
 
@@ -49,23 +50,30 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
     >
       <View style={styles.eventItem}>
         <View style={styles.eventLeft}>
-          <View style={[styles.logoContainer, event.logoURL && styles.logoContainerWithBg]}>
-            {event.logoURL ? (
-              <Image
-                source={{ uri: event.logoURL }}
-                style={styles.logoImage}
-                resizeMode="cover"
-                onError={(e) => console.log('[EventCard] Image load error:', e.nativeEvent.error, 'URL:', event.logoURL)}
-                onLoad={() => console.log('[EventCard] Image loaded successfully:', event.logoURL?.substring(0, 50))}
-              />
-            ) : (
-              <Image
-                source={locationPin}
-                style={styles.logoPlaceholder}
-                resizeMode="contain"
-              />
-            )}
-          </View>
+          <RoundedLogoImage
+            source={event.logoURL ? { uri: event.logoURL } : locationPin}
+            width={70}
+            height={70}
+            backgroundColor={event.logoURL ? Colors.white : undefined}
+            resizeMode={event.logoURL ? 'cover' : 'contain'}
+            containerStyle={styles.logoContainer}
+            onError={
+              event.logoURL
+                ? (e) =>
+                    console.log(
+                      '[EventCard] Image load error:',
+                      e.nativeEvent.error,
+                      'URL:',
+                      event.logoURL
+                    )
+                : undefined
+            }
+            onLoad={
+              event.logoURL
+                ? () => console.log('[EventCard] Image loaded successfully:', event.logoURL?.substring(0, 50))
+                : undefined
+            }
+          />
           <View style={styles.eventDetails}>
             <Text
               style={styles.brandName}
@@ -108,25 +116,8 @@ const styles = StyleSheet.create({
     minHeight: 70,
   },
   logoContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
     marginRight: 12,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
     flexShrink: 0,
-  },
-  logoContainerWithBg: {
-    backgroundColor: Colors.white,
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  logoPlaceholder: {
-    width: '100%',
-    height: '100%',
   },
   eventDetails: {
     flex: 1,

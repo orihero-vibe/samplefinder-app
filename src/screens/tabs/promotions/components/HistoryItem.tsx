@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import { RoundedLogoImage } from '@/components';
 
 export interface HistoryItemData {
   id: string;
@@ -44,19 +45,12 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
         {/* Icon and Main Info */}
         <View style={styles.mainRow}>
           <View style={styles.iconContainer}>
-            {item.brandPhotoURL ? (
-              <Image 
-                source={{ uri: item.brandPhotoURL }} 
-                style={styles.brandPhoto}
-                resizeMode="cover"
-              />
-            ) : (
-              <Image
-                source={require('@/assets/locationImage.png')}
-                style={styles.brandPhoto}
-                resizeMode="contain"
-              />
-            )}
+            <RoundedLogoImage
+              source={item.brandPhotoURL ? { uri: item.brandPhotoURL } : require('@/assets/locationImage.png')}
+              width={50}
+              height={50}
+              resizeMode={item.brandPhotoURL ? 'cover' : 'contain'}
+            />
           </View>
           <View style={styles.infoContainer}>
             <Text style={styles.brandProduct}>{item.brandProduct}</Text>
@@ -127,11 +121,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
     position: 'relative',
-  },
-  brandPhoto: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
   },
   magnifierOverlay: {
     position: 'absolute',

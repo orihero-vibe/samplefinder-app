@@ -21,6 +21,7 @@ import CloseIcon from '../shared/CloseIcon';
 import SparkleIcon from '@/icons/SparkleIcon';
 import { AchievementStartIcon, MediumStarIcon, SmallStarIcon, } from '@/icons';
 import { captureAndShareView } from '@/utils/captureAndShare';
+import { RoundedLogoImage } from '@/components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -191,13 +192,14 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     const logoURL = question.client?.logoURL;
     if (!logoURL) return null;
     return (
-      <View style={styles.brandLogoContainer}>
-        <Image
-          source={{ uri: logoURL }}
-          style={styles.brandLogo}
-          resizeMode="contain"
-        />
-      </View>
+      <RoundedLogoImage
+        source={{ uri: logoURL }}
+        width={80}
+        height={80}
+        resizeMode="contain"
+        backgroundColor={Colors.white}
+        containerStyle={styles.brandLogoContainer}
+      />
     );
   };
 
@@ -471,16 +473,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.white,
-    overflow: 'hidden',
-  },
-  brandLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
   },
   title: {
     fontSize: 24,

@@ -16,6 +16,14 @@ export const useForgotPasswordScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('Login');
+  };
+
   // Update email if route params change (when navigating from LoginScreen with email)
   useEffect(() => {
     const emailFromParams = route?.params?.email;
@@ -107,6 +115,7 @@ export const useForgotPasswordScreen = () => {
     isLoading,
     error,
     handleEmailChange,
+    handleBack,
     handleSubmit,
   };
 };
