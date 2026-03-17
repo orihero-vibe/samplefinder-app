@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import RoundedLogoImage from './RoundedLogoImage';
 
 const locationPin = require('@/assets/locationImage.png');
 
@@ -38,21 +39,14 @@ const StoreEventCard: React.FC<StoreEventCardProps> = ({ event, onPress }) => {
     >
       <View style={styles.eventItem}>
         <View style={styles.eventLeft}>
-          <View style={[styles.logoContainer, event.logoURL && styles.logoContainerWithBg]}>
-            {event.logoURL ? (
-              <Image
-                source={{ uri: event.logoURL }}
-                style={styles.logoImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <Image
-                source={locationPin}
-                style={styles.logoPlaceholder}
-                resizeMode="contain"
-              />
-            )}
-          </View>
+          <RoundedLogoImage
+            source={event.logoURL ? { uri: event.logoURL } : locationPin}
+            width={80}
+            height={80}
+            backgroundColor={event.logoURL ? Colors.white : undefined}
+            resizeMode={event.logoURL ? 'cover' : 'contain'}
+            containerStyle={styles.logoContainer}
+          />
           <View style={styles.eventDetails}>
             <Text style={styles.eventName}>{event.name}</Text>
             <Text style={styles.dateText}>{formattedDate}</Text>
@@ -76,24 +70,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
     marginRight: 12,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoContainerWithBg: {
-    backgroundColor: Colors.white,
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  logoPlaceholder: {
-    width: '100%',
-    height: '100%',
   },
   eventDetails: {
     flex: 1,
