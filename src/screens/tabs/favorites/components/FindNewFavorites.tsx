@@ -101,12 +101,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
     backgroundColor: Colors.white,
     overflow: 'hidden',
-    borderRadius: 20,
+    borderRadius: 10,
   },
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 10,
   },
   brandPhoto: {
     width: 40,
