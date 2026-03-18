@@ -40,6 +40,14 @@ export const useSignUpScreen = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('Login');
+  };
   
   // Debounce timer for username checking
   const usernameCheckTimer = useRef<NodeJS.Timeout | null>(null);
@@ -621,5 +629,6 @@ export const useSignUpScreen = () => {
     handleTermsAccept,
     handleTermsLinkPress,
     handleSignUp,
+    handleBack,
   };
 };

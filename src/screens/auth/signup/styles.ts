@@ -1,6 +1,10 @@
 import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
+  headerBackButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
   contentContainer: {
     paddingHorizontal: 30,
     paddingVertical: 0,
