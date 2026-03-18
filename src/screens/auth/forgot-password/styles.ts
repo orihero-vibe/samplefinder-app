@@ -3,20 +3,9 @@ import { StyleSheet, Dimensions } from 'react-native';
 const { height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  backRow: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  headerBackButton: {
     paddingVertical: 6,
-  },
-  backText: {
-    fontSize: 16,
-    fontFamily: 'Quicksand_600SemiBold',
-    color: '#2D1B69',
+    paddingHorizontal: 4,
   },
   content: {
     flex: 1,

@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: Colors.white,
     alignItems: 'center',
@@ -146,6 +146,7 @@ const styles = StyleSheet.create({
   brandPhoto: {
     width: 40,
     height: 40,
+    borderRadius: 10,
   },
   brandInfo: {
     flex: 1,

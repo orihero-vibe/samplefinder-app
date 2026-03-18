@@ -44,6 +44,7 @@ const PromotionsScreen = () => {
     isLoading,
     isRefreshing,
     totalPoints,
+    pointsForProgress,
     isAmbassador,
     isInfluencer,
     handleRefresh,
@@ -175,7 +176,7 @@ const PromotionsScreen = () => {
       <TierProgressModal
           visible={achievementModalVisible}
           tier={selectedTier}
-          totalPoints={totalPoints}
+          totalPoints={pointsForProgress}
           nextTierRequiredPoints={nextTierRequiredPoints}
           onClose={handleCloseAchievementModal}
           onViewMoreEvents={handleViewMoreEvents}

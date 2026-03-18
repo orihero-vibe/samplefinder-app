@@ -24,6 +24,9 @@ interface TierProgressModalProps {
   visible: boolean;
   tier?: Tier | null;
   totalPoints?: number;
+  // Points used for progress bar calculation only.
+  // This may differ from totalPoints when tierLevel is manually overridden.
+  progressTotalPoints?: number;
   nextTierRequiredPoints?: number;
   onClose: () => void;
   onViewMoreEvents?: () => void;
@@ -33,6 +36,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
   visible,
   tier,
   totalPoints,
+  progressTotalPoints,
   nextTierRequiredPoints,
   onClose,
   onViewMoreEvents,
@@ -87,7 +91,11 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
   const requiredPoints = nextTierRequiredPoints ?? tier?.requiredPoints ?? 100;
   const userTotalPoints = totalPoints ?? tier?.currentPoints ?? 0;
   const isMaxTier = !nextTierRequiredPoints && tier?.badgeEarned;
-  const progress = isMaxTier ? 100 : Math.min((userTotalPoints / requiredPoints) * 100, 100);
+  const progressPoints = progressTotalPoints ?? userTotalPoints;
+  // If tier is achieved (e.g. from admin `tierLevel`), show it as completed.
+  const progress = tier?.badgeEarned
+    ? 100
+    : Math.min((progressPoints / requiredPoints) * 100, 100);
 
   const getTierBadgeColors = (tierNum: number) => {
     switch (tierNum) {

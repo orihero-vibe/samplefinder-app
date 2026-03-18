@@ -13,6 +13,7 @@ import { useSignUpScreen } from './useSignUpScreen';
 import { AgeVerificationModal, TermsModal, PushNotificationModal } from './signup/components';
 import styles from './signup/styles';
 import { Colors } from '@/constants/Colors';
+import { Monicon } from '@monicon/native';
 
 const SignUpScreen = () => {
   const {
@@ -52,12 +53,23 @@ const SignUpScreen = () => {
     handleTermsAccept,
     handleTermsLinkPress,
     handleSignUp,
+    handleBack,
   } = useSignUpScreen();
 
   return (
     <ScreenWrapper
       contentContainerStyle={styles.contentContainer}
       footerPaddingBottom={40}
+      headerLeft={
+        <TouchableOpacity
+          onPress={handleBack}
+          style={styles.headerBackButton}
+          activeOpacity={0.8}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Monicon name="mdi:arrow-left" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      }
     >
       <StatusBar style="light" />
       <Text style={styles.title}>GET STARTED!</Text>

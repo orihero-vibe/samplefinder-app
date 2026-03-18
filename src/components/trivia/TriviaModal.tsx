@@ -122,12 +122,21 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       if (result.success) {
         // Derive isCorrect robustly: API may omit it or send wrong type; pointsAwarded > 0 implies correct
         const points = result.pointsAwarded ?? 0;
+        const apiCorrectIndex = (() => {
+          if (result.correctAnswerIndex == null) return null;
+          const n = Number(result.correctAnswerIndex);
+          return Number.isFinite(n) ? n : null;
+        })();
+        const apiIsCorrectRaw = result.isCorrect as unknown;
+        const apiIsCorrect =
+          apiIsCorrectRaw === true || apiIsCorrectRaw === 'true';
+
         const isCorrect =
-          result.isCorrect === true ||
+          apiIsCorrect ||
           (points > 0) ||
-          (result.correctAnswerIndex != null && result.correctAnswerIndex === index);
-        const correctIndex =
-          result.correctAnswerIndex ?? (isCorrect ? index : null);
+          (apiCorrectIndex != null && apiCorrectIndex === index);
+
+        const correctIndex = apiCorrectIndex ?? (isCorrect ? index : null);
         
         setAnswerState(isCorrect ? 'correct' : 'incorrect');
         setPointsAwarded(points);

@@ -38,6 +38,10 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
+  // Used for tier progress UI only (keeps progress consistent with tierLevel overrides)
+  const [pointsForProgress, setPointsForProgress] = useState(0);
+  // Canonical tier rank derived from `userProfile.tierLevel` (when available)
+  const [canonicalTierOrder, setCanonicalTierOrder] = useState<number | null>(null);
   const [eventCheckInsCount, setEventCheckInsCount] = useState(0);
   const [reviewsCount, setReviewsCount] = useState(0);
   const [historyItems, setHistoryItems] = useState<HistoryItemData[]>([]);
@@ -78,11 +82,26 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
         getUserReviews(userProfile.$id),
       ]);
 
+      const rawTotalPoints = userProfile.totalPoints ?? 0;
+      const profileTierLevel = userProfile.tierLevel?.trim() ?? '';
+      const normalizedProfileTierLevel = profileTierLevel.toLowerCase();
+
+      // If admin manually updated tierLevel, treat it as the canonical truth for "earned" tier state.
+      const canonicalTier = normalizedProfileTierLevel
+        ? tiers.find((t) => (t.name ?? '').trim().toLowerCase() === normalizedProfileTierLevel)
+        : null;
+
+      // Canonical tier order drives which tier is shown as "earned".
+      // Progress bars should always reflect the user's real points (no clamping).
+      const derivedCanonicalTierOrder: number | null = canonicalTier ? canonicalTier.order : null;
+
       // Set data from profile and fetched arrays (avoid redundant API calls)
       setTiersData(tiers);
       setIsAmbassador(userProfile.isAmbassador || false);
       setIsInfluencer(userProfile.isInfluencer || false);
-      setTotalPoints(userProfile.totalPoints || 0);
+      setCanonicalTierOrder(derivedCanonicalTierOrder);
+      setTotalPoints(rawTotalPoints);
+      setPointsForProgress(rawTotalPoints);
       setEventCheckInsCount(checkIns.length);
       setReviewsCount(reviews.length);
 
@@ -344,13 +363,23 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
   const tiers: Tier[] = tiersData.map((tier) => {
     // Remove mode=admin from URL to allow public access
     const cleanImageURL = tier.imageURL?.replace('&mode=admin', '') ?? null;
+
+    const earnedByTierLevel =
+      canonicalTierOrder !== null ? (tier.order ?? 0) <= canonicalTierOrder : null;
+
+    const badgeEarned =
+      earnedByTierLevel !== null
+        ? earnedByTierLevel
+        : pointsForProgress >= tier.requiredPoints;
     
     return {
       id: tier.$id,
       name: tier.name,
-      currentPoints: Math.min(totalPoints, tier.requiredPoints),
+      // If the tier is marked as achieved via admin `tierLevel`,
+      // show the tier as completed (100%) even if real points are lower.
+      currentPoints: badgeEarned ? tier.requiredPoints : Math.min(pointsForProgress, tier.requiredPoints),
       requiredPoints: tier.requiredPoints,
-      badgeEarned: totalPoints >= tier.requiredPoints,
+      badgeEarned,
       imageURL: cleanImageURL,
       order: tier.order,
     };
@@ -373,6 +402,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     isLoading,
     isRefreshing,
     totalPoints,
+    pointsForProgress,
     isAmbassador,
     isInfluencer,
     handleRefresh,

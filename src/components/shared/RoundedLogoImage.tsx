@@ -19,11 +19,17 @@ const RoundedLogoImage: React.FC<RoundedLogoImageProps> = ({
   backgroundColor,
   ...imageProps
 }) => {
+  const borderRadius = (() => {
+    const minSide = Math.min(width, height);
+    const radius = Math.round(minSide * 0.18);
+    return Math.max(6, Math.min(20, radius));
+  })();
+
   return (
     <View
       style={[
         styles.container,
-        { width, height },
+        { width, height, borderRadius },
         backgroundColor ? { backgroundColor } : null,
         containerStyle,
       ]}
@@ -35,7 +41,6 @@ const RoundedLogoImage: React.FC<RoundedLogoImageProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 9999,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',

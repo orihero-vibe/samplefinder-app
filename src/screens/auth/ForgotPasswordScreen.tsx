@@ -25,15 +25,19 @@ const ForgotPasswordScreen = () => {
     <ScreenWrapper
       contentBackgroundColor="#fff"
       contentContainerStyle={{ minHeight: screenHeight - 120 }}
+      headerLeft={
+        <TouchableOpacity
+          onPress={handleBack}
+          style={styles.headerBackButton}
+          activeOpacity={0.8}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Monicon name="mdi:arrow-left" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      }
     >
       <StatusBar style="dark" />
       <View style={styles.content}>
-        <View style={styles.backRow}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.8}>
-            <Monicon name="mdi:arrow-left" size={22} color="#2D1B69" />
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
-        </View>
         <Text style={styles.title}>FORGOT PASSWORD?</Text>
         <Text style={styles.instructions}>
           Enter your email below to reset your password.
