@@ -10,6 +10,7 @@ import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
 import { fetchAllEvents, fetchClients, EventRow, ClientData, fetchCategories, CategoryData, getUserProfile } from '@/lib/database';
 import { convertEventToCalendarEventDetail, extractClientFromEvent, filterEventsByAdultCategories } from '@/utils/brandUtils';
+import { isEventUpcoming } from '@/utils/formatters';
 import { CalendarEvent, CalendarEventDetail } from './components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
 import { getCurrentUser } from '@/lib/auth';
@@ -118,8 +119,16 @@ export const useCalendarScreen = () => {
         // Get user's saved event IDs from store
         const savedEventIds = useCalendarEventsStore.getState().savedEvents.map((e) => e.eventId);
 
-        // Filter to only include events the user has saved (and that pass adult filter)
-        const userSavedEventRows = eventsFilteredByAdult.filter((event) => savedEventIds.includes(event.$id));
+        // Filter to only include events the user has saved, and hide past events
+        const userSavedEventRows = eventsFilteredByAdult.filter(
+          (event) =>
+            savedEventIds.includes(event.$id) &&
+            isEventUpcoming({
+              date: event.startTime || event.date,
+              startTime: event.startTime,
+              endTime: event.endTime,
+            })
+        );
 
         const simpleEvents: CalendarEvent[] = userSavedEventRows.map((event) => ({
           id: event.$id,

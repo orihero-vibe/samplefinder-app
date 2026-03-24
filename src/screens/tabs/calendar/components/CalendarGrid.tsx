@@ -74,11 +74,16 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
 
   const isPastDate = (day: number): boolean => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const date = new Date(year, month, day);
+    date.setHours(0, 0, 0, 0);
     return date < today && !isToday(day);
   };
 
   const handleDatePress = (day: number) => {
+    if (isPastDate(day)) {
+      return;
+    }
     const date = new Date(year, month, day);
     onDateSelect(date);
   };
@@ -141,7 +146,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                     key={day}
                     style={styles.dayCell}
                     onPress={() => handleDatePress(day)}
-                    activeOpacity={0.7}
+                    activeOpacity={pastDate ? 1 : 0.7}
+                    disabled={pastDate}
                   >
                     <View
                       style={[
