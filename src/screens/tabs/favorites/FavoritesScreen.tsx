@@ -3,6 +3,7 @@ import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import MainHeader from '@/components/wrappers/MainHeader';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 import { Colors } from '@/constants/Colors';
 import { HeartIcon } from '@/icons';
 import {
@@ -18,7 +19,11 @@ const FavoritesScreen = () => {
     newBrands,
     isLoading,
     isRefreshing,
-    handleToggleFavorite,
+    pendingUnfavorite,
+    isUnfavoriting,
+    handleRequestUnfavorite,
+    handleCancelUnfavorite,
+    handleConfirmUnfavorite,
     handleToggleNewFavorite,
     handleRefresh,
   } = useFavoritesScreen();
@@ -69,7 +74,7 @@ const FavoritesScreen = () => {
                   <FavoriteBrandItem
                     key={brand.id}
                     brand={brand}
-                    onToggleFavorite={handleToggleFavorite}
+                    onUnfavoritePress={handleRequestUnfavorite}
                   />
                 ))
               )}
@@ -80,6 +85,22 @@ const FavoritesScreen = () => {
           </>
         )}
       </ScrollView>
+
+      <ConfirmationModal
+        visible={pendingUnfavorite !== null}
+        title="Remove from favorites?"
+        description={
+          pendingUnfavorite
+            ? `Are you sure you want to unfavorite ${pendingUnfavorite.brandName}? You can add this brand back anytime.`
+            : ''
+        }
+        confirmText="Yes, Unfavorite"
+        cancelText="Cancel"
+        onConfirm={handleConfirmUnfavorite}
+        onCancel={handleCancelUnfavorite}
+        isLoading={isUnfavoriting}
+        loadingText="Updating..."
+      />
     </View>
   );
 };
