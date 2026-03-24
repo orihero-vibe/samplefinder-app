@@ -48,6 +48,32 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
   const [tiersData, setTiersData] = useState<TierRow[]>([]);
   const [isAmbassador, setIsAmbassador] = useState(false);
   const [isInfluencer, setIsInfluencer] = useState(false);
+
+  const normalizeTierKey = (value: string) =>
+    value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const resolveCanonicalTier = (tiers: TierRow[], tierLevelValue: string): TierRow | null => {
+    if (!tierLevelValue) return null;
+
+    const normalizedValue = normalizeTierKey(tierLevelValue);
+    if (!normalizedValue) return null;
+
+    // 1) Exact-ish name match (case/spacing/punctuation insensitive)
+    const byName = tiers.find((tier) => normalizeTierKey(tier.name ?? '') === normalizedValue);
+    if (byName) return byName;
+
+    // 2) Numeric match for values like "2", "tier 2", "level 2"
+    const tierNumberMatch = tierLevelValue.match(/\d+/);
+    if (tierNumberMatch) {
+      const tierOrder = Number.parseInt(tierNumberMatch[0], 10);
+      if (Number.isFinite(tierOrder)) {
+        const byOrder = tiers.find((tier) => (tier.order ?? 0) === tierOrder);
+        if (byOrder) return byOrder;
+      }
+    }
+
+    return null;
+  };
   
   // Fetch user statistics and history on mount and when screen comes into focus
   useFocusEffect(
@@ -84,12 +110,9 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
       const rawTotalPoints = userProfile.totalPoints ?? 0;
       const profileTierLevel = userProfile.tierLevel?.trim() ?? '';
-      const normalizedProfileTierLevel = profileTierLevel.toLowerCase();
 
       // If admin manually updated tierLevel, treat it as the canonical truth for "earned" tier state.
-      const canonicalTier = normalizedProfileTierLevel
-        ? tiers.find((t) => (t.name ?? '').trim().toLowerCase() === normalizedProfileTierLevel)
-        : null;
+      const canonicalTier = resolveCanonicalTier(tiers, profileTierLevel);
 
       // Canonical tier order drives which tier is shown as "earned".
       // Progress bars should always reflect the user's real points (no clamping).
