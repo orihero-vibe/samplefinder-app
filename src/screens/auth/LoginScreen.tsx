@@ -67,7 +67,7 @@ const LoginScreen = () => {
           value={password}
           onChangeText={handlePasswordChange}
           placeholder="Enter password"
-          secureTextEntry={true}
+          secureTextEntry={false}
           autoCapitalize="none"
           autoCorrect={false}
           labelColor='white'
