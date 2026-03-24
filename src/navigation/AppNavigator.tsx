@@ -60,7 +60,26 @@ const AppNavigator = () => {
         if (newlyAwardedBadges.length === 0 || appStateRef.current !== 'active') {
           return;
         }
-        setPendingSpecialBadgeAwards((current) => [...current, ...newlyAwardedBadges]);
+        setPendingSpecialBadgeAwards((current) => {
+          const queuedTypes = new Set(current.map((badge) => badge.type));
+          const activeType = activeSpecialBadgeAward?.type;
+          const filteredNewBadges = newlyAwardedBadges.filter((badge) => {
+            if (activeType && badge.type === activeType) {
+              return false;
+            }
+            if (queuedTypes.has(badge.type)) {
+              return false;
+            }
+            queuedTypes.add(badge.type);
+            return true;
+          });
+
+          if (filteredNewBadges.length === 0) {
+            return current;
+          }
+
+          return [...current, ...filteredNewBadges];
+        });
       } catch (error) {
         console.error('[AppNavigator] Failed syncing special badges:', error);
       } finally {
@@ -85,7 +104,7 @@ const AppNavigator = () => {
       }
       appStateSubscription.remove();
     };
-  }, []);
+  }, [activeSpecialBadgeAward]);
 
   useEffect(() => {
     if (activeSpecialBadgeAward || pendingSpecialBadgeAwards.length === 0) {
