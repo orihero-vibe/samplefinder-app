@@ -25,6 +25,8 @@ interface UsePromotionsScreenOptions {
 
 export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) => {
   const { contentRef } = options;
+  const appDownloadLink = 'https://samplefinder.com';
+  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile: ${appDownloadLink}`;
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('inProgress');
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
@@ -262,9 +264,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
   const handleSharePress = async () => {
     try {
-      const earnedBadges = [...eventBadges, ...reviewBadges].filter(badge => badge.achieved).length;
-      const earnedTiers = tiers.filter(tier => tier.badgeEarned).length;
-      const message = `I've earned ${totalPoints} points, ${earnedBadges} badges, and ${earnedTiers} tiers on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+      const message = profileShareMessage;
       if (contentRef?.current) {
         await captureAndShareView(contentRef, message);
       } else {
@@ -331,15 +331,9 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
   const handleShareAchievement = async () => {
     try {
-      if (selectedTier) {
-        await Share.share({
-          message: `I just earned the ${selectedTier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
-        });
-      } else {
-        await Share.share({
-          message: `I just earned ${selectedPoints} points on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
-        });
-      }
+      await Share.share({
+        message: profileShareMessage,
+      });
     } catch (error) {
       console.error('Error sharing achievement:', error);
     }

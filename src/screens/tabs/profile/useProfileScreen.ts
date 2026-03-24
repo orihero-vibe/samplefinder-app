@@ -15,6 +15,8 @@ interface UseProfileScreenOptions {
 
 export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
   const { contentRef } = options;
+  const appDownloadLink = 'https://samplefinder.com';
+  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile: ${appDownloadLink}`;
   const navigation = useNavigation();
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
   const referFriendSuccessBottomSheetRef = useRef<BottomSheet>(null);
@@ -116,8 +118,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
 
   const handleSharePress = async () => {
     try {
-      const username = profile?.username || authUser?.name || 'User';
-      const message = `Check out my SampleFinder profile! I'm ${username} with ${statistics.totalPoints} points and ${tierStatus} tier status. I've checked into ${statistics.eventCheckIns} events and left ${statistics.samplingReviews} reviews. Join me in discovering amazing samples!`;
+      const message = profileShareMessage;
       if (contentRef?.current) {
         await captureAndShareView(contentRef, message);
       } else {
