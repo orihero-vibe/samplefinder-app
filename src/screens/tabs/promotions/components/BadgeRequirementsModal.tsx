@@ -50,28 +50,27 @@ const BadgeRequirementsModal: React.FC<BadgeRequirementsModalProps> = ({
     }
   }, [visible]);
 
-  const handleApply = async () => {
-    const url = 'https://app.popbookings.com/vip/polarisbrandpromotions';
+  const openExternalLink = async (url: string, errorMessage: string) => {
     try {
       const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
         await Linking.openURL(url);
-        onClose();
       } else {
-        Alert.alert(
-          'Unable to Open Link',
-          'Unable to open the application form. Please check your internet connection.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Unable to Open Link', errorMessage, [{ text: 'OK' }]);
       }
     } catch (error: any) {
-      console.error('Error opening brand ambassador form:', error);
-      Alert.alert(
-        'Error',
-        'Failed to open the application form. Please try again later.',
-        [{ text: 'OK' }]
-      );
+      console.error('Error opening external link:', error);
+      Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
     }
+  };
+
+  const handleApply = async () => {
+    const url = 'https://app.popbookings.com/vip/polarisbrandpromotions';
+    await openExternalLink(
+      url,
+      'Unable to open the application form. Please check your internet connection.'
+    );
+    onClose();
   };
 
   return (
@@ -109,10 +108,36 @@ const BadgeRequirementsModal: React.FC<BadgeRequirementsModalProps> = ({
             <View style={styles.badgeSection}>
               <Text style={styles.badgeTitle}>Certified Brand Ambassador:</Text>
               <Text style={styles.badgeDescription}>
-                Ipsum dolor sit amet, consectetur adipiscing elit. Fusce ac ligula massa. 
-                Donec sed eleifend ligula, id venenatis enim. Duis hendrerit odio mattis 
-                velit. Ut aliquet vehicula mauris, mattis imperdiet libero. vitae mi 
-                elementum accumsan.
+                To earn the Certified Brand Ambassador badge, you must be registered as a
+                brand ambassador in the PopBookings talent database for Polaris Brand
+                Promotions. If you aren't already registered, click here:{' '}
+                <Text
+                  style={styles.linkText}
+                  onPress={() =>
+                    openExternalLink(
+                      'https://app.popbookings.com/vip/polarisbrandpromotions',
+                      'Unable to open PopBookings. Please check your internet connection.'
+                    )
+                  }
+                >
+                  PopBookings
+                </Text>
+                .{' '}
+                To request this badge, please send an email from the email address linked
+                to your SampleFinder account along with a link to your PopBookings account
+                to{' '}
+                <Text
+                  style={styles.linkText}
+                  onPress={() =>
+                    openExternalLink(
+                      'mailto:brandambassador@samplefinder.com',
+                      'Unable to open email app. Please try again later.'
+                    )
+                  }
+                >
+                  brandambassador@samplefinder.com
+                </Text>
+                .
               </Text>
             </View>
 
@@ -120,11 +145,23 @@ const BadgeRequirementsModal: React.FC<BadgeRequirementsModalProps> = ({
             <View>
               <Text style={styles.badgeTitle}>Certified Influencer:</Text>
               <Text style={styles.badgeDescription}>
-                Vivamus semper porttitor nibh, ut aliquet erat finibus non. Phasellus eu 
-                venenatis enim. Duis hendrerit odio vitae mi elementum accumsan. mattis 
-                imperdiet libero. vitae mi elementum accumsan. Etiam mattis ornare orci 
-                vitae molestie. Proin tincidunt ut mi vestibulum ultrices. For more info 
-                email Badges@Samplefinder.Com.
+                To earn the Certified Influencer badge, you must have a public social
+                media account with over 5,000 users on one of the following platforms:
+                Facebook, X or Instagram. To request this badge, please send an email
+                from the email address linked to your SampleFinder account along with
+                link(s) to your social media account(s) to{' '}
+                <Text
+                  style={styles.linkText}
+                  onPress={() =>
+                    openExternalLink(
+                      'mailto:influencer@samplefinder.com',
+                      'Unable to open email app. Please try again later.'
+                    )
+                  }
+                >
+                  influencer@samplefinder.com
+                </Text>
+                .
               </Text>
             </View>
           </ScrollView>
@@ -214,6 +251,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_400Regular',
     color: '#666666',
     lineHeight: 24,
+  },
+  linkText: {
+    color: Colors.blueColorMode,
+    textDecorationLine: 'underline',
+    fontFamily: 'Quicksand_700Bold',
   },
   applyButton: {
     backgroundColor: 'transparent',
