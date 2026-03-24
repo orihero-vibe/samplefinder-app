@@ -81,10 +81,10 @@ const BadgesSection: React.FC<BadgesSectionProps> = ({
         </View>
       </View>
 
-      {/* Identifier Badges */}
+      {/* My Badges */}
       <View style={styles.identifierSection}>
         <View style={styles.identifierHeader}>
-          <Text style={styles.identifierTitle}>Identifier Badges</Text>
+          <Text style={styles.identifierTitle}>My Badges</Text>
           <TouchableOpacity hitSlop={10} onPress={handleOpenModal}>
             <Monicon name="mdi:help-circle-outline" size={18} color="#999999" />
           </TouchableOpacity>
@@ -137,9 +137,10 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
-    paddingBottom: 15,
-    paddingHorizontal: 10,
-    paddingTop: 20,
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
   },
   gradientBorder: {
     height: 5,
@@ -149,10 +150,8 @@ const styles = StyleSheet.create({
   sectionIconContainer: {
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
     flex: 2,
     justifyContent: 'center',
-    alignSelf: 'center',
   },
   sectionTitle: {
     fontSize: 18,
@@ -160,11 +159,12 @@ const styles = StyleSheet.create({
     color: Colors.pinDarkBlue,
   },
   sectionDescription: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.black,
     lineHeight: 22,
     flex: 3,
+    flexShrink: 1,
   },
   progressSection: {
     marginBottom: 20,

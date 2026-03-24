@@ -15,7 +15,7 @@ const Footer = () => {
       <Image
         source={require('@/assets/footer.png')}
         style={styles.footerImage}
-        resizeMode="stretch"
+        resizeMode="contain"
       />
     </View>
   );

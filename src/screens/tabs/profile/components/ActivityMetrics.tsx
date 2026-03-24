@@ -42,19 +42,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 4,
-    marginBottom: 24,
+    marginBottom: 10,
   },
   metricColumn: {
     alignItems: 'center',
     flex: 1,
   },
   metricValue: {
-    fontSize: 30,
+    fontSize: 28,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: Colors.brandPurpleBright,
   },
   metricLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.pinBlueBlack,
     textAlign: 'center',

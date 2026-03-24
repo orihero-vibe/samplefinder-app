@@ -69,9 +69,11 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
     width: '100%',
-    paddingVertical: 20,
-
+    paddingTop: 26,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
   },
   gradientBorder: {
     height: 5,
@@ -81,10 +83,8 @@ const styles = StyleSheet.create({
   sectionIconContainer: {
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
     flex: 2,
     justifyContent: 'center',
-    alignSelf: 'center',
   },
   sectionTitle: {
     fontSize: 18,
@@ -92,14 +92,12 @@ const styles = StyleSheet.create({
     color: Colors.pinDarkBlue,
   },
   sectionDescription: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.black,
     lineHeight: 20,
     flex: 3,
-    paddingRight: 20,
-    marginRight: 20,
-    textAlignVertical: 'center',
+    flexShrink: 1,
   },
   tierItemsContainer: {
     paddingHorizontal: 20,

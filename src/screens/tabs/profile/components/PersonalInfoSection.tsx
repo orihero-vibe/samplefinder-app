@@ -45,23 +45,23 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: 'column',
     paddingHorizontal: 20,
-    marginBottom: 24,
+    gap: 8,
   },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 12,
     flexWrap: 'wrap',
   },
   infoLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
     marginRight: 8,
     width: '40%',
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.pinBlueBlack,
     flex: 1,

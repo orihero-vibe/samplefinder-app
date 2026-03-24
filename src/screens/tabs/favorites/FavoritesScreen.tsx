@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import MainHeader from '@/components/wrappers/MainHeader';
@@ -14,6 +15,14 @@ import { useFavoritesScreen } from './useFavoritesScreen';
 import styles from './styles';
 
 const FavoritesScreen = () => {
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
+
   const {
     favorites,
     newBrands,
@@ -34,6 +43,7 @@ const FavoritesScreen = () => {
       <MainHeader showLeftIcons={false} />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

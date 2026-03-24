@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
 
 export type FilterType = 'radius' | 'dates' | 'categories' | 'reset';
@@ -54,93 +54,84 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View style={styles.buttonsRow}>
-          <TouchableOpacity
-            ref={radiusButtonRef}
+      <View style={styles.buttonsRow}>
+        <TouchableOpacity
+          ref={radiusButtonRef}
+          style={[
+            styles.filterButton,
+            (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonSelected,
+          ]}
+          onPress={() => handleFilterPress('radius', radiusButtonRef)}
+          activeOpacity={0.7}
+        >
+          <Text
             style={[
-              styles.filterButton,
-              styles.filterButtonSpacing,
-              (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonSelected,
+              styles.filterButtonText,
+              (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonTextSelected,
             ]}
-            onPress={() => handleFilterPress('radius', radiusButtonRef)}
-            activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                (selectedFilter === 'radius' || radiusCount > 0) && styles.filterButtonTextSelected,
-              ]}
-            >
-              Radius
-            </Text>
-          </TouchableOpacity>
+            Radius
+          </Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            ref={datesButtonRef}
+        <TouchableOpacity
+          ref={datesButtonRef}
+          style={[
+            styles.filterButton,
+            (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonSelected,
+          ]}
+          onPress={() => handleFilterPress('dates', datesButtonRef)}
+          activeOpacity={0.7}
+        >
+          <Text
             style={[
-              styles.filterButton,
-              styles.filterButtonSpacing,
-              (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonSelected,
+              styles.filterButtonText,
+              (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonTextSelected,
             ]}
-            onPress={() => handleFilterPress('dates', datesButtonRef)}
-            activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                (selectedFilter === 'dates' || datesCount > 0) && styles.filterButtonTextSelected,
-              ]}
-            >
-              Dates
-            </Text>
-          </TouchableOpacity>
+            Dates
+          </Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            ref={categoriesButtonRef}
+        <TouchableOpacity
+          ref={categoriesButtonRef}
+          style={[
+            styles.filterButton,
+            (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonSelected,
+          ]}
+          onPress={() => handleFilterPress('categories', categoriesButtonRef)}
+          activeOpacity={0.7}
+        >
+          <Text
             style={[
-              styles.filterButton,
-              styles.filterButtonSpacing,
-              (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonSelected,
+              styles.filterButtonText,
+              (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonTextSelected,
             ]}
-            onPress={() => handleFilterPress('categories', categoriesButtonRef)}
-            activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                (selectedFilter === 'categories' || categoriesCount > 0) && styles.filterButtonTextSelected,
-              ]}
-            >
-              Categories
-            </Text>
-          </TouchableOpacity>
+            Categories
+          </Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            styles.filterButtonReset,
+            hasAnyFilters && styles.filterButtonResetEnabled,
+          ]}
+          onPress={() => handleFilterPress('reset', null)}
+          activeOpacity={0.7}
+          disabled={!hasAnyFilters}
+        >
+          <Text
             style={[
-              styles.filterButton,
-              styles.filterButtonReset,
-              hasAnyFilters && styles.filterButtonResetEnabled,
+              styles.filterButtonTextReset,
+              hasAnyFilters && styles.filterButtonTextResetEnabled,
             ]}
-            onPress={() => handleFilterPress('reset', null)}
-            activeOpacity={0.7}
-            disabled={!hasAnyFilters}
           >
-            <Text
-              style={[
-                styles.filterButtonTextReset,
-                hasAnyFilters && styles.filterButtonTextResetEnabled,
-              ]}
-            >
-              Reset
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            Reset
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -151,12 +142,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     width: '100%',
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
   buttonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
+    columnGap: 6,
   },
   filterButton: {
     paddingVertical: 4,
@@ -167,9 +159,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  filterButtonSpacing: {
-    marginRight: 8,
   },
   filterButtonSelected: {
     backgroundColor: Colors.blueColorMode,
@@ -187,6 +176,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.blueColorMode,
+    textAlign: 'center',
   },
   filterButtonTextSelected: {
     color: Colors.white,
@@ -195,6 +185,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
     color: '#9E9E9E',
+    textAlign: 'center',
   },
   filterButtonTextResetEnabled: {
     color: Colors.white,

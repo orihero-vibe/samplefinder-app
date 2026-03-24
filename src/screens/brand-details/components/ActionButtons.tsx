@@ -25,7 +25,13 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onAddToCalendar}
         activeOpacity={0.7}
       >
-        {isAddedToCalendar ? <CalendarAddedIcon size={20} /> : <CalendarAddIcon size={20} />} 
+        <View style={styles.actionIconWrap}>
+          {isAddedToCalendar ? (
+            <CalendarAddedIcon size={22} />
+          ) : (
+            <CalendarAddIcon size={22} />
+          )}
+        </View>
         <Text style={styles.actionButtonText}>
           {isAddedToCalendar ? 'Added to Calendar' : 'Add to Calendar'}
         </Text>
@@ -36,7 +42,13 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onAddFavorite}
         activeOpacity={0.7}
       >
-        {isFavorite ? <SmallHeartIcon size={16} /> : <HeartOutlineIcon size={16} />} 
+        <View style={styles.actionIconWrap}>
+          {isFavorite ? (
+            <SmallHeartIcon size={16} />
+          ) : (
+            <HeartOutlineIcon size={16} />
+          )}
+        </View>
         <Text style={styles.actionButtonText}>
           {isFavorite ? 'Favorite Brand' : 'Add Favorite Brand'}
         </Text>
@@ -59,12 +71,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
+  actionIconWrap: {
+    width: 22,
+    height: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
   actionButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.blueColorMode,
   },

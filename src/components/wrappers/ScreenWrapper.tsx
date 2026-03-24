@@ -18,6 +18,12 @@ interface ScreenWrapperProps {
    * When undefined, a default value based on footer height is used.
    */
   footerPaddingBottom?: number;
+  /** Extra pixels added to default footer clearance (default 8). Use 0 to sit closer to the footer. */
+  footerPaddingExtra?: number;
+  /** When false, scroll content only wraps its children (no min-height stretch gap below short content). */
+  scrollContentFlexGrow?: boolean;
+  /** When true, the main content area grows to fill space below the header (for column layouts). */
+  expandMainContent?: boolean;
 }
 
 const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
@@ -27,6 +33,9 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   contentContainerStyle,
   contentBackgroundColor,
   footerPaddingBottom,
+  footerPaddingExtra = 8,
+  scrollContentFlexGrow = true,
+  expandMainContent = false,
   headerLeft,
 }) => {
   const { bottom } = useSafeAreaInsets();
@@ -34,18 +43,20 @@ const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   const totalFooterHeight = footerHeight + bottom;
 
   const scrollContentStyle = [
-    styles.scrollContent,
+    scrollContentFlexGrow ? styles.scrollContentFlex : null,
+    styles.scrollContentColumn,
     {
       paddingBottom:
         typeof footerPaddingBottom === 'number'
           ? footerPaddingBottom
-          : totalFooterHeight + 8,
+          : totalFooterHeight + footerPaddingExtra,
     },
     contentBackgroundColor && { backgroundColor: contentBackgroundColor },
   ];
 
   const contentStyle = [
     styles.content,
+    expandMainContent && styles.contentExpand,
     contentBackgroundColor && { backgroundColor: contentBackgroundColor },
     contentContainerStyle,
   ];
@@ -148,13 +159,19 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
+  scrollContentFlex: {
     flexGrow: 1,
+  },
+  scrollContentColumn: {
+    flexDirection: 'column',
   },
   content: {
     paddingHorizontal: isSmallDevice ? 20 : 30,
     paddingVertical: isSmallDevice ? 12 : isMediumDevice ? 16 : 20,
     paddingBottom: isSmallDevice ? 16 : 30,
+  },
+  contentExpand: {
+    flex: 1,
   },
 });
 
