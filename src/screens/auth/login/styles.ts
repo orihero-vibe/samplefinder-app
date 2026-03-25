@@ -19,13 +19,22 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_700Bold',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: isSmallDevice ? 16 : isMediumDevice ? 24 : 30,
+    marginBottom: isSmallDevice ? 12 : isMediumDevice ? 16 : 20,
     lineHeight: isSmallDevice ? 20 : 24,
     paddingHorizontal: isSmallDevice ? 10 : 0,
   },
+  topSection: {
+    width: '100%',
+  },
+  formSection: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    width: '100%',
+    minHeight: 0,
+  },
   formContainer: {
     width: '100%',
-    gap: 16,
+    gap: isSmallDevice ? 12 : 14,
   },
   errorContainer: {
     marginTop: isSmallDevice ? 8 : 12,
@@ -86,7 +95,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   buttonContainer: {
-    marginBottom: isSmallDevice ? 12 : 20,
+    marginBottom: isSmallDevice ? 8 : 12,
   },
   signUpContainer: {
     alignItems: 'center',
@@ -95,7 +104,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: isSmallDevice ? 14 : 16,
     fontFamily: 'Quicksand_500Medium',
-    marginBottom: isSmallDevice ? 8 : 12,
+    marginBottom: isSmallDevice ? 6 : 8,
   },
 });
 

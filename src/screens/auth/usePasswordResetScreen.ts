@@ -50,6 +50,14 @@ export const usePasswordResetScreen = () => {
   const [canResend, setCanResend] = useState(false);
   const codeInputRef = useRef<CodeInputRef>(null);
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('Login');
+  };
+
   // Sync from route when it becomes available on initial load only
   useEffect(() => {
     if (initialUserId) setUserId((prev) => prev ?? initialUserId);
@@ -283,6 +291,7 @@ export const usePasswordResetScreen = () => {
     resendTimer,
     canResend,
     codeInputRef,
+    handleBack,
     handleCodeChange,
     handleCodeComplete,
     handlePasswordChange,

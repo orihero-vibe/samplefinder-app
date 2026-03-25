@@ -21,10 +21,13 @@ export type TabType = 'inProgress' | 'earned';
 
 interface UsePromotionsScreenOptions {
   contentRef?: RefObject<View | null>;
+  shareContentRef?: RefObject<View | null>;
 }
 
 export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) => {
-  const { contentRef } = options;
+  const { contentRef, shareContentRef } = options;
+  const appDownloadLink = 'https://samplefinder.com';
+  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile: ${appDownloadLink}`;
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('inProgress');
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
@@ -48,6 +51,32 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
   const [tiersData, setTiersData] = useState<TierRow[]>([]);
   const [isAmbassador, setIsAmbassador] = useState(false);
   const [isInfluencer, setIsInfluencer] = useState(false);
+
+  const normalizeTierKey = (value: string) =>
+    value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const resolveCanonicalTier = (tiers: TierRow[], tierLevelValue: string): TierRow | null => {
+    if (!tierLevelValue) return null;
+
+    const normalizedValue = normalizeTierKey(tierLevelValue);
+    if (!normalizedValue) return null;
+
+    // 1) Exact-ish name match (case/spacing/punctuation insensitive)
+    const byName = tiers.find((tier) => normalizeTierKey(tier.name ?? '') === normalizedValue);
+    if (byName) return byName;
+
+    // 2) Numeric match for values like "2", "tier 2", "level 2"
+    const tierNumberMatch = tierLevelValue.match(/\d+/);
+    if (tierNumberMatch) {
+      const tierOrder = Number.parseInt(tierNumberMatch[0], 10);
+      if (Number.isFinite(tierOrder)) {
+        const byOrder = tiers.find((tier) => (tier.order ?? 0) === tierOrder);
+        if (byOrder) return byOrder;
+      }
+    }
+
+    return null;
+  };
   
   // Fetch user statistics and history on mount and when screen comes into focus
   useFocusEffect(
@@ -84,12 +113,9 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
       const rawTotalPoints = userProfile.totalPoints ?? 0;
       const profileTierLevel = userProfile.tierLevel?.trim() ?? '';
-      const normalizedProfileTierLevel = profileTierLevel.toLowerCase();
 
       // If admin manually updated tierLevel, treat it as the canonical truth for "earned" tier state.
-      const canonicalTier = normalizedProfileTierLevel
-        ? tiers.find((t) => (t.name ?? '').trim().toLowerCase() === normalizedProfileTierLevel)
-        : null;
+      const canonicalTier = resolveCanonicalTier(tiers, profileTierLevel);
 
       // Canonical tier order drives which tier is shown as "earned".
       // Progress bars should always reflect the user's real points (no clamping).
@@ -239,9 +265,15 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
   const handleSharePress = async () => {
     try {
-      const earnedBadges = [...eventBadges, ...reviewBadges].filter(badge => badge.achieved).length;
-      const earnedTiers = tiers.filter(tier => tier.badgeEarned).length;
-      const message = `I've earned ${totalPoints} points, ${earnedBadges} badges, and ${earnedTiers} tiers on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+      const message = profileShareMessage;
+      if (shareContentRef?.current) {
+        try {
+          await captureAndShareView(shareContentRef, message, { useRenderInContext: true });
+          return;
+        } catch (e) {
+          console.warn('[Achievements] Full-content share capture failed, falling back to viewport capture.', e);
+        }
+      }
       if (contentRef?.current) {
         await captureAndShareView(contentRef, message);
       } else {
@@ -308,15 +340,9 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
   const handleShareAchievement = async () => {
     try {
-      if (selectedTier) {
-        await Share.share({
-          message: `I just earned the ${selectedTier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
-        });
-      } else {
-        await Share.share({
-          message: `I just earned ${selectedPoints} points on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
-        });
-      }
+      await Share.share({
+        message: profileShareMessage,
+      });
     } catch (error) {
       console.error('Error sharing achievement:', error);
     }

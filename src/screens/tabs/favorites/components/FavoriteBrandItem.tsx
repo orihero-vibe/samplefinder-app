@@ -28,10 +28,10 @@ export interface FavoriteBrandData {
 
 interface FavoriteBrandItemProps {
   brand: FavoriteBrandData;
-  onToggleFavorite?: (id: string) => void;
+  onUnfavoritePress?: (brand: FavoriteBrandData) => void;
 }
 
-const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFavorite }) => {
+const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onUnfavoritePress }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const navigation = useNavigation<FavoriteBrandItemNavigationProp>();
 
@@ -89,7 +89,7 @@ const FavoriteBrandItem: React.FC<FavoriteBrandItemProps> = ({ brand, onToggleFa
           </View>
         </View>
         <TouchableOpacity
-          onPress={() => onToggleFavorite?.(brand.id)}
+          onPress={() => onUnfavoritePress?.(brand)}
           style={styles.heartButton}
         >
           <SmallHeartIcon size={24} />

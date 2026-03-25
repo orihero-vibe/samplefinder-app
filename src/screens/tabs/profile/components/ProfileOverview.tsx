@@ -63,7 +63,6 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({
               key={`event-${lastEventBadge}`} 
               size={32} 
               badge={{ count: lastEventBadge, label: '', achieved: true, id: 'eventCheckIns' }} 
-              style={{ paddingTop: 6 }}
               isEventsBadge={true}
             />
           )}
@@ -73,7 +72,6 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({
               key={`review-${lastReviewBadge}`} 
               size={32} 
               badge={{ count: lastReviewBadge, label: '', achieved: true, id: 'samplingReviews' }} 
-              style={{ paddingTop: 6 }} 
             />
           )}
         </View>
@@ -89,16 +87,16 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 0,
   },
   profilePictureContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 8,
     alignItems: 'center',
   },
   avatarBorder: {
-    width: 100,
-    height: 100,
+    width: 92,
+    height: 92,
     borderRadius: 4,
     overflow: 'hidden',
     justifyContent: 'center',
@@ -109,19 +107,18 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   profileImage: {
-    width: 100,
-    height: 100,
+    width: 92,
+    height: 92,
   },
   profileBadgesContainer: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    top: 70,
-    left: 80,
+    top: 64,
+    left: 74,
     flexWrap: 'wrap',
     width: '45%',
-    overflow: 'scroll',
   },
   profileBadge: {
     borderRadius: 25,
@@ -137,13 +134,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   username: {
-    fontSize: 24,
+    fontSize: 26,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinBlueBlack,
     textAlign: 'center',
   },
   editProfileText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Quicksand_500Regular',
     color: Colors.grayText,
   },

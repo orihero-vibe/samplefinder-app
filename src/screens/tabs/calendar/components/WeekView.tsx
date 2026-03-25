@@ -89,6 +89,9 @@ const WeekView: React.FC<WeekViewProps> = ({ selectedDate, events, onBackToCalen
   };
   
   const handleDatePress = (date: Date) => {
+    if (isPastDate(date)) {
+      return;
+    }
     setLocalSelectedDate(date);
   };
 
@@ -132,7 +135,8 @@ const WeekView: React.FC<WeekViewProps> = ({ selectedDate, events, onBackToCalen
                 key={index} 
                 style={styles.dateColumn}
                 onPress={() => handleDatePress(date)}
-                activeOpacity={0.7}
+                activeOpacity={pastDate ? 1 : 0.7}
+                disabled={pastDate}
               >
                 <View
                   style={[

@@ -15,7 +15,7 @@ const Footer = () => {
       <Image
         source={require('@/assets/footer.png')}
         style={styles.footerImage}
-        resizeMode="stretch"
+        resizeMode="cover"
       />
     </View>
   );
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   },
   footerImage: {
     width: '100%',
-    height: isSmallDevice ? 60 : isMediumDevice ? 70 : 80,
+    height: '100%',
   },
 });
 

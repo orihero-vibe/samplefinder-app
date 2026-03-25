@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
@@ -23,6 +23,8 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
 
+  const title = year !== null ? `${month} ${year}` : month;
+
   return (
     <LinearGradient
       colors={[Colors.brandPurpleDeep, Colors.brandBlueDeep]}
@@ -30,19 +32,23 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
       end={{ x: 1, y: 0 }}
       style={[styles.container, { paddingTop: insets.top + 10 }]}
     >
-      <View style={[styles.content, !showNavigation && styles.contentCentered]}>
+      <View style={styles.content}>
         {showNavigation ? (
-          <>
-            <TouchableOpacity onPress={onPreviousMonth} style={styles.iconButton}>
-              <Monicon name="mdi:chevron-left" size={24} color={Colors.white} />
-            </TouchableOpacity>
-            <Text style={styles.monthYear}>{year !== null ? `${month} ${year}` : month}</Text>
-            <TouchableOpacity onPress={onNextMonth} style={styles.iconButton}>
-              <Monicon name="mdi:chevron-right" size={24} color={Colors.white} />
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity onPress={onPreviousMonth} style={styles.iconButton}>
+            <Monicon name="mdi:chevron-left" size={24} color={Colors.white} />
+          </TouchableOpacity>
         ) : (
-          <Text style={styles.monthYear}>{year !== null ? `${month} ${year}` : month}</Text>
+          <View style={styles.sideSlot} />
+        )}
+        <Text style={styles.monthYear} numberOfLines={2}>
+          {title}
+        </Text>
+        {showNavigation ? (
+          <TouchableOpacity onPress={onNextMonth} style={styles.iconButton}>
+            <Monicon name="mdi:chevron-right" size={24} color={Colors.white} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.sideSlot} />
         )}
       </View>
     </LinearGradient>
@@ -55,20 +61,28 @@ const styles = StyleSheet.create({
   },
   content: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
+    minHeight: 36,
   },
-  contentCentered: {
-    justifyContent: 'center',
+  sideSlot: {
+    width: 40,
+    height: 36,
   },
   iconButton: {
+    width: 40,
+    height: 36,
     padding: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   monthYear: {
+    flex: 1,
     fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.white,
+    textAlign: 'center',
   },
 });
 

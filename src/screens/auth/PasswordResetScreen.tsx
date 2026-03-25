@@ -7,6 +7,7 @@ import {
   Linking,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Monicon } from '@monicon/native';
 import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomButton from '@/components/shared/CustomButton';
 import CustomInput from '@/components/shared/CustomInput';
@@ -27,6 +28,7 @@ const PasswordResetScreen = () => {
     resendTimer,
     canResend,
     codeInputRef,
+    handleBack,
     handleCodeChange,
     handleCodeComplete,
     handlePasswordChange,
@@ -37,9 +39,19 @@ const PasswordResetScreen = () => {
   } = usePasswordResetScreen();
 
   return (
-    <ScreenWrapper 
+    <ScreenWrapper
       contentBackgroundColor="#fff"
       contentContainerStyle={styles.wrapperContent}
+      headerLeft={
+        <TouchableOpacity
+          onPress={handleBack}
+          style={styles.headerBackButton}
+          activeOpacity={0.8}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Monicon name="mdi:arrow-left" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      }
     >
       <StatusBar style="light" />
       <View style={styles.contentContainer}>

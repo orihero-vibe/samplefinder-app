@@ -32,6 +32,11 @@ export const useFavoritesScreen = () => {
   const [userIsAdult, setUserIsAdult] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pendingUnfavorite, setPendingUnfavorite] = useState<{
+    id: string;
+    brandName: string;
+  } | null>(null);
+  const [isUnfavoriting, setIsUnfavoriting] = useState(false);
 
   const loadData = async (isRefresh = false) => {
     try {
@@ -199,20 +204,39 @@ export const useFavoritesScreen = () => {
       }));
   }, [allBrands, isFavorite, favoriteIds]);
 
-  const handleToggleFavorite = async (brandId: string) => {
+  const performRemoveFavorite = async (brandId: string) => {
     try {
-      // Remove from local store immediately (optimistic update)
       removeFavoriteFromStore(brandId);
-      
-      // Sync with database
+
       const authUser = await getCurrentUser();
       if (authUser) {
         await removeFavoriteBrand(authUser.$id, brandId);
       }
     } catch (error) {
       console.error('[useFavoritesScreen] Error removing favorite:', error);
-      // Revert optimistic update if database sync fails
       addFavoriteToStore(brandId);
+      throw error;
+    }
+  };
+
+  const handleRequestUnfavorite = (brand: { id: string; brandName: string }) => {
+    setPendingUnfavorite({ id: brand.id, brandName: brand.brandName });
+  };
+
+  const handleCancelUnfavorite = () => {
+    setPendingUnfavorite(null);
+  };
+
+  const handleConfirmUnfavorite = async () => {
+    const brandId = pendingUnfavorite?.id;
+    if (!brandId) return;
+
+    setIsUnfavoriting(true);
+    try {
+      await performRemoveFavorite(brandId);
+      setPendingUnfavorite(null);
+    } finally {
+      setIsUnfavoriting(false);
     }
   };
 
@@ -254,7 +278,11 @@ export const useFavoritesScreen = () => {
     newBrands,
     isLoading,
     isRefreshing,
-    handleToggleFavorite,
+    pendingUnfavorite,
+    isUnfavoriting,
+    handleRequestUnfavorite,
+    handleCancelUnfavorite,
+    handleConfirmUnfavorite,
     handleToggleNewFavorite,
     handleRefresh,
   };

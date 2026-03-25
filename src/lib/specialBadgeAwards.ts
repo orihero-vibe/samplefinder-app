@@ -26,6 +26,7 @@ const SPECIAL_BADGE_CONTENT: Record<SpecialBadgeType, { title: string; message: 
 type SpecialBadgeState = Record<SpecialBadgeType, boolean>;
 const DEFAULT_BADGE_STATE: SpecialBadgeState = { ambassador: false, influencer: false };
 const getBadgeStateStorageKey = (authId: string) => `specialBadgeState:${authId}`;
+const getShownSpecialBadgesStorageKey = (authId: string) => `shownSpecialBadges:${authId}`;
 
 const toBoolean = (value: unknown): boolean => {
   if (value === true || value === 1 || value === '1') return true;
@@ -93,6 +94,28 @@ const writeBadgeState = async (authId: string, state: SpecialBadgeState): Promis
   }
 };
 
+const readShownSpecialBadges = async (authId: string): Promise<SpecialBadgeState> => {
+  try {
+    const raw = await AsyncStorage.getItem(getShownSpecialBadgesStorageKey(authId));
+    if (!raw) return DEFAULT_BADGE_STATE;
+    const parsed = JSON.parse(raw) as Partial<SpecialBadgeState>;
+    return {
+      ambassador: Boolean(parsed.ambassador),
+      influencer: Boolean(parsed.influencer),
+    };
+  } catch {
+    return DEFAULT_BADGE_STATE;
+  }
+};
+
+const writeShownSpecialBadges = async (authId: string, state: SpecialBadgeState): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(getShownSpecialBadgesStorageKey(authId), JSON.stringify(state));
+  } catch {
+    // Non-critical: do not block badge flow if local cache fails.
+  }
+};
+
 export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> => {
   const user = await getCurrentUser();
   if (!user) {
@@ -106,6 +129,7 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
 
   const existingNotifications = parseNotifications((profile as any).notifications);
   const lastBadgeState = await readLastBadgeState(user.$id);
+  const shownSpecialBadges = await readShownSpecialBadges(user.$id);
   const currentBadgeState: SpecialBadgeState = {
     ambassador: toBoolean(profile.isAmbassador),
     influencer: toBoolean(profile.isInfluencer),
@@ -114,6 +138,10 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
 
   const maybeAwardBadge = async (badgeType: SpecialBadgeType, isEnabled: boolean) => {
     if (!isEnabled) {
+      return;
+    }
+
+    if (shownSpecialBadges[badgeType]) {
       return;
     }
 
@@ -144,11 +172,13 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
       message: content.message,
       notificationId: createdNotification.id,
     });
+    shownSpecialBadges[badgeType] = true;
   };
 
   await maybeAwardBadge('ambassador', currentBadgeState.ambassador);
   await maybeAwardBadge('influencer', currentBadgeState.influencer);
   await writeBadgeState(user.$id, currentBadgeState);
+  await writeShownSpecialBadges(user.$id, shownSpecialBadges);
 
   return newlyAwardedBadges;
 };

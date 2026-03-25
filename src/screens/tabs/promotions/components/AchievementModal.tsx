@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { SmallBlueStarIcon, SmallStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
 import { Tier } from './TierItem';
 import { CloseIcon } from '@/components';
+import { captureAndShareView } from '@/utils/captureAndShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -25,6 +26,7 @@ interface AchievementModalProps {
   points?: number;
   message?: string;
   onClose: () => void;
+  /** Optional callback invoked after a successful share capture completes. */
   onShare?: () => void;
   onViewMoreEvents?: () => void;
 }
@@ -38,6 +40,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
   onShare,
   onViewMoreEvents,
 }) => {
+  const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [imageError, setImageError] = useState(false);
@@ -63,11 +66,20 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     }
   }, [visible]);
 
+  const getShareMessage = () => {
+    const tierName = tier?.name ?? 'a new tier';
+    if (tier?.order === 1) {
+      return `I just earned the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+    }
+    return `I just leveled up to the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+  };
+
   const handleShare = async () => {
     try {
-      if (onShare) {
-        await onShare();
+      if (modalRef.current) {
+        await captureAndShareView(modalRef, getShareMessage());
       }
+      onShare?.();
       // Close modal after sharing
       onClose();
     } catch (error) {
@@ -148,6 +160,8 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     >
       <View style={styles.overlay}>
         <Animated.View
+          ref={modalRef}
+          collapsable={false}
           style={[
             styles.modalContainer,
             {

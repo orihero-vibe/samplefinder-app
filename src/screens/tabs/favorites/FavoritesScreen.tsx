@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import MainHeader from '@/components/wrappers/MainHeader';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 import { Colors } from '@/constants/Colors';
 import { HeartIcon } from '@/icons';
 import {
@@ -13,12 +15,24 @@ import { useFavoritesScreen } from './useFavoritesScreen';
 import styles from './styles';
 
 const FavoritesScreen = () => {
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
+
   const {
     favorites,
     newBrands,
     isLoading,
     isRefreshing,
-    handleToggleFavorite,
+    pendingUnfavorite,
+    isUnfavoriting,
+    handleRequestUnfavorite,
+    handleCancelUnfavorite,
+    handleConfirmUnfavorite,
     handleToggleNewFavorite,
     handleRefresh,
   } = useFavoritesScreen();
@@ -29,6 +43,7 @@ const FavoritesScreen = () => {
       <MainHeader showLeftIcons={false} />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -69,7 +84,7 @@ const FavoritesScreen = () => {
                   <FavoriteBrandItem
                     key={brand.id}
                     brand={brand}
-                    onToggleFavorite={handleToggleFavorite}
+                    onUnfavoritePress={handleRequestUnfavorite}
                   />
                 ))
               )}
@@ -80,6 +95,22 @@ const FavoritesScreen = () => {
           </>
         )}
       </ScrollView>
+
+      <ConfirmationModal
+        visible={pendingUnfavorite !== null}
+        title="Remove from favorites?"
+        description={
+          pendingUnfavorite
+            ? `Are you sure you want to unfavorite ${pendingUnfavorite.brandName}? You can add this brand back anytime.`
+            : ''
+        }
+        confirmText="Yes, Unfavorite"
+        cancelText="Cancel"
+        onConfirm={handleConfirmUnfavorite}
+        onCancel={handleCancelUnfavorite}
+        isLoading={isUnfavoriting}
+        loadingText="Updating..."
+      />
     </View>
   );
 };

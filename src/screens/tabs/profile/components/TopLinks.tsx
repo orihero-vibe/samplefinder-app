@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { FriendsIcon } from '@/icons';
 
@@ -29,8 +28,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 0,
+    marginBottom: 12,
   },
   referFriendButton: {
     flexDirection: 'row',
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   referFriendText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.blueColorMode,
   },
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   logOutText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.grayText,
   },
