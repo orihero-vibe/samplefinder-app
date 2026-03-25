@@ -22,6 +22,7 @@ import styles from './styles';
 
 const ProfileScreen = () => {
   const contentRef = useRef<View>(null);
+  const shareContentRef = useRef<View>(null);
   const {
     profile,
     authUser,
@@ -50,7 +51,7 @@ const ProfileScreen = () => {
     handleNotificationsPress,
     handleApplyHerePress,
     hasUnreadNotifications,
-  } = useProfileScreen({ contentRef });
+  } = useProfileScreen({ contentRef, shareContentRef });
 
   if (isLoading) {
     return (
@@ -87,40 +88,46 @@ const ProfileScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <TopLinks
-          onReferFriendPress={handleReferFriendPress}
-          onLogOutPress={handleLogOutPress}
-        />
-        <ProfileOverview
-          username={profile?.username || authUser?.name || 'User'}
-          avatarUri={profile?.avatarURL || null}
-          onEditProfilePress={handleEditProfilePress}
-          isAmbassador={profile?.isAmbassador || false}
-          isInfluencer={profile?.isInfluencer || false}
-          eventCheckIns={statistics.eventCheckIns}
-          samplingReviews={statistics.samplingReviews}
-        />
-        <PointsDisplay points={statistics.totalPoints} />
-        <ActivityMetrics
-          data={{
-            eventCheckIns: statistics.eventCheckIns,
-            samplingReviews: statistics.samplingReviews,
-            badgeAchievements: statistics.badgeAchievements,
-          }}
-        />
-        <RewardsProgressButton onPress={handleViewRewardsPress} />
-        <PersonalInfoSection
-          data={{
-            tierStatus,
-            dateOfBirth: formattedDOB,
-            phoneNumber: profile?.phoneNumber || '',
-            email: authUser?.email || '',
-          }}
-        />
-        <BrandAmbassadorSection 
-          onApplyHerePress={handleApplyHerePress}
-          isAmbassador={profile?.isAmbassador || false}
-        />
+        <View
+          ref={shareContentRef}
+          collapsable={false}
+          style={{ backgroundColor: '#FFFFFF' }}
+        >
+          <TopLinks
+            onReferFriendPress={handleReferFriendPress}
+            onLogOutPress={handleLogOutPress}
+          />
+          <ProfileOverview
+            username={profile?.username || authUser?.name || 'User'}
+            avatarUri={profile?.avatarURL || null}
+            onEditProfilePress={handleEditProfilePress}
+            isAmbassador={profile?.isAmbassador || false}
+            isInfluencer={profile?.isInfluencer || false}
+            eventCheckIns={statistics.eventCheckIns}
+            samplingReviews={statistics.samplingReviews}
+          />
+          <PointsDisplay points={statistics.totalPoints} />
+          <ActivityMetrics
+            data={{
+              eventCheckIns: statistics.eventCheckIns,
+              samplingReviews: statistics.samplingReviews,
+              badgeAchievements: statistics.badgeAchievements,
+            }}
+          />
+          <RewardsProgressButton onPress={handleViewRewardsPress} />
+          <PersonalInfoSection
+            data={{
+              tierStatus,
+              dateOfBirth: formattedDOB,
+              phoneNumber: profile?.phoneNumber || '',
+              email: authUser?.email || '',
+            }}
+          />
+          <BrandAmbassadorSection 
+            onApplyHerePress={handleApplyHerePress}
+            isAmbassador={profile?.isAmbassador || false}
+          />
+        </View>
       </ScrollView>
 
       {/* Refer Friend Bottom Sheet */}

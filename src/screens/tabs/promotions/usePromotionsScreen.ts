@@ -21,10 +21,11 @@ export type TabType = 'inProgress' | 'earned';
 
 interface UsePromotionsScreenOptions {
   contentRef?: RefObject<View | null>;
+  shareContentRef?: RefObject<View | null>;
 }
 
 export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) => {
-  const { contentRef } = options;
+  const { contentRef, shareContentRef } = options;
   const appDownloadLink = 'https://samplefinder.com';
   const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile: ${appDownloadLink}`;
   const navigation = useNavigation();
@@ -265,6 +266,14 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
   const handleSharePress = async () => {
     try {
       const message = profileShareMessage;
+      if (shareContentRef?.current) {
+        try {
+          await captureAndShareView(shareContentRef, message, { useRenderInContext: true });
+          return;
+        } catch (e) {
+          console.warn('[Achievements] Full-content share capture failed, falling back to viewport capture.', e);
+        }
+      }
       if (contentRef?.current) {
         await captureAndShareView(contentRef, message);
       } else {

@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 0,
+    marginBottom: 12,
   },
   referFriendButton: {
     flexDirection: 'row',

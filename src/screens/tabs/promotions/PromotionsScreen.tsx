@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ScrollView, View, ActivityIndicator, Text, TouchableOpacity, RefreshControl } from 'react-native';
+import { ScrollView, View, ActivityIndicator, Text, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
@@ -23,9 +23,11 @@ import styles from './styles';
 
 const PromotionsScreen = () => {
   const contentRef = useRef<View>(null);
+  const shareContentRef = useRef<View>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const historyRef = useRef<View>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [isShareMode, setIsShareMode] = useState(false);
 
   const {
     activeTab,
@@ -61,9 +63,15 @@ const PromotionsScreen = () => {
     handleShareAchievement,
     handleViewMoreEvents,
     handleHistoryEventPress,
-  } = usePromotionsScreen({ contentRef });
+  } = usePromotionsScreen({ contentRef, shareContentRef });
 
   const handleViewHistory = () => {
+    if (isShareMode) return;
+    if (showHistory) {
+      setShowHistory(false);
+      return;
+    }
+
     setShowHistory(true);
     // Scroll to the history section after it has mounted and laid out
     setTimeout(() => {
@@ -83,10 +91,24 @@ const PromotionsScreen = () => {
     }, 100);
   };
 
+  const handleSharePressWithShareMode = async () => {
+    setIsShareMode(true);
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+    try {
+      await handleSharePress();
+    } finally {
+      setIsShareMode(false);
+    }
+  };
+
   return (
     <View ref={contentRef} style={styles.container} collapsable={false}>
       <StatusBar style="light" />
-      <BackShareHeader onBack={handleBackPress} onShare={handleSharePress} />
+      <BackShareHeader onBack={handleBackPress} onShare={handleSharePressWithShareMode} />
 
       <LinearGradient
         colors={[Colors.brandPurpleDeep, Colors.brandPurpleBright, Colors.brandPurpleWine]}
@@ -114,48 +136,66 @@ const PromotionsScreen = () => {
               />
             }
           >
-            <PromotionsHeader totalPoints={totalPoints} />
-            <PromotionsTabs activeTab={activeTab} onTabChange={setActiveTab} />
+            <View
+              ref={shareContentRef}
+              collapsable={false}
+              style={{ overflow: 'hidden' }}
+            >
+              {/* Screenshot-only background: apply gradient only during capture */}
+              {isShareMode && (
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={[Colors.brandPurpleDeep, Colors.brandPurpleBright, Colors.brandPurpleWine]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+              )}
+              <PromotionsHeader totalPoints={totalPoints} />
+              <PromotionsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-            {/* In Progress Tab Content - always mounted, visibility controlled */}
-            <View style={activeTab !== 'inProgress' && styles.hiddenTab}>
-              <View style={styles.inProgressContainer}>
-                <BadgesSection
-                  eventCheckIns={eventCheckIns}
-                  reviews={reviews}
+              {/* In Progress Tab Content - always mounted, visibility controlled */}
+              <View style={activeTab !== 'inProgress' && styles.hiddenTab}>
+                <View style={styles.inProgressContainer}>
+                  <BadgesSection
+                    eventCheckIns={eventCheckIns}
+                    reviews={reviews}
+                    eventBadges={eventBadges}
+                    reviewBadges={reviewBadges}
+                    isAmbassador={isAmbassador}
+                    isInfluencer={isInfluencer}
+                  />
+                  <TiersSection tiers={tiers} />
+                </View>
+              </View>
+
+              {/* Earned Tab Content - always mounted, visibility controlled */}
+              <View style={activeTab !== 'earned' && styles.hiddenTab}>
+                <EarnedSection
                   eventBadges={eventBadges}
                   reviewBadges={reviewBadges}
+                  tiers={tiers}
+                  totalPoints={totalPoints}
+                  onTierPress={handleTierPress}
+                  onPointsPress={handlePointsPress}
                   isAmbassador={isAmbassador}
                   isInfluencer={isInfluencer}
                 />
-                <TiersSection tiers={tiers} />
-              </View>
-            </View>
 
-            {/* Earned Tab Content - always mounted, visibility controlled */}
-            <View style={activeTab !== 'earned' && styles.hiddenTab}>
-              <EarnedSection
-                eventBadges={eventBadges}
-                reviewBadges={reviewBadges}
-                tiers={tiers}
-                totalPoints={totalPoints}
-                onTierPress={handleTierPress}
-                onPointsPress={handlePointsPress}
-                isAmbassador={isAmbassador}
-                isInfluencer={isInfluencer}
-              />
-              
-              {/* View History Button */}
-              <TouchableOpacity style={styles.viewHistoryButton} onPress={handleViewHistory}>
-                <HistoryRefetchIcon size={20} color={Colors.white} />
-                <Text style={styles.viewHistoryText}>View History</Text>
-              </TouchableOpacity>
-              
-              {showHistory && (
-                <View ref={historyRef} collapsable={false}>
-                  <HistorySection historyItems={historyItems} onEventPress={handleHistoryEventPress} />
-                </View>
-              )}
+                {/* View History Button */}
+                {!isShareMode && (
+                  <TouchableOpacity style={styles.viewHistoryButton} onPress={handleViewHistory}>
+                    <HistoryRefetchIcon size={20} color={Colors.white} />
+                    <Text style={styles.viewHistoryText}>{showHistory ? 'Hide History' : 'View History'}</Text>
+                  </TouchableOpacity>
+                )}
+
+                {!isShareMode && showHistory && (
+                  <View ref={historyRef} collapsable={false}>
+                    <HistorySection historyItems={historyItems} onEventPress={handleHistoryEventPress} />
+                  </View>
+                )}
+              </View>
             </View>
           </ScrollView>
         )}

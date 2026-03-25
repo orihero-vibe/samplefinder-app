@@ -33,7 +33,7 @@ import { useTier1ModalStore } from '@/stores/tier1ModalStore';
 import { useTierCompletionStore } from '@/stores/tierCompletionStore';
 import { AchievementModal } from '@/screens/tabs/promotions/components';
 import type { Tier } from '@/screens/tabs/promotions/components';
-import { AppState, AppStateStatus, Share } from 'react-native';
+import { AppState, AppStateStatus } from 'react-native';
 import { getUserCurrentTier } from '@/lib/database/tiers';
 import './reactotron';
 
@@ -332,15 +332,10 @@ export default function App() {
 
   const handleShareTier1 = async () => {
     try {
-      if (tier1Tier) {
-        await Share.share({
-          message: `I just earned the ${tier1Tier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
-        });
-      }
-      handleCloseTier1Modal();
+      // `AchievementModal` handles screenshot capture + share internally.
+      // Keep this callback for any side-effects/analytics if needed.
     } catch (error) {
       console.error('[App] Error sharing achievement:', error);
-      handleCloseTier1Modal();
     }
   };
 
@@ -350,15 +345,10 @@ export default function App() {
 
   const handleShareTierCompletion = async () => {
     try {
-      if (completedTier) {
-        await Share.share({
-          message: `I just earned the ${completedTier.name} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`,
-        });
-      }
-      handleCloseTierCompletionModal();
+      // `AchievementModal` handles screenshot capture + share internally.
+      // Keep this callback for any side-effects/analytics if needed.
     } catch (error) {
       console.error('[App] Error sharing tier completion:', error);
-      handleCloseTierCompletionModal();
     }
   };
 
