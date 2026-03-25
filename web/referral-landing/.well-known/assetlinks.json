@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.samplefinder.app",
+      "sha256_cert_fingerprints": [
+        "57:DC:8F:53:37:5F:2E:74:1E:2B:B9:0D:35:25:68:C9:FA:FA:8B:3C:7C:B0:CC:D2:73:42:28:78:AF:A1:94:94"
+      ]
+    }
+  }
+]

@@ -33,6 +33,7 @@ const ProfileScreen = () => {
     showLogoutModal,
     formattedDOB,
     referralCode,
+    referralShare,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
     handleBackPress,
@@ -127,6 +128,9 @@ const ProfileScreen = () => {
       <ReferFriendBottomSheet
         bottomSheetRef={referFriendBottomSheetRef}
         referralCode={referralCode}
+        referralShareUrl={referralShare?.shareUrl}
+        referrerPoints={referralShare?.referrerPoints ?? 100}
+        refereePoints={referralShare?.refereePoints ?? 100}
         onClose={handleReferFriendClose}
         onReferSuccess={handleReferSuccess}
       />
@@ -134,7 +138,7 @@ const ProfileScreen = () => {
       {/* Refer Friend Success Bottom Sheet */}
       <ReferFriendSuccessBottomSheet
         bottomSheetRef={referFriendSuccessBottomSheetRef}
-        points={100}
+        points={referralShare?.referrerPoints ?? 100}
         onClose={handleReferSuccessClose}
         onViewRewards={handleViewRewardsFromSuccess}
       />

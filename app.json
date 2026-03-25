@@ -7,6 +7,7 @@
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "samplefinder",
     "splash": {
       "image": "./src/assets/splash.png",
       "resizeMode": "cover",
@@ -24,7 +25,8 @@
         "NSCameraUsageDescription": "This app needs access to your camera to take profile pictures."
       },
       "usesAppleSignIn": false,
-      "appleTeamId": "AYNR8DRWG3"
+      "appleTeamId": "AYNR8DRWG3",
+      "associatedDomains": ["applinks:simplefinder.com"]
     },
     "android": {
       "icon": "./src/assets/icon.png",
@@ -53,7 +55,21 @@
         "googleMaps": {
           "apiKey": "AIzaSyAywmgeNZsxezVKVV8k3w3v9K8tssxh4mc"
         }
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "simplefinder.com",
+              "pathPrefix": "/referral"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./src/assets/favicon.png"

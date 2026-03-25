@@ -47,6 +47,8 @@ const PromotionsScreen = () => {
     pointsForProgress,
     isAmbassador,
     isInfluencer,
+    referralShare,
+    referralCode,
     handleRefresh,
     setActiveTab,
     handleBackPress,
@@ -163,12 +165,17 @@ const PromotionsScreen = () => {
 
       <ReferFriendBottomSheet
         bottomSheetRef={referFriendBottomSheetRef}
+        referralCode={referralCode}
+        referralShareUrl={referralShare?.shareUrl}
+        referrerPoints={referralShare?.referrerPoints ?? 100}
+        refereePoints={referralShare?.refereePoints ?? 100}
         onClose={handleCloseReferFriend}
         onReferSuccess={handleReferSuccess}
       />
 
       <ReferFriendSuccessBottomSheet
         bottomSheetRef={referFriendSuccessBottomSheetRef}
+        points={referralShare?.referrerPoints ?? 100}
         onClose={handleCloseReferSuccess}
         onViewRewards={handleViewRewards}
       />

@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { login } from '@/lib/auth';
 import { initializePushNotifications } from '@/lib/notifications';
+import { claimPendingReferralIfNeeded } from '@/lib/referralClaim';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -130,7 +131,13 @@ export const useLoginScreen = () => {
           console.warn('[LoginScreen] Failed to initialize push notifications:', error);
           // Don't block navigation - push notifications are not critical
         });
-        
+
+        try {
+          await claimPendingReferralIfNeeded();
+        } catch (claimErr) {
+          console.warn('[LoginScreen] Referral claim skipped or failed:', claimErr);
+        }
+
         navigation.reset({
           index: 0,
           routes: [{ name: 'MainTabs' }],

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SampleFinder — referral</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 28rem; margin: 0 auto; padding: 1.5rem; text-align: center; color: #1a1a2e; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    p { line-height: 1.5; color: #444; }
+    .stores { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 1.25rem 0; }
+    .stores a {
+      display: inline-block; padding: 0.75rem 1.25rem; background: #1a1a2e; color: #fff;
+      text-decoration: none; border-radius: 0.5rem; font-weight: 600;
+    }
+    .qr { margin-top: 1.5rem; }
+    .qr img { display: block; margin: 0.5rem auto; }
+    .muted { font-size: 0.85rem; color: #666; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Join SampleFinder</h1>
+  <p>Download the app. If you already have it installed, open this page on your phone — the app may open automatically.</p>
+  <p id="codeLine"></p>
+  <div class="stores">
+    <a id="ios" href="#">App Store</a>
+    <a id="android" href="#">Google Play</a>
+  </div>
+  <div class="qr">
+    <p><strong>iOS (QR)</strong></p>
+    <img id="qr-ios" alt="App Store QR" width="160" height="160" />
+    <p><strong>Android (QR)</strong></p>
+    <img id="qr-android" alt="Google Play QR" width="160" height="160" />
+  </div>
+  <p class="muted">Attribution is applied in the app when you sign up after opening the app from the referral link.</p>
+  <script>
+    (function () {
+      var IOS = 'https://apps.apple.com/app/id0000000000';
+      var ANDROID = 'https://play.google.com/store/apps/details?id=com.samplefinder.app';
+      var m = location.pathname.match(/\/referral\/([A-Za-z0-9]+)/i);
+      var code = m ? m[1] : '';
+      if (code) {
+        document.getElementById('codeLine').textContent = 'Referral code: ' + code.toUpperCase();
+      }
+      document.getElementById('ios').href = IOS;
+      document.getElementById('android').href = ANDROID;
+      var q = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent;
+      document.getElementById('qr-ios').src = q(IOS);
+      document.getElementById('qr-android').src = q(ANDROID);
+    })();
+  </script>
+</body>
+</html>

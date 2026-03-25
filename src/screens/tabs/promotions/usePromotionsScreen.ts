@@ -16,6 +16,7 @@ import {
   ReviewRow,
   TierRow,
 } from '@/lib/database';
+import { getReferralShareConfig, type ReferralShareConfig } from '@/lib/referralSettings';
 
 export type TabType = 'inProgress' | 'earned';
 
@@ -48,7 +49,9 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
   const [tiersData, setTiersData] = useState<TierRow[]>([]);
   const [isAmbassador, setIsAmbassador] = useState(false);
   const [isInfluencer, setIsInfluencer] = useState(false);
-  
+  const [referralShare, setReferralShare] = useState<ReferralShareConfig | null>(null);
+  const [referralCode, setReferralCode] = useState('N/A');
+
   // Fetch user statistics and history on mount and when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -65,14 +68,31 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
       const authUser = await getCurrentUser();
       
       if (!authUser) {
+        setReferralShare(null);
+        setReferralCode('N/A');
         setIsLoading(false);
         return;
       }
 
       const userProfile = await getUserProfile(authUser.$id);
       if (!userProfile) {
+        setReferralShare(null);
+        setReferralCode('N/A');
         setIsLoading(false);
         return;
+      }
+
+      setReferralCode(userProfile.referralCode || 'N/A');
+
+      if (userProfile.referralCode && userProfile.referralCode !== 'N/A') {
+        try {
+          const cfg = await getReferralShareConfig(userProfile.referralCode);
+          setReferralShare(cfg);
+        } catch {
+          setReferralShare(null);
+        }
+      } else {
+        setReferralShare(null);
       }
 
       // Fetch tiers, check-ins, and reviews in parallel for better performance
@@ -405,6 +425,8 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     pointsForProgress,
     isAmbassador,
     isInfluencer,
+    referralShare,
+    referralCode,
     handleRefresh,
     setActiveTab,
     handleBackPress,

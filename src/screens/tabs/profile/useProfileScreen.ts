@@ -8,6 +8,7 @@ import { captureAndShareView } from '@/utils/captureAndShare';
 import { getUserProfile, calculateTierStatus, fetchTiers, getUserCurrentTier, UserProfileRow, getUserCheckInsCount, getUserReviewsCount, getUnreadNotificationCount } from '@/lib/database';
 import { formatDateForDisplay } from '@/utils/formatters';
 import { countAchievedBadges } from '@/constants';
+import { getReferralShareConfig, type ReferralShareConfig } from '@/lib/referralSettings';
 
 interface UseProfileScreenOptions {
   contentRef?: RefObject<View | null>;
@@ -32,6 +33,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
   });
   const [tierStatus, setTierStatus] = useState<string>('NewbieSampler');
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [referralShare, setReferralShare] = useState<ReferralShareConfig | null>(null);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -50,7 +52,18 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
 
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
-      
+
+      if (userProfile?.referralCode && userProfile.referralCode !== 'N/A') {
+        try {
+          const cfg = await getReferralShareConfig(userProfile.referralCode);
+          setReferralShare(cfg);
+        } catch {
+          setReferralShare(null);
+        }
+      } else {
+        setReferralShare(null);
+      }
+
         // Use actual counts from database instead of cached profile fields
         // This ensures consistency with the Achievements screen
         if (userProfile) {
@@ -131,13 +144,24 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
   const handleReferFriendPress = async () => {
     try {
       const username = profile?.username || authUser?.name || 'User';
-      const message = referralCode && referralCode !== 'N/A'
-        ? `Join me on SampleFinder! Use my referral code ${referralCode} when signing up and we both get 100 points! Download the app and discover amazing samples near you. 🎁`
-        : `Join me on SampleFinder and discover amazing samples near you! Download the app and start earning rewards today! 🎁`;
-      
-      await Share.share({
-        message,
-      });
+      const code = profile?.referralCode;
+      let cfg = referralShare;
+      if (code && code !== 'N/A' && !cfg) {
+        try {
+          cfg = await getReferralShareConfig(code);
+        } catch {
+          cfg = null;
+        }
+      }
+      const shareUrl = cfg?.shareUrl ?? 'https://simplefinder.com';
+      const refPts = cfg?.referrerPoints ?? 100;
+      const refePts = cfg?.refereePoints ?? 100;
+      const message =
+        code && code !== 'N/A'
+          ? `Join me on SampleFinder, ${username}! Sign up with my link and we both earn points — you get ${refePts} and I get ${refPts} when you activate your account.\n\n${shareUrl}\n\nDownload the app and discover amazing samples near you. 🎁`
+          : `Join me on SampleFinder and discover amazing samples near you! Download the app and start earning rewards today! 🎁`;
+
+      await Share.share({ message });
     } catch (error) {
       console.error('Error sharing referral:', error);
     }
@@ -243,6 +267,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
     showLogoutModal,
     formattedDOB,
     referralCode,
+    referralShare,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
     handleBackPress,

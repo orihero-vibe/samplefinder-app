@@ -34,6 +34,12 @@ import { useTierCompletionStore } from '@/stores/tierCompletionStore';
 import { AchievementModal } from '@/screens/tabs/promotions/components';
 import type { Tier } from '@/screens/tabs/promotions/components';
 import { AppState, AppStateStatus, Share } from 'react-native';
+import {
+  captureInitialReferralUrl,
+  subscribeReferralUrls,
+  storePendingReferralCode,
+} from '@/lib/referralLinking';
+import { claimPendingReferralIfNeeded } from '@/lib/referralClaim';
 import { getUserCurrentTier } from '@/lib/database/tiers';
 import './reactotron';
 
@@ -73,6 +79,7 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
+        await captureInitialReferralUrl();
         // Load fonts
         await Font.loadAsync({
           Quicksand_300Light,
@@ -140,6 +147,13 @@ export default function App() {
     prepare();
   }, []);
 
+  useEffect(() => {
+    const sub = subscribeReferralUrls((code) => {
+      storePendingReferralCode(code).catch(() => {});
+    });
+    return () => sub.remove();
+  }, []);
+
   // Fetch active trivia 5 seconds after app is ready (only once per session)
   // Fetches profile in effect to avoid race with auth session restoration
   useEffect(() => {
@@ -172,6 +186,11 @@ export default function App() {
       cancelled = true;
       clearTimeout(timer);
     };
+  }, [appIsReady]);
+
+  useEffect(() => {
+    if (!appIsReady) return;
+    claimPendingReferralIfNeeded().catch(() => {});
   }, [appIsReady]);
 
   // Hide trivia modal when queue is exhausted (user closed last question)
@@ -245,6 +264,7 @@ export default function App() {
       if (nextState !== 'active') return;
 
       try {
+        await claimPendingReferralIfNeeded();
         const user = await getCurrentUser();
         if (!user) return;
         const profile = await getUserProfile(user.$id);

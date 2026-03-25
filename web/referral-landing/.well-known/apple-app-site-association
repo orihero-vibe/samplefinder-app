@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "AYNR8DRWG3.com.samplefinder.app",
+        "paths": ["/referral/*"]
+      }
+    ]
+  }
+}

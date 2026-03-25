@@ -7,6 +7,7 @@ import { initializePushNotifications } from '@/lib/notifications';
 import { createUserNotification } from '@/lib/database';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 import { useTier1ModalStore } from '@/stores/tier1ModalStore';
+import { claimPendingReferralIfNeeded } from '@/lib/referralClaim';
 
 type ConfirmAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ConfirmAccount'>;
 
@@ -110,6 +111,12 @@ export const useConfirmAccountScreen = () => {
         console.warn('[ConfirmAccount] Failed to initialize push notifications:', error);
         // Don't block navigation - push notifications are not critical
       });
+
+      try {
+        await claimPendingReferralIfNeeded();
+      } catch (claimErr) {
+        console.warn('[ConfirmAccount] Referral claim skipped or failed:', claimErr);
+      }
 
       // After successful verification, go straight into the app.
       // Notifications should only be accessed from the Profile section.

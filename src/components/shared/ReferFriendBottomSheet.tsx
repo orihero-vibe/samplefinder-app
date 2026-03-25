@@ -5,6 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Share,
+  Platform,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
@@ -16,6 +18,10 @@ import CustomButton from './CustomButton';
 interface ReferFriendBottomSheetProps {
   bottomSheetRef: React.RefObject<BottomSheet | null>;
   referralCode?: string;
+  /** Full universal link, e.g. https://simplefinder.com/referral/ABC */
+  referralShareUrl?: string;
+  referrerPoints?: number;
+  refereePoints?: number;
   onClose?: () => void;
   onReferSuccess?: () => void;
 }
@@ -23,9 +29,17 @@ interface ReferFriendBottomSheetProps {
 const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
   bottomSheetRef,
   referralCode = 'JNKLOW',
+  referralShareUrl,
+  referrerPoints = 100,
+  refereePoints = 100,
   onClose,
   onReferSuccess,
 }) => {
+  const shareUrl =
+    referralShareUrl ||
+    (referralCode && referralCode !== 'N/A'
+      ? `https://simplefinder.com/referral/${String(referralCode).trim().toUpperCase()}`
+      : 'https://simplefinder.com');
   const snapPoints = useMemo(() => ['75%'], []);
 
   const renderBackdrop = useMemo(
@@ -50,12 +64,18 @@ const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
     }
   };
 
-  const handleReferFriend = () => {
-    // Handle refer friend action
-    console.log('Refer friend pressed');
-    // Close this bottom sheet and show success modal
+  const handleReferFriend = async () => {
+    const message = `Join me on SampleFinder! Sign up with my link and we both earn points — you get ${refereePoints} and I get ${referrerPoints} when you activate your account.\n\n${shareUrl}`;
+    try {
+      if (Platform.OS === 'ios') {
+        await Share.share({ message, url: shareUrl });
+      } else {
+        await Share.share({ message });
+      }
+    } catch (err) {
+      console.warn('[ReferFriendBottomSheet] Share failed:', err);
+    }
     bottomSheetRef.current?.close();
-    // Call success callback after a short delay to allow close animation
     setTimeout(() => {
       onReferSuccess?.();
     }, 300);
@@ -97,8 +117,8 @@ const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
 
         {/* Points Info */}
         <View style={styles.pointsInfo}>
-          <Text style={styles.pointsText}>Send 100 Points</Text>
-          <Text style={styles.pointsText}>Earn 100 Points</Text>
+          <Text style={styles.pointsText}>Send {refereePoints} Points</Text>
+          <Text style={styles.pointsText}>Earn {referrerPoints} Points</Text>
         </View>
 
         {/* Refer Button */}

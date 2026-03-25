@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/referral/:code", "destination": "/referral/index.html" }
+  ]
+}
