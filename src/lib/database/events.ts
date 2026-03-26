@@ -221,6 +221,7 @@ export const fetchAllUpcomingEvents = async (): Promise<EventRow[]> => {
       Query.equal('isArchived', false),
       Query.equal('isHidden', false),
       Query.greaterThanEqual('date', todayISO),
+      Query.limit(1000), // Fetch up to 1000 events to avoid default page cap
     ];
 
     console.log('[database.fetchAllUpcomingEvents] Querying events with filters:', {

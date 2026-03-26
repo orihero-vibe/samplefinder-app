@@ -84,6 +84,7 @@ async function getEventsByLocation(databases, userLat, userLon, page, pageSize, 
         Query.greaterThanEqual('date', todayISO),
         Query.orderAsc('date'),
         Query.select(['*', 'client.*']),
+        Query.limit(1000),
     ];
     // Fetch all matching events
     const eventsResponse = await databases.listDocuments(DATABASE_ID, EVENTS_TABLE_ID, queries);
@@ -216,6 +217,7 @@ async function getActiveTrivia(databases, userId, log) {
         }
     }
     log(`User has answered ${answeredTriviaIds.size} trivia questions`);
+    // Build a set of the user's favorite brand/client IDs for fast lookup
     const favoriteIdsArray = Array.isArray(userProfile.favoriteIds)
         ? userProfile.favoriteIds
         : [];
