@@ -9,6 +9,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: 24,
   },

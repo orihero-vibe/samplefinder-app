@@ -1,5 +1,13 @@
 import React, { useRef } from 'react';
-import { ScrollView, View, ActivityIndicator, Text, RefreshControl } from 'react-native';
+import {
+  ScrollView,
+  View,
+  ActivityIndicator,
+  Text,
+  RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   ActionButtons,
@@ -102,59 +110,65 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     <View ref={contentRef} style={styles.container} collapsable={false}>
       <StatusBar style="light" />
       <BackShareHeader onBack={handleBack} onShare={handleShare}  />
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          route.params.eventId ? (
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefreshDetails}
-              tintColor="#2D1B69"
-            />
-          ) : undefined
-        }
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Wrapper for sharing full content (not just visible viewport) */}
-        <View
-          ref={shareContentRef}
-          collapsable={false}
-          style={{ backgroundColor: '#FFFFFF', paddingVertical: 12 }}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          refreshControl={
+            route.params.eventId ? (
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefreshDetails}
+                tintColor="#2D1B69"
+              />
+            ) : undefined
+          }
         >
-          <BrandLocationPin logoUrl={brandLogoUrl} />
-          <BrandInfo brand={brand} />
-          <ProductsSection products={brand.products} />
-          <EventInfoSection eventInfo={brand.eventInfo} />
-          <DiscountMessage />
-          
-          {(checkInStatus === 'input' || checkInStatus === 'incorrect') && (
-            <CheckInCodeInput
-              onCodeSubmit={handleCodeSubmit}
-              showError={checkInStatus === 'incorrect'}
-              isSubmitting={isSubmittingCheckIn}
+          {/* Wrapper for sharing full content (not just visible viewport) */}
+          <View
+            ref={shareContentRef}
+            collapsable={false}
+            style={{ backgroundColor: '#FFFFFF', paddingVertical: 12 }}
+          >
+            <BrandLocationPin logoUrl={brandLogoUrl} />
+            <BrandInfo brand={brand} />
+            <ProductsSection products={brand.products} />
+            <EventInfoSection eventInfo={brand.eventInfo} />
+            <DiscountMessage />
+            
+            {(checkInStatus === 'input' || checkInStatus === 'incorrect') && (
+              <CheckInCodeInput
+                onCodeSubmit={handleCodeSubmit}
+                showError={checkInStatus === 'incorrect'}
+                isSubmitting={isSubmittingCheckIn}
+              />
+            )}
+    
+            {checkInStatus === 'success' && (
+              <CheckInSuccess
+                onLeaveReview={handleLeaveReview}
+                pointsEarned={totalEarnedPoints}
+                showReviewButton={!hasReviewed}
+                discount={brand?.discount}
+                discountImageURL={brand?.discountImageURL}
+              />
+            )}
+    
+            <ActionButtons
+              onAddToCalendar={handleAddToCalendar}
+              onAddFavorite={handleAddFavorite}
+              isFavorite={isFavorite}
+              isAddedToCalendar={isAddedToCalendar}
             />
-          )}
-  
-          {checkInStatus === 'success' && (
-            <CheckInSuccess
-              onLeaveReview={handleLeaveReview}
-              pointsEarned={totalEarnedPoints}
-              showReviewButton={!hasReviewed}
-              discount={brand?.discount}
-              discountImageURL={brand?.discountImageURL}
-            />
-          )}
-  
-          <ActionButtons
-            onAddToCalendar={handleAddToCalendar}
-            onAddFavorite={handleAddFavorite}
-            isFavorite={isFavorite}
-            isAddedToCalendar={isAddedToCalendar}
-          />
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <ReviewModal
         bottomSheetRef={reviewBottomSheetRef}
