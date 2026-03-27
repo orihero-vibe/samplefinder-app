@@ -3,7 +3,6 @@ import { Share, Platform } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as Clipboard from 'expo-clipboard';
 
 const DEFAULT_MESSAGE = 'Check this out on SampleFinder!';
 
@@ -79,26 +78,26 @@ export async function captureAndShareView(
       throw new Error('Failed to capture or resolve image URI');
     }
 
-    if (Platform.OS === 'android') {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        await Share.share({ message, title: 'SampleFinder' });
-        return;
-      }
-      if (message) {
-        await Clipboard.setStringAsync(message);
-      }
-      await Sharing.shareAsync(shareUri, {
-        mimeType: 'image/png',
-        dialogTitle: message ? 'Share screenshot (caption copied – paste in app)' : 'Share screenshot',
-      });
-    } else {
-      const shareOptions: { message: string; url?: string; title?: string } = {
-        message,
-        title: 'SampleFinder',
-        url: shareUri,
-      };
+    const shareOptions: { message: string; url?: string; title?: string } = {
+      message,
+      title: 'SampleFinder',
+      url: shareUri,
+    };
+    try {
       await Share.share(shareOptions);
+    } catch (shareError) {
+      // Android fallback for devices/apps that fail with file URI in Share API.
+      if (Platform.OS === 'android') {
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(shareUri, {
+            mimeType: 'image/png',
+            dialogTitle: 'Share screenshot',
+          });
+          return;
+        }
+      }
+      throw shareError;
     }
   } catch (error) {
     if (isShareCompletionError(error)) {

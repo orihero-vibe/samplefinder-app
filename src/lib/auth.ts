@@ -302,6 +302,20 @@ export const getCurrentUser = async (): Promise<User | null> => {
       phoneVerification: user.phoneVerification,
     };
   } catch (error: any) {
+    const errorMessage = error?.message ?? '';
+    const errorCode = error?.code;
+    const errorType = error?.type;
+    const isExpectedLoggedOutState =
+      errorCode === 401 &&
+      (errorType === 'general_unauthorized_scope' ||
+        errorMessage.includes('missing scopes (["account"])') ||
+        errorMessage.toLowerCase().includes('user (role: guests)'));
+
+    if (isExpectedLoggedOutState) {
+      // Logged-out guest state is expected in many places that check session.
+      return null;
+    }
+
     console.error('[auth.getCurrentUser] Error getting current user:', error);
     console.error('[auth.getCurrentUser] Error message:', error?.message);
     console.error('[auth.getCurrentUser] Error code:', error?.code);

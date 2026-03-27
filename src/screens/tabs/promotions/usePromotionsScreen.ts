@@ -27,7 +27,7 @@ interface UsePromotionsScreenOptions {
 export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) => {
   const { contentRef, shareContentRef } = options;
   const appDownloadLink = 'https://samplefinder.com';
-  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile: ${appDownloadLink}`;
+  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile ${appDownloadLink}.`;
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('inProgress');
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);

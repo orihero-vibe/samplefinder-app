@@ -17,7 +17,7 @@ interface UseProfileScreenOptions {
 export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
   const { contentRef, shareContentRef } = options;
   const appDownloadLink = 'https://samplefinder.com';
-  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile: ${appDownloadLink}`;
+  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile ${appDownloadLink}.`;
   const navigation = useNavigation();
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
   const referFriendSuccessBottomSheetRef = useRef<BottomSheet>(null);
@@ -119,6 +119,14 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
 
   const handleSharePress = async () => {
     try {
+      if (isLoading) {
+        Alert.alert('Please wait', 'Your profile is still loading. Try sharing again in a moment.');
+        return;
+      }
+      if (error) {
+        Alert.alert('Unable to Share', 'Your profile is not ready to share right now. Please try again.');
+        return;
+      }
       const message = profileShareMessage;
       if (shareContentRef?.current) {
         try {
