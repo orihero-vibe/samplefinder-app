@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser } from '@/lib/auth';
-import { createUserNotification, getUserProfile } from '@/lib/database';
+import { createUserNotification, getUserProfile, updateUserProfile } from '@/lib/database';
 import type { UserNotification } from '@/lib/database';
 
 type SpecialBadgeType = 'ambassador' | 'influencer';
@@ -25,6 +25,7 @@ const SPECIAL_BADGE_CONTENT: Record<SpecialBadgeType, { title: string; message: 
 
 type SpecialBadgeState = Record<SpecialBadgeType, boolean>;
 const DEFAULT_BADGE_STATE: SpecialBadgeState = { ambassador: false, influencer: false };
+const SPECIAL_BADGE_POINTS = 100;
 const getBadgeStateStorageKey = (authId: string) => `specialBadgeState:${authId}`;
 const getShownSpecialBadgesStorageKey = (authId: string) => `shownSpecialBadges:${authId}`;
 
@@ -134,6 +135,7 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
     ambassador: toBoolean(profile.isAmbassador),
     influencer: toBoolean(profile.isInfluencer),
   };
+  let updatedTotalPoints = Number(profile.totalPoints || 0);
   const newlyAwardedBadges: AwardedSpecialBadge[] = [];
 
   const maybeAwardBadge = async (badgeType: SpecialBadgeType, isEnabled: boolean) => {
@@ -154,6 +156,12 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
     }
 
     const content = SPECIAL_BADGE_CONTENT[badgeType];
+    updatedTotalPoints += SPECIAL_BADGE_POINTS;
+
+    await updateUserProfile(profile.$id, {
+      totalPoints: updatedTotalPoints,
+    });
+
     const createdNotification = await createUserNotification({
       userId: user.$id,
       type: 'badgeEarned',
@@ -162,6 +170,7 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
       data: {
         badgeType,
         isSpecialBadge: true,
+        pointsEarned: SPECIAL_BADGE_POINTS,
         screen: 'Profile',
       },
     });

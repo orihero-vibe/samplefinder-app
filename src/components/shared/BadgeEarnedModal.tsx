@@ -101,10 +101,10 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
 
   const getEarnedIndicatorText = (): string => {
     if (badgeType === 'ambassador') {
-      return 'You earned Ambassador!';
+      return 'You earned 100 points';
     }
     if (badgeType === 'influencer') {
-      return 'You earned Influencer!';
+      return 'You earned 100 points';
     }
     return 'You earned points!';
   };
