@@ -289,6 +289,7 @@ async function getEventsByLocation(
     Query.greaterThanEqual('date', todayISO),
     Query.orderAsc('date'),
     Query.select(['*', 'client.*']),
+    Query.limit(1000),
   ];
 
   // Fetch all matching events

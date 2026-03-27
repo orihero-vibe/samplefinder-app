@@ -50,7 +50,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [purchased, setPurchased] = useState<boolean | null>(null);
 
-  const snapPoints = useMemo(() => ['85%'], []);
+  const snapPoints = useMemo(() => ['90%'], []);
 
   const resetState = useCallback(() => {
     setRating(0);
@@ -128,7 +128,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
       backdropComponent={renderBackdrop}
-      keyboardBehavior="interactive"
+      keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
     >
@@ -136,6 +136,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
       >
         {/* Close Button */}
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 24,
+    paddingBottom: 36,
   },
   closeButton: {
     position: 'absolute',
