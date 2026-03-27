@@ -40,7 +40,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         icon = <ProfileIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
         break;
       case 'Favorites':
-        icon = <HeartOutlineIcon size={iconSize - 6} color={iconColor} />;
+        icon = (
+          <View style={styles.favoritesIconOffset}>
+            <HeartOutlineIcon size={iconSize - 6} color={iconColor} />
+          </View>
+        );
         break;
       case 'Calendar':
         icon = <CalendarIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
@@ -145,6 +149,9 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 2,
     borderColor: Colors.blueColorMode,
+  },
+  favoritesIconOffset: {
+    marginTop: 2,
   },
 });
 

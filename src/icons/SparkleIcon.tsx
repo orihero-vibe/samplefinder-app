@@ -26,6 +26,7 @@ const SparkleIcon: React.FC<SparkleIconProps> = ({
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeOpacity={1}
+        transform="translate(1.5, 0)"
       />
     </Svg>
   );
