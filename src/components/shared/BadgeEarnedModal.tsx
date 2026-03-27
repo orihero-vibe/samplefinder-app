@@ -7,8 +7,8 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  ImageBackground,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
 import { SmallBlueStarIcon } from '@/icons';
 import CertifiedBrandAmbassadorIcon from '@/icons/CertifiedBrandAmbassadorIcon';
@@ -16,6 +16,7 @@ import CertifiedInfluencerIcon from '@/icons/CertifiedInfluencerIcon';
 import BadgeEarnedPopupIcon from '@/icons/BadgeEarnedPopupIcon';
 import { CloseIcon } from '@/components';
 import { captureAndShareView } from '@/utils/captureAndShare';
+import radialBg from '@/assets/radial-bg.png';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -128,13 +129,7 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
             },
           ]}
         >
-          <LinearGradient
-            colors={['#95268B', '#6C0331', '#090188', '#090188']}
-            locations={[0, 0.33, 0.66, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradientContainer}
-          >
+          <ImageBackground source={radialBg} resizeMode="cover" style={styles.gradientContainer}>
             {/* Close Button */}
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <View style={styles.closeButtonCircle}>
@@ -153,7 +148,7 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
               )}
             </View>
             <Text style={styles.badgeName}>{getBadgeName()}</Text>
-            </LinearGradient>
+          </ImageBackground>
 
             {/* Badge Name */}
             <View style={styles.badgeInfoContainer}>
@@ -205,7 +200,7 @@ const styles = StyleSheet.create({
   gradientContainer: {
     width: '100%',
     minHeight: 240,
-    padding: 24,
+    paddingVertical: 24,
     alignItems: 'center',
     paddingTop: 40,
   },
