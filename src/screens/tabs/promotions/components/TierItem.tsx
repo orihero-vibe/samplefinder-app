@@ -2,7 +2,7 @@ import { Colors } from '@/constants/Colors';
 import { getTierDisplayParts } from '@/utils/formatters';
 import { Monicon } from '@monicon/native';
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export interface Tier {
   id: string;
@@ -16,9 +16,10 @@ export interface Tier {
 
 interface TierItemProps {
   tier: Tier;
+  onIconPress?: (tier: Tier) => void;
 }
 
-const TierItem: React.FC<TierItemProps> = ({ tier }) => {
+const TierItem: React.FC<TierItemProps> = ({ tier, onIconPress }) => {
   const progress = Math.min((tier.currentPoints / tier.requiredPoints) * 100, 100);
   const [imageError, setImageError] = React.useState(false);
   const { main, subtitle } = getTierDisplayParts(tier.name);
@@ -26,16 +27,22 @@ const TierItem: React.FC<TierItemProps> = ({ tier }) => {
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        {tier.imageURL && !imageError ? (
-          <Image 
-            source={{ uri: tier.imageURL }} 
-            style={styles.tierImage}
-            resizeMode="contain"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <Monicon name="ph:seal-fill" size={80} color={Colors.pinDarkBlue} />
-        )}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          disabled={!onIconPress}
+          onPress={() => onIconPress?.(tier)}
+        >
+          {tier.imageURL && !imageError ? (
+            <Image
+              source={{ uri: tier.imageURL }}
+              style={styles.tierImage}
+              resizeMode="contain"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <Monicon name="ph:seal-fill" size={80} color={Colors.pinDarkBlue} />
+          )}
+        </TouchableOpacity>
       </View>
       <View style={styles.info}>
         <View style={styles.nameRow}>

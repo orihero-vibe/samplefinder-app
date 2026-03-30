@@ -8,9 +8,10 @@ import { SealCheckLightIcon } from '@/components';
 
 interface TiersSectionProps {
   tiers: Tier[];
+  onTierPress?: (tier: Tier) => void;
 }
 
-const TiersSection: React.FC<TiersSectionProps> = ({ tiers }) => {
+const TiersSection: React.FC<TiersSectionProps> = ({ tiers, onTierPress }) => {
   return (
     <View style={styles.cardWrapper}>
       <LinearGradient
@@ -37,7 +38,7 @@ const TiersSection: React.FC<TiersSectionProps> = ({ tiers }) => {
           {/* Tier Items */}
           <View style={styles.tierItemsContainer}>
           {tiers.map((tier) => (
-            <TierItem key={tier.id} tier={tier} />
+            <TierItem key={tier.id} tier={tier} onIconPress={onTierPress} />
           ))}
           </View>
         </View>
