@@ -130,7 +130,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
       const message = profileShareMessage;
       if (shareContentRef?.current) {
         try {
-          await captureAndShareView(shareContentRef, message, { useRenderInContext: true });
+          await captureAndShareView(shareContentRef, message);
           return;
         } catch (e) {
           console.warn('[Profile] Full-content share capture failed, falling back to viewport capture.', e);
