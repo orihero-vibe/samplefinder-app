@@ -40,6 +40,13 @@ const toBoolean = (value: unknown): boolean => {
   return Boolean(value);
 };
 
+const parseBadgeState = (rawState: Partial<SpecialBadgeState> | null | undefined): SpecialBadgeState => {
+  return {
+    ambassador: toBoolean(rawState?.ambassador),
+    influencer: toBoolean(rawState?.influencer),
+  };
+};
+
 const parseNotifications = (notificationsRaw: unknown): UserNotification[] => {
   if (!Array.isArray(notificationsRaw)) {
     return [];
@@ -78,10 +85,7 @@ const readLastBadgeState = async (authId: string): Promise<SpecialBadgeState> =>
     const raw = await AsyncStorage.getItem(getBadgeStateStorageKey(authId));
     if (!raw) return DEFAULT_BADGE_STATE;
     const parsed = JSON.parse(raw) as Partial<SpecialBadgeState>;
-    return {
-      ambassador: Boolean(parsed.ambassador),
-      influencer: Boolean(parsed.influencer),
-    };
+    return parseBadgeState(parsed);
   } catch {
     return DEFAULT_BADGE_STATE;
   }
@@ -100,10 +104,7 @@ const readShownSpecialBadges = async (authId: string): Promise<SpecialBadgeState
     const raw = await AsyncStorage.getItem(getShownSpecialBadgesStorageKey(authId));
     if (!raw) return DEFAULT_BADGE_STATE;
     const parsed = JSON.parse(raw) as Partial<SpecialBadgeState>;
-    return {
-      ambassador: Boolean(parsed.ambassador),
-      influencer: Boolean(parsed.influencer),
-    };
+    return parseBadgeState(parsed);
   } catch {
     return DEFAULT_BADGE_STATE;
   }

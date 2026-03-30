@@ -45,6 +45,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [imageError, setImageError] = useState(false);
+  const [isCapturingShare, setIsCapturingShare] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -80,9 +81,14 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
       const message = tier
         ? `I'm earning the ${tierDisplayParts.main} tier on SampleFinder! Join me in discovering amazing samples.`
         : `I'm earning rewards on SampleFinder! Join me in discovering amazing samples.`;
+      setIsCapturingShare(true);
+      // Wait one frame so hidden actions are not included in capture.
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
       await captureAndShareView(modalRef, message);
     } catch (error) {
       console.error('Error sharing tier achievement:', error);
+    } finally {
+      setIsCapturingShare(false);
     }
   };
 
@@ -135,11 +141,13 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
             },
           ]}
         >
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <View style={styles.closeButtonCircle}>
-             <CloseIcon/>
-            </View>
-          </TouchableOpacity>
+          {!isCapturingShare && (
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <View style={styles.closeButtonCircle}>
+               <CloseIcon/>
+              </View>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.badgeContainer}>
             {tier?.imageURL && !imageError ? (
@@ -187,20 +195,24 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
             </Text>
           </View>
 
-          <CustomButton
-            title="Share"
-            onPress={handleShare}
-            variant="dark"
-            size="medium"
-            style={styles.actionButton}
-          />
-          <CustomButton
-            title="View More Events"
-            onPress={handleViewMoreEvents}
-            variant="dark"
-            size="medium"
-            style={[styles.actionButton, styles.actionButtonSecondary]}
-          />
+          {!isCapturingShare && (
+            <>
+              <CustomButton
+                title="Share"
+                onPress={handleShare}
+                variant="dark"
+                size="medium"
+                style={styles.actionButton}
+              />
+              <CustomButton
+                title="View More Events"
+                onPress={handleViewMoreEvents}
+                variant="dark"
+                size="medium"
+                style={styles.actionButton}
+              />
+            </>
+          )}
         </Animated.View>
       </View>
     </Modal>
@@ -319,9 +331,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     width: '100%',
-    marginTop: 8,
-  },
-  actionButtonSecondary: {
     marginTop: 8,
   },
 });

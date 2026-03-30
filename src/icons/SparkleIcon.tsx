@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 interface SparkleIconProps {
   size?: number;
@@ -7,16 +7,16 @@ interface SparkleIconProps {
   circleColor?: string;
 }
 
-const SparkleIcon: React.FC<SparkleIconProps> = ({ 
-  size = 24, 
+const SparkleIcon: React.FC<SparkleIconProps> = ({
+  size = 24,
   color = '#1E0E50',
-  circleColor = '#FFFFFF' 
+  circleColor = '#FFFFFF'
 }) => {
   return (
     <Svg
       width={size}
       height={size}
-      viewBox="0 0 27 27"
+      viewBox="0 0 28 28"
       fill="none"
     >
       <Path
@@ -26,7 +26,6 @@ const SparkleIcon: React.FC<SparkleIconProps> = ({
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeOpacity={1}
-        transform="translate(1.5, 0)"
       />
     </Svg>
   );

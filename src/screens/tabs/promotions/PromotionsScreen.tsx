@@ -165,7 +165,10 @@ const PromotionsScreen = () => {
                     isAmbassador={isAmbassador}
                     isInfluencer={isInfluencer}
                   />
-                  <TiersSection tiers={tiers} />
+                  <TiersSection
+                    tiers={tiers}
+                    onTierPress={(tier) => handleTierPress(tier, pointsForProgress)}
+                  />
                 </View>
               </View>
 

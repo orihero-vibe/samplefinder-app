@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ScrollView,
   View,
@@ -37,6 +37,7 @@ interface BrandDetailsScreenProps {
 const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   const contentRef = useRef<View>(null);
   const shareContentRef = useRef<View>(null);
+  const [isShareMode, setIsShareMode] = useState(false);
   const {
     brand,
     isLoading,
@@ -74,12 +75,26 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     handleRefreshDetails,
   } = useBrandDetailsScreen({ route, contentRef, shareContentRef });
 
+  const handleShareWithShareMode = async () => {
+    setIsShareMode(true);
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+    try {
+      await handleShare();
+    } finally {
+      setIsShareMode(false);
+    }
+  };
+
   // Show loading state
   if (isLoading) {
     return (
       <View ref={contentRef} style={styles.container} collapsable={false}>
         <StatusBar style="light" />
-        <BackShareHeader onBack={handleBack} onShare={handleShare} />
+        <BackShareHeader onBack={handleBack} onShare={handleShareWithShareMode} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2D1B69" />
           <Text style={styles.loadingText}>Loading event details...</Text>
@@ -93,7 +108,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     return (
       <View ref={contentRef} style={styles.container} collapsable={false}>
         <StatusBar style="light" />
-        <BackShareHeader onBack={handleBack} onShare={handleShare} />
+        <BackShareHeader onBack={handleBack} onShare={handleShareWithShareMode} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
             {error || 'Event details not available'}
@@ -109,7 +124,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
   return (
     <View ref={contentRef} style={styles.container} collapsable={false}>
       <StatusBar style="light" />
-      <BackShareHeader onBack={handleBack} onShare={handleShare}  />
+      <BackShareHeader onBack={handleBack} onShare={handleShareWithShareMode}  />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -140,17 +155,18 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
             <BrandInfo brand={brand} />
             <ProductsSection products={brand.products} />
             <EventInfoSection eventInfo={brand.eventInfo} />
-            <DiscountMessage />
-            
-            {(checkInStatus === 'input' || checkInStatus === 'incorrect') && (
+
+            {!isShareMode && <DiscountMessage />}
+
+            {!isShareMode && (checkInStatus === 'input' || checkInStatus === 'incorrect') && (
               <CheckInCodeInput
                 onCodeSubmit={handleCodeSubmit}
                 showError={checkInStatus === 'incorrect'}
                 isSubmitting={isSubmittingCheckIn}
               />
             )}
-    
-            {checkInStatus === 'success' && (
+
+            {!isShareMode && checkInStatus === 'success' && (
               <CheckInSuccess
                 onLeaveReview={handleLeaveReview}
                 pointsEarned={totalEarnedPoints}
@@ -159,13 +175,15 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
                 discountImageURL={brand?.discountImageURL}
               />
             )}
-    
-            <ActionButtons
-              onAddToCalendar={handleAddToCalendar}
-              onAddFavorite={handleAddFavorite}
-              isFavorite={isFavorite}
-              isAddedToCalendar={isAddedToCalendar}
-            />
+
+            {!isShareMode && (
+              <ActionButtons
+                onAddToCalendar={handleAddToCalendar}
+                onAddFavorite={handleAddFavorite}
+                isFavorite={isFavorite}
+                isAddedToCalendar={isAddedToCalendar}
+              />
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -38,15 +38,15 @@ const BrandAmbassadorSection: React.FC<BrandAmbassadorSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 20,
   },
   text: {
-    fontSize: 15,
+    fontSize: 16,
     textAlign: 'center',
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinBlueBlack,
-    marginBottom: 10,
-    lineHeight: 19,
+    marginBottom: 16,
+    lineHeight: 20,
   },
   applyButton: {
     width: 200,

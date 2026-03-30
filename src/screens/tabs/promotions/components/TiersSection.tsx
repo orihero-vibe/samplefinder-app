@@ -1,16 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import TierItem, { Tier } from './TierItem';
 import { SealCheckLightIcon } from '@/components';
 
 interface TiersSectionProps {
   tiers: Tier[];
+  onTierPress?: (tier: Tier) => void;
 }
 
-const TiersSection: React.FC<TiersSectionProps> = ({ tiers }) => {
+const TiersSection: React.FC<TiersSectionProps> = ({ tiers, onTierPress }) => {
   return (
     <View style={styles.cardWrapper}>
       <LinearGradient
@@ -37,7 +37,7 @@ const TiersSection: React.FC<TiersSectionProps> = ({ tiers }) => {
           {/* Tier Items */}
           <View style={styles.tierItemsContainer}>
           {tiers.map((tier) => (
-            <TierItem key={tier.id} tier={tier} />
+            <TierItem key={tier.id} tier={tier} onIconPress={onTierPress} />
           ))}
           </View>
         </View>
@@ -83,8 +83,9 @@ const styles = StyleSheet.create({
   sectionIconContainer: {
     alignItems: 'center',
     gap: 8,
-    flex: 2,
+    width: 90,
     justifyContent: 'center',
+    marginRight: 10,
   },
   sectionTitle: {
     fontSize: 18,

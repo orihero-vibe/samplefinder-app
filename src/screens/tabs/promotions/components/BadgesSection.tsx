@@ -150,8 +150,9 @@ const styles = StyleSheet.create({
   sectionIconContainer: {
     alignItems: 'center',
     gap: 8,
-    flex: 2,
+    width: 90,
     justifyContent: 'center',
+    marginRight: 10,
   },
   sectionTitle: {
     fontSize: 18,

@@ -18,12 +18,13 @@ const PointsDisplay: React.FC<PointsDisplayProps> = ({ points = 4500 }) => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 24,
   },
   pointsValue: {
     fontSize: 52,
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     color: Colors.brandPurpleBright,
+    marginBottom: 2,
   },
   pointsLabel: {
     fontSize: 17,
