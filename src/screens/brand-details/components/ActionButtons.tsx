@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   actionIconWrap: {
-    width: 22,
+    width: 24,
     height: 22,
     justifyContent: 'center',
     alignItems: 'center',

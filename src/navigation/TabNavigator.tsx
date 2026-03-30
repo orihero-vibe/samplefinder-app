@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.blueColorMode,
   },
   favoritesIconOffset: {
-    marginTop: 2,
+    marginTop: 3,
   },
 });
 
