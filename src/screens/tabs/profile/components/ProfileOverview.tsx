@@ -87,16 +87,17 @@ const ProfileOverview: React.FC<ProfileOverviewProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 0,
+    paddingVertical: 2,
+    marginBottom: 16,
   },
   profilePictureContainer: {
     position: 'relative',
-    marginBottom: 8,
+    marginBottom: 16,
     alignItems: 'center',
   },
   avatarBorder: {
-    width: 92,
-    height: 92,
+    width: 100,
+    height: 100,
     borderRadius: 4,
     overflow: 'hidden',
     justifyContent: 'center',
@@ -107,16 +108,16 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   profileImage: {
-    width: 92,
-    height: 92,
+    width: 100,
+    height: 100,
   },
   profileBadgesContainer: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    top: 64,
-    left: 74,
+    top: 70,
+    left: 80,
     flexWrap: 'wrap',
     width: '45%',
   },
@@ -138,6 +139,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_700Bold',
     color: Colors.pinBlueBlack,
     textAlign: 'center',
+    marginBottom: 4,
   },
   editProfileText: {
     fontSize: 15,

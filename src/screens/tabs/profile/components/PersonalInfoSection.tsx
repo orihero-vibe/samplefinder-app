@@ -47,8 +47,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'column',
     paddingHorizontal: 20,
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: 24,
+    gap: 12,
   },
   infoRow: {
     flexDirection: 'row',
