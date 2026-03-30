@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import TierItem, { Tier } from './TierItem';
 import { SealCheckLightIcon } from '@/components';
@@ -84,8 +83,9 @@ const styles = StyleSheet.create({
   sectionIconContainer: {
     alignItems: 'center',
     gap: 8,
-    flex: 2,
+    width: 90,
     justifyContent: 'center',
+    marginRight: 10,
   },
   sectionTitle: {
     fontSize: 18,
