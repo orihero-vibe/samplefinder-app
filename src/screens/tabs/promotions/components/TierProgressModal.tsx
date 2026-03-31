@@ -19,6 +19,7 @@ import { CloseIcon } from '@/components';
 import { captureAndShareView } from '@/utils/captureAndShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const appDownloadLink = 'https://samplefinder.com';
 
 interface TierProgressModalProps {
   visible: boolean;
@@ -78,9 +79,8 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
 
   const handleShare = async () => {
     try {
-      const message = tier
-        ? `I'm earning the ${tierDisplayParts.main} tier on SampleFinder! Join me in discovering amazing samples.`
-        : `I'm earning rewards on SampleFinder! Join me in discovering amazing samples.`;
+      const tierName = tier?.name ?? 'a new';
+      const message = `I'm earning the ${tierName} tier on SampleFinder! Join me in discovering amazing samples. ${appDownloadLink}`;
       setIsCapturingShare(true);
       // Wait one frame so hidden actions are not included in capture.
       await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
@@ -95,6 +95,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
   const tierNumber = tier?.order ?? 1;
   const tierDisplayParts = getTierDisplayParts(tier?.name ?? 'NewbieSampler');
   const requiredPoints = nextTierRequiredPoints ?? tier?.requiredPoints ?? 100;
+  const maxPointsToDisplay = tier?.requiredPoints ?? requiredPoints;
   const userTotalPoints = totalPoints ?? tier?.currentPoints ?? 0;
   const isMaxTier = !nextTierRequiredPoints && tier?.badgeEarned;
   const progressPoints = progressTotalPoints ?? userTotalPoints;
@@ -178,7 +179,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
           <Text style={styles.pointsMessage}>
             {isMaxTier 
               ? `${userTotalPoints.toLocaleString()} points earned`
-              : `${userTotalPoints.toLocaleString()} / ${requiredPoints.toLocaleString()} points`
+              : `${userTotalPoints.toLocaleString()} / ${maxPointsToDisplay.toLocaleString()} points`
             }
           </Text>
 
