@@ -27,7 +27,7 @@ interface UsePromotionsScreenOptions {
 export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) => {
   const { contentRef, shareContentRef } = options;
   const appDownloadLink = 'https://samplefinder.com';
-  const profileShareMessage = `Check out my Profile on the SampleFinder app! Make your own profile ${appDownloadLink}.`;
+  const achievementShareMessage = `Check out my achievements on the SampleFinder app! Start earning your own rewards ${appDownloadLink}.`;
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('inProgress');
   const referFriendBottomSheetRef = useRef<BottomSheet>(null);
@@ -265,7 +265,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
   const handleSharePress = async () => {
     try {
-      const message = profileShareMessage;
+      const message = achievementShareMessage;
       if (shareContentRef?.current) {
         try {
           await captureAndShareView(shareContentRef, message);
@@ -341,7 +341,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
   const handleShareAchievement = async () => {
     try {
       await Share.share({
-        message: profileShareMessage,
+        message: achievementShareMessage,
       });
     } catch (error) {
       console.error('Error sharing achievement:', error);
