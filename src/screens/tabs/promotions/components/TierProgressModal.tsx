@@ -95,6 +95,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
   const tierNumber = tier?.order ?? 1;
   const tierDisplayParts = getTierDisplayParts(tier?.name ?? 'NewbieSampler');
   const requiredPoints = nextTierRequiredPoints ?? tier?.requiredPoints ?? 100;
+  const maxPointsToDisplay = tier?.requiredPoints ?? requiredPoints;
   const userTotalPoints = totalPoints ?? tier?.currentPoints ?? 0;
   const isMaxTier = !nextTierRequiredPoints && tier?.badgeEarned;
   const progressPoints = progressTotalPoints ?? userTotalPoints;
@@ -178,7 +179,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
           <Text style={styles.pointsMessage}>
             {isMaxTier 
               ? `${userTotalPoints.toLocaleString()} points earned`
-              : `${userTotalPoints.toLocaleString()} / ${requiredPoints.toLocaleString()} points`
+              : `${userTotalPoints.toLocaleString()} / ${maxPointsToDisplay.toLocaleString()} points`
             }
           </Text>
 
