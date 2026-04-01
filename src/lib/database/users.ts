@@ -1,4 +1,5 @@
 import { ID, Query } from 'react-native-appwrite';
+import { USERNAME_TOO_LONG_MESSAGE } from '@/constants/Profile';
 import { tablesDB, DATABASE_ID, USER_PROFILES_TABLE_ID } from './config';
 import type { UserProfileData, UserProfileRow } from './types';
 import type { NotificationPreferences } from '../notifications/types';
@@ -401,9 +402,32 @@ export const updateUserProfile = async (
     console.error('[database.updateUserProfile] Error updating user profile:', error);
     console.error('[database.updateUserProfile] Error message:', error?.message);
     console.error('[database.updateUserProfile] Error code:', error?.code);
-    throw new Error(error.message || 'Failed to update user profile');
+    const rawMessage = typeof error?.message === 'string' ? error.message : '';
+    const friendly = mapUsernameLengthValidationError(rawMessage);
+    throw new Error((friendly ?? rawMessage) || 'Failed to update user profile');
   }
 };
+
+/** Appwrite returns long validation payloads; map username max-length failures to a short message. */
+function mapUsernameLengthValidationError(message: string): string | null {
+  const m = message.toLowerCase();
+  if (!m.includes('username')) {
+    return null;
+  }
+  if (
+    m.includes('32') ||
+    m.includes('no longer than') ||
+    m.includes('longer than') ||
+    m.includes('max length') ||
+    m.includes('maximum length') ||
+    m.includes('exceed') ||
+    m.includes('too long') ||
+    m.includes('attribute_size')
+  ) {
+    return USERNAME_TOO_LONG_MESSAGE;
+  }
+  return null;
+}
 
 /**
  * Check if username already exists (case-insensitive)
