@@ -421,6 +421,61 @@ async function appendNotificationToUserProfiles(
   }
 }
 
+/**
+ * Send a single-user system notification immediately (push + in-app profile entry),
+ * bypassing the scheduled notification table flow.
+ */
+async function sendImmediateSystemNotificationToUser(
+  databases: Databases,
+  messaging: Messaging,
+  profile: UserProfile,
+  title: string,
+  message: string,
+  type: NotificationData['type'],
+  log: (message: string) => void,
+  data?: Record<string, string>
+): Promise<{ success: boolean; sentCount: number }> {
+  if (!profile.authID || typeof profile.authID !== 'string') {
+    throw new Error('Target user profile has no valid authID');
+  }
+
+  const payload: Record<string, string> = {
+    type,
+    ...(data ?? {}),
+  };
+
+  const pushResult = await sendPushNotificationToUsers(
+    messaging,
+    [profile.authID],
+    title,
+    message,
+    log,
+    payload
+  );
+
+  const sentCount = pushResult.sentCount ?? 0;
+  if (sentCount === 0) {
+    throw new Error('Immediate push delivery failed for target user');
+  }
+
+  await appendNotificationToUserProfile(
+    databases,
+    profile.$id,
+    {
+      id: ID.unique(),
+      type,
+      title,
+      message,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      data: payload,
+    },
+    log
+  );
+
+  return { success: true, sentCount };
+}
+
 const PUSH_BATCH_SIZE = 50;
 const PUSH_CONCURRENCY = 3;
 
@@ -1388,29 +1443,16 @@ async function sendBadgeNotification(
   }
 
   const profile = profileResult.documents[0] as unknown as UserProfile;
-  const notificationDoc = await databases.createDocument(
-    DATABASE_ID,
-    NOTIFICATIONS_TABLE_ID,
-    ID.unique(),
-    {
-      title,
-      message: body,
-      type: 'Engagement',
-      targetAudience: 'Targeted',
-      category: 'SystemPush',
-      status: 'Draft',
-      recipients: 0,
-      selectedUserIds: [profile.$id],
-    }
-  );
-
-  const result = await sendNotification(
+  return await sendImmediateSystemNotificationToUser(
     databases,
     messaging,
-    notificationDoc.$id,
-    log
+    profile,
+    title,
+    body,
+    'Engagement',
+    log,
+    { badgeType }
   );
-  return { success: result.success, sentCount: result.recipients };
 }
 
 /**
@@ -1441,29 +1483,19 @@ async function sendTierNotification(
   }
 
   const profile = profileResult.documents[0] as unknown as UserProfile;
-  const notificationDoc = await databases.createDocument(
-    DATABASE_ID,
-    NOTIFICATIONS_TABLE_ID,
-    ID.unique(),
-    {
-      title,
-      message: body,
-      type: 'Engagement',
-      targetAudience: 'Targeted',
-      category: 'SystemPush',
-      status: 'Draft',
-      recipients: 0,
-      selectedUserIds: [profile.$id],
-    }
-  );
-
-  const result = await sendNotification(
+  return await sendImmediateSystemNotificationToUser(
     databases,
     messaging,
-    notificationDoc.$id,
-    log
+    profile,
+    title,
+    body,
+    'Engagement',
+    log,
+    {
+      oldTierName: oldTierName ?? '',
+      newTierName,
+    }
   );
-  return { success: result.success, sentCount: result.recipients };
 }
 
 /**

@@ -9,7 +9,6 @@ import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import { Colors } from '@/constants/Colors';
 import { HistoryRefetchIcon } from '@/icons';
 import {
-  TierEarnedModal,
   TierProgressModal,
   BadgesSection,
   EarnedSection,

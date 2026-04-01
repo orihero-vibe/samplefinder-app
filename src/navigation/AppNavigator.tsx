@@ -15,6 +15,8 @@ import { setNavigationRef, setupNotificationHandlers, getLastNotificationRespons
 import { CustomSplashScreen } from '@/components';
 import BadgeEarnedModal, { type BadgeType } from '@/components/shared/BadgeEarnedModal';
 import { syncSpecialBadgeAwards, type AwardedSpecialBadge } from '@/lib/specialBadgeAwards';
+import TierEarnedModal from '@/screens/tabs/promotions/components/TierEarnedModal';
+import { syncTierAwards, type AwardedTier } from '@/lib/tierAwards';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -37,6 +39,8 @@ const AppNavigator = () => {
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const [pendingSpecialBadgeAwards, setPendingSpecialBadgeAwards] = useState<AwardedSpecialBadge[]>([]);
   const [activeSpecialBadgeAward, setActiveSpecialBadgeAward] = useState<AwardedSpecialBadge | null>(null);
+  const [pendingTierAwards, setPendingTierAwards] = useState<AwardedTier[]>([]);
+  const [activeTierAward, setActiveTierAward] = useState<AwardedTier | null>(null);
 
   useEffect(() => {
     checkAuthSession();
@@ -57,31 +61,57 @@ const AppNavigator = () => {
       isSyncingSpecialBadgesRef.current = true;
       try {
         const newlyAwardedBadges = await syncSpecialBadgeAwards();
+        const newlyAwardedTiers = await syncTierAwards();
+
         if (newlyAwardedBadges.length === 0 || appStateRef.current !== 'active') {
-          return;
-        }
-        setPendingSpecialBadgeAwards((current) => {
-          const queuedTypes = new Set(current.map((badge) => badge.type));
-          const activeType = activeSpecialBadgeAward?.type;
-          const filteredNewBadges = newlyAwardedBadges.filter((badge) => {
-            if (activeType && badge.type === activeType) {
-              return false;
+          // still process tiers below when app is active
+        } else {
+          setPendingSpecialBadgeAwards((current) => {
+            const queuedTypes = new Set(current.map((badge) => badge.type));
+            const activeType = activeSpecialBadgeAward?.type;
+            const filteredNewBadges = newlyAwardedBadges.filter((badge) => {
+              if (activeType && badge.type === activeType) {
+                return false;
+              }
+              if (queuedTypes.has(badge.type)) {
+                return false;
+              }
+              queuedTypes.add(badge.type);
+              return true;
+            });
+
+            if (filteredNewBadges.length === 0) {
+              return current;
             }
-            if (queuedTypes.has(badge.type)) {
-              return false;
-            }
-            queuedTypes.add(badge.type);
-            return true;
+
+            return [...current, ...filteredNewBadges];
           });
+        }
 
-          if (filteredNewBadges.length === 0) {
-            return current;
-          }
+        if (newlyAwardedTiers.length > 0 && appStateRef.current === 'active') {
+          setPendingTierAwards((current) => {
+            const queuedTierIds = new Set(current.map((award) => award.tier.id));
+            const activeTierId = activeTierAward?.tier.id;
+            const filteredNewTierAwards = newlyAwardedTiers.filter((award) => {
+              if (activeTierId && award.tier.id === activeTierId) {
+                return false;
+              }
+              if (queuedTierIds.has(award.tier.id)) {
+                return false;
+              }
+              queuedTierIds.add(award.tier.id);
+              return true;
+            });
 
-          return [...current, ...filteredNewBadges];
-        });
+            if (filteredNewTierAwards.length === 0) {
+              return current;
+            }
+
+            return [...current, ...filteredNewTierAwards];
+          });
+        }
       } catch (error) {
-        console.error('[AppNavigator] Failed syncing special badges:', error);
+        console.error('[AppNavigator] Failed syncing awards:', error);
       } finally {
         isSyncingSpecialBadgesRef.current = false;
       }
@@ -104,7 +134,7 @@ const AppNavigator = () => {
       }
       appStateSubscription.remove();
     };
-  }, [activeSpecialBadgeAward]);
+  }, [activeSpecialBadgeAward, activeTierAward]);
 
   useEffect(() => {
     if (activeSpecialBadgeAward || pendingSpecialBadgeAwards.length === 0) {
@@ -115,6 +145,16 @@ const AppNavigator = () => {
     setActiveSpecialBadgeAward(nextBadgeAward);
     setPendingSpecialBadgeAwards(rest);
   }, [activeSpecialBadgeAward, pendingSpecialBadgeAwards]);
+
+  useEffect(() => {
+    if (activeTierAward || pendingTierAwards.length === 0) {
+      return;
+    }
+
+    const [nextTierAward, ...rest] = pendingTierAwards;
+    setActiveTierAward(nextTierAward);
+    setPendingTierAwards(rest);
+  }, [activeTierAward, pendingTierAwards]);
 
   const checkAuthSession = async () => {
     try {
@@ -158,6 +198,25 @@ const AppNavigator = () => {
     }
   };
 
+  const handleCloseTierModal = async () => {
+    const notificationId = activeTierAward?.notificationId;
+    setActiveTierAward(null);
+
+    if (!notificationId) {
+      return;
+    }
+
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        return;
+      }
+      await markNotificationAsRead(user.$id, notificationId);
+    } catch (error) {
+      console.warn('[AppNavigator] Failed to mark tier notification as read:', error);
+    }
+  };
+
   return (
     <NavigationContainer
       ref={(ref) => {
@@ -185,6 +244,13 @@ const AppNavigator = () => {
         visible={Boolean(activeSpecialBadgeAward)}
         badgeType={activeSpecialBadgeType}
         onClose={handleCloseSpecialBadgeModal}
+      />
+
+      <TierEarnedModal
+        visible={Boolean(activeTierAward)}
+        tier={activeTierAward?.tier}
+        points={activeTierAward?.tier.requiredPoints}
+        onClose={handleCloseTierModal}
       />
     </NavigationContainer>
   );

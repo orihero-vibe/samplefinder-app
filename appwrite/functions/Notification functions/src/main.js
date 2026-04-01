@@ -219,6 +219,34 @@ async function appendNotificationToUserProfiles(databases, userProfileIds, notif
         await appendNotificationToUserProfile(databases, userId, entry, log);
     }
 }
+/**
+ * Send a single-user system notification immediately (push + in-app profile entry),
+ * bypassing the scheduled notification table flow.
+ */
+async function sendImmediateSystemNotificationToUser(databases, messaging, profile, title, message, type, log, data) {
+    if (!profile.authID || typeof profile.authID !== 'string') {
+        throw new Error('Target user profile has no valid authID');
+    }
+    const payload = {
+        type,
+        ...(data ?? {}),
+    };
+    const pushResult = await sendPushNotificationToUsers(messaging, [profile.authID], title, message, log, payload);
+    const sentCount = pushResult.sentCount ?? 0;
+    if (sentCount === 0) {
+        throw new Error('Immediate push delivery failed for target user');
+    }
+    await appendNotificationToUserProfile(databases, profile.$id, {
+        id: ID.unique(),
+        type,
+        title,
+        message,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        data: payload,
+    }, log);
+    return { success: true, sentCount };
+}
 const PUSH_BATCH_SIZE = 50;
 const PUSH_CONCURRENCY = 3;
 /**
@@ -835,18 +863,7 @@ async function sendBadgeNotification(databases, messaging, userId, badgeType, lo
         throw new Error('Badge notification target profile not found');
     }
     const profile = profileResult.documents[0];
-    const notificationDoc = await databases.createDocument(DATABASE_ID, NOTIFICATIONS_TABLE_ID, ID.unique(), {
-        title,
-        message: body,
-        type: 'Engagement',
-        targetAudience: 'Targeted',
-        category: 'SystemPush',
-        status: 'Draft',
-        recipients: 0,
-        selectedUserIds: [profile.$id],
-    });
-    const result = await sendNotification(databases, messaging, notificationDoc.$id, log);
-    return { success: result.success, sentCount: result.recipients };
+    return await sendImmediateSystemNotificationToUser(databases, messaging, profile, title, body, 'Engagement', log, { badgeType });
 }
 /**
  * TIER CHANGED NOTIFICATION
@@ -862,18 +879,10 @@ async function sendTierNotification(databases, messaging, userId, newTierName, o
         throw new Error('Tier notification target profile not found');
     }
     const profile = profileResult.documents[0];
-    const notificationDoc = await databases.createDocument(DATABASE_ID, NOTIFICATIONS_TABLE_ID, ID.unique(), {
-        title,
-        message: body,
-        type: 'Engagement',
-        targetAudience: 'Targeted',
-        category: 'SystemPush',
-        status: 'Draft',
-        recipients: 0,
-        selectedUserIds: [profile.$id],
+    return await sendImmediateSystemNotificationToUser(databases, messaging, profile, title, body, 'Engagement', log, {
+        oldTierName: oldTierName ?? '',
+        newTierName,
     });
-    const result = await sendNotification(databases, messaging, notificationDoc.$id, log);
-    return { success: result.success, sentCount: result.recipients };
 }
 /**
  * Archive events that completed more than 7 days ago (endTime < now - 7 days).
