@@ -1,8 +1,8 @@
 import { type RefObject } from 'react';
-import { Share, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import Share from 'react-native-share';
 
 const DEFAULT_MESSAGE = 'Check this out on SampleFinder!';
 
@@ -45,6 +45,56 @@ async function getAndroidShareUri(uri: string): Promise<string> {
     return contentUri || uri;
   } catch {
     return uri;
+  }
+}
+
+/**
+ * Share screenshot + caption using react-native-share (not RN Share):
+ * Android's built-in Share module only sends text/plain and ignores `url`, so images never reached chat apps.
+ * iOS uses LinkPresentation metadata so caption-like text is associated with the image for apps that support it,
+ * with a standard message+file fallback.
+ */
+async function shareImageWithMessage(fileUri: string, message: string): Promise<void> {
+  const baseOptions = {
+    title: 'SampleFinder',
+    failOnCancel: false as const,
+  };
+
+  if (Platform.OS === 'android') {
+    const contentUri = await getAndroidShareUri(fileUri);
+    await Share.open({
+      ...baseOptions,
+      message,
+      url: contentUri,
+      type: 'image/png',
+    });
+    return;
+  }
+
+  // iOS: Prefer one activity item with LPLinkMetadata.title — some messengers use it as caption when plain
+  // string + file loses the text (e.g. WhatsApp / Telegram).
+  try {
+    await Share.open({
+      ...baseOptions,
+      activityItemSources: [
+        {
+          placeholderItem: { type: 'url', content: fileUri },
+          item: {
+            default: { type: 'url', content: fileUri },
+          },
+          linkMetadata: {
+            title: message,
+          },
+        },
+      ],
+    });
+  } catch {
+    await Share.open({
+      ...baseOptions,
+      message,
+      url: fileUri,
+      type: 'image/png',
+    });
   }
 }
 
@@ -92,48 +142,8 @@ export async function captureAndShareView(
       throw new Error('Failed to capture or resolve image URI');
     }
 
-    const platformShareUri = await getAndroidShareUri(shareUri);
-    const shareOptions: {
-      message: string;
-      url?: string;
-      title?: string;
-      activityItemSources?: Array<Record<string, unknown>>;
-    } = {
-      message,
-      title: 'SampleFinder',
-      url: platformShareUri,
-    };
-
-    // Some iOS targets (notably WhatsApp) can drop text when sharing file URLs.
-    // Supplying explicit activity items improves delivery of both text and image.
-    if (Platform.OS === 'ios') {
-      shareOptions.activityItemSources = [
-        {
-          placeholderItem: { type: 'text', content: message },
-          item: { default: { type: 'text', content: message } },
-        },
-        {
-          placeholderItem: { type: 'url', content: platformShareUri },
-          item: { default: { type: 'url', content: platformShareUri } },
-        },
-      ];
-    }
-    try {
-      await Share.share(shareOptions as any);
-    } catch (shareError) {
-      // Android fallback for devices/apps that fail with file URI in Share API.
-      if (Platform.OS === 'android') {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(shareUri, {
-            mimeType: 'image/png',
-            dialogTitle: 'Share screenshot',
-          });
-          return;
-        }
-      }
-      throw shareError;
-    }
+    const fileUri = toFileUri(shareUri);
+    await shareImageWithMessage(fileUri, message);
   } catch (error) {
     if (isShareCompletionError(error)) {
       return;
