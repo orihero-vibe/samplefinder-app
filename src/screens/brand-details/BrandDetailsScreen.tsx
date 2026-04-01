@@ -23,6 +23,7 @@ import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import ReviewModal from '@/components/shared/ReviewModal';
 import PointsEarnedModal from '@/components/shared/PointsEarnedModal';
 import BadgeEarnedModal from '@/components/shared/BadgeEarnedModal';
+import ConfirmationModal from '@/components/shared/ConfirmationModal';
 import { useBrandDetailsScreen, BrandDetailsData } from './useBrandDetailsScreen';
 import styles from './styles';
 
@@ -63,6 +64,10 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
     handleShare,
     handleAddToCalendar,
     handleAddFavorite,
+    unfavoriteConfirmVisible,
+    handleConfirmUnfavorite,
+    handleCancelUnfavorite,
+    isUnfavoriting,
     handleCodeSubmit,
     handleLeaveReview,
     handleCloseReviewModal,
@@ -212,6 +217,22 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         achievementCount={badgeAchievementCount}
         onClose={handleCloseBadgeModal}
         onShare={handleShareBadge}
+      />
+
+      <ConfirmationModal
+        visible={unfavoriteConfirmVisible}
+        title="Remove from favorites?"
+        description={
+          brand
+            ? `Are you sure you want to unfavorite ${brand.brandName}? You can add this brand back anytime.`
+            : ''
+        }
+        confirmText="Yes, Unfavorite"
+        cancelText="Cancel"
+        onConfirm={handleConfirmUnfavorite}
+        onCancel={handleCancelUnfavorite}
+        isLoading={isUnfavoriting}
+        loadingText="Updating..."
       />
     </View>
   );
