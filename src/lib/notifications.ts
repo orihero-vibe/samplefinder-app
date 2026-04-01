@@ -267,7 +267,7 @@ export const registerPushTarget = async (identifier: string, providerId?: string
       const result = await account.createPushTarget({
         targetId: targetId,
         identifier: identifier,
-        providerId: providerId || '6936f46d003100bd238e', // Use FCM provider ID
+        providerId: providerId || '69cac0a30038ed1a7b92', // Use FCM provider ID
       });
       
       console.log('[notifications] Push target created successfully:', result);
@@ -403,7 +403,7 @@ export const initializePushNotifications = async (): Promise<boolean> => {
     
     // Register native token with Appwrite
     // Use the FCM provider ID from Appwrite (6936f46d003100bd238e)
-    const fcmProviderId = '6936f46d003100bd238e'; // Your Firebase provider ID from Appwrite
+    const fcmProviderId = '69cac0a30038ed1a7b92'; // Your Firebase provider ID from Appwrite
     const result = await registerPushTarget(token, fcmProviderId);
     if (!result) {
       console.warn('[notifications] Could not register push target');

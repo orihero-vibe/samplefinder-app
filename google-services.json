@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "463221579770",
-    "project_id": "samplefimder",
-    "storage_bucket": "samplefimder.firebasestorage.app"
+    "project_number": "569742468290",
+    "project_id": "simplefinder-29ed7",
+    "storage_bucket": "simplefinder-29ed7.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:463221579770:android:c70743658356653a598e43",
+        "mobilesdk_app_id": "1:569742468290:android:8eeaad92d4c17ad95dc75b",
         "android_client_info": {
           "package_name": "com.samplefinder.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAndUnCJnIo4JGboKjKiK6O5B_kVsoRuUQ"
+          "current_key": "AIzaSyCthv9UC5zUfE4Fk0w_wHYp82y0LzGO0hk"
         }
       ],
       "services": {
