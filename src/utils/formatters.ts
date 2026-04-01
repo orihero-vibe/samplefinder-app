@@ -347,7 +347,9 @@ export interface EventWithDateAndTimes {
  * Use this for "Upcoming Events" lists so only future dates and today's not-yet-ended events show.
  */
 export const isEventUpcoming = (event: EventWithDateAndTimes): boolean => {
-  const eventDate = new Date(event.date);
+  // Prefer startTime so calendar day matches display (formatEventDate uses startTime || date).
+  const primary = event.startTime || event.date;
+  const eventDate = new Date(primary);
   const today = new Date();
   eventDate.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);

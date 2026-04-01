@@ -401,6 +401,77 @@
                     "min": 0,
                     "max": 1000000000,
                     "default": 0
+                },
+                {
+                    "key": "birthdayNotifYear",
+                    "type": "integer",
+                    "required": false,
+                    "array": false,
+                    "min": 1970,
+                    "max": 2100,
+                    "default": null
+                },
+                {
+                    "key": "anniversaryNotifYear",
+                    "type": "integer",
+                    "required": false,
+                    "array": false,
+                    "min": 1970,
+                    "max": 2100,
+                    "default": null
+                },
+                {
+                    "key": "lastInactivityNotifAt",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false,
+                    "format": "",
+                    "default": null
+                },
+                {
+                    "key": "nearbyFavoriteNotifiedEventIds",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 10000,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "zipGeoLat",
+                    "type": "double",
+                    "required": false,
+                    "array": false,
+                    "min": -90,
+                    "max": 90,
+                    "default": null
+                },
+                {
+                    "key": "zipGeoLng",
+                    "type": "double",
+                    "required": false,
+                    "array": false,
+                    "min": -180,
+                    "max": 180,
+                    "default": null
+                },
+                {
+                    "key": "homeLatitude",
+                    "type": "double",
+                    "required": false,
+                    "array": false,
+                    "min": -90,
+                    "max": 90,
+                    "default": null
+                },
+                {
+                    "key": "homeLongitude",
+                    "type": "double",
+                    "required": false,
+                    "array": false,
+                    "min": -180,
+                    "max": 180,
+                    "default": null
                 }
             ],
             "indexes": []
