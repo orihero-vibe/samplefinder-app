@@ -34,6 +34,20 @@ function toFileUri(uri: string): string {
   return uri.startsWith('file://') ? uri : `file://${uri}`;
 }
 
+async function getAndroidShareUri(uri: string): Promise<string> {
+  if (Platform.OS !== 'android') {
+    return uri;
+  }
+
+  try {
+    const path = uri.replace(/^file:\/\//, '');
+    const contentUri = await FileSystem.getContentUriAsync(path);
+    return contentUri || uri;
+  } catch {
+    return uri;
+  }
+}
+
 /**
  * Captures the given view as an image and opens the native share sheet
  * with the image and optional message.
@@ -78,13 +92,34 @@ export async function captureAndShareView(
       throw new Error('Failed to capture or resolve image URI');
     }
 
-    const shareOptions: { message: string; url?: string; title?: string } = {
+    const platformShareUri = await getAndroidShareUri(shareUri);
+    const shareOptions: {
+      message: string;
+      url?: string;
+      title?: string;
+      activityItemSources?: Array<Record<string, unknown>>;
+    } = {
       message,
       title: 'SampleFinder',
-      url: shareUri,
+      url: platformShareUri,
     };
+
+    // Some iOS targets (notably WhatsApp) can drop text when sharing file URLs.
+    // Supplying explicit activity items improves delivery of both text and image.
+    if (Platform.OS === 'ios') {
+      shareOptions.activityItemSources = [
+        {
+          placeholderItem: { type: 'text', content: message },
+          item: { default: { type: 'text', content: message } },
+        },
+        {
+          placeholderItem: { type: 'url', content: platformShareUri },
+          item: { default: { type: 'url', content: platformShareUri } },
+        },
+      ];
+    }
     try {
-      await Share.share(shareOptions);
+      await Share.share(shareOptions as any);
     } catch (shareError) {
       // Android fallback for devices/apps that fail with file URI in Share API.
       if (Platform.OS === 'android') {
