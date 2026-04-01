@@ -80,6 +80,24 @@ const hasSpecialBadgeNotification = (
   });
 };
 
+const shouldResetShownBadge = (
+  badgeType: SpecialBadgeType,
+  currentBadgeState: SpecialBadgeState,
+  lastBadgeState: SpecialBadgeState,
+  shownSpecialBadges: SpecialBadgeState
+): boolean => {
+  if (!shownSpecialBadges[badgeType]) {
+    return false;
+  }
+
+  // Admin toggled badge off after previously being on.
+  if (!currentBadgeState[badgeType] && lastBadgeState[badgeType]) {
+    return true;
+  }
+
+  return false;
+};
+
 const readLastBadgeState = async (authId: string): Promise<SpecialBadgeState> => {
   try {
     const raw = await AsyncStorage.getItem(getBadgeStateStorageKey(authId));
@@ -136,6 +154,18 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
     ambassador: toBoolean(profile.isAmbassador),
     influencer: toBoolean(profile.isInfluencer),
   };
+
+  if (
+    shouldResetShownBadge('ambassador', currentBadgeState, lastBadgeState, shownSpecialBadges)
+  ) {
+    shownSpecialBadges.ambassador = false;
+  }
+  if (
+    shouldResetShownBadge('influencer', currentBadgeState, lastBadgeState, shownSpecialBadges)
+  ) {
+    shownSpecialBadges.influencer = false;
+  }
+
   let updatedTotalPoints = Number(profile.totalPoints || 0);
   const newlyAwardedBadges: AwardedSpecialBadge[] = [];
 
