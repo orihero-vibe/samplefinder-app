@@ -14,6 +14,7 @@ import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import { USERNAME_MAX_LENGTH } from '@/constants/Profile';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { useEditProfileScreen } from './profile/edit-profile/useEditProfileScreen';
@@ -197,6 +198,7 @@ const EditProfileScreen = () => {
               onChangeText={setUsername}
               type="text"
               placeholder="Enter username"
+              maxLength={USERNAME_MAX_LENGTH}
               labelColor={Colors.blueColorMode}
               inputBorderColor={Colors.blueColorMode}
               error={!!validationErrors.username}

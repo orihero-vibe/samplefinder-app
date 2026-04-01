@@ -6,6 +6,7 @@ import { getCurrentUser, deleteAccount } from '@/lib/auth';
 import { getUserProfile, updateUserProfile, UserProfileRow, checkUsernameExistsForDifferentUser, checkPhoneNumberExistsForDifferentUser } from '@/lib/database';
 import { updateEmail, updatePassword } from '@/lib/auth';
 import { uploadAvatar, deleteAvatar, extractFileIdFromUrl } from '@/lib/storage';
+import { USERNAME_MAX_LENGTH, USERNAME_TOO_LONG_MESSAGE } from '@/constants/Profile';
 
 export const useEditProfileScreen = () => {
   const navigation = useNavigation();
@@ -111,9 +112,28 @@ export const useEditProfileScreen = () => {
       return;
     }
 
+    if (trimmedUsername.length > USERNAME_MAX_LENGTH) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        username: USERNAME_TOO_LONG_MESSAGE,
+      }));
+      return;
+    }
+
+    setValidationErrors((prev) => {
+      if (prev.username === USERNAME_TOO_LONG_MESSAGE) {
+        const { username: _, ...rest } = prev;
+        return rest;
+      }
+      return prev;
+    });
+
     // Debounce the username check
     usernameCheckTimeoutRef.current = setTimeout(async () => {
       try {
+        if (username.trim().length > USERNAME_MAX_LENGTH) {
+          return;
+        }
         setIsCheckingUsername(true);
         const exists = await checkUsernameExistsForDifferentUser(trimmedUsername, profile.$id);
         
@@ -216,6 +236,12 @@ export const useEditProfileScreen = () => {
     
     if (!username.trim()) {
       return 'Username is required';
+    }
+
+    if (username.trim().length > USERNAME_MAX_LENGTH) {
+      newValidationErrors.username = USERNAME_TOO_LONG_MESSAGE;
+      setValidationErrors((prev) => ({ ...prev, ...newValidationErrors }));
+      return USERNAME_TOO_LONG_MESSAGE;
     }
     
     // Check if username is taken

@@ -116,6 +116,9 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
   const [badgeType, setBadgeType] = useState<'events' | 'reviews'>('events');
   const [badgeNumber, setBadgeNumber] = useState(0);
   const [badgeAchievementCount, setBadgeAchievementCount] = useState(0);
+
+  const [unfavoriteConfirmVisible, setUnfavoriteConfirmVisible] = useState(false);
+  const [isUnfavoriting, setIsUnfavoriting] = useState(false);
   
   
   // Initialize calendar state from store
@@ -401,36 +404,45 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
 
   const handleAddFavorite = async () => {
     if (!brand?.clientId) return;
-    
+
+    if (isFavorite) {
+      setUnfavoriteConfirmVisible(true);
+      return;
+    }
+
     try {
-      const isCurrentlyFavorite = isFavorite;
-      
-      // Toggle in local store first (optimistic update for immediate UI feedback)
-      if (isCurrentlyFavorite) {
-        removeFavoriteFromStore(brand.clientId);
-      } else {
-        addFavoriteToStore(brand.clientId);
-      }
-      
-      // Sync with user profile in background
+      addFavoriteToStore(brand.clientId);
       const authUser = await getCurrentUser();
       if (authUser) {
-        if (isCurrentlyFavorite) {
-          // Remove from favorites
-          await removeFavoriteBrand(authUser.$id, brand.clientId);
-        } else {
-          // Add to favorites
-          await addFavoriteBrand(authUser.$id, brand.clientId);
-        }
+        await addFavoriteBrand(authUser.$id, brand.clientId);
       }
     } catch (error) {
       console.error('Error syncing favorite with user profile:', error);
-      // Revert optimistic update if database sync fails
-      if (isFavorite) {
-        addFavoriteToStore(brand.clientId);
-      } else {
-        removeFavoriteFromStore(brand.clientId);
+      removeFavoriteFromStore(brand.clientId);
+    }
+  };
+
+  const handleCancelUnfavorite = () => {
+    if (isUnfavoriting) return;
+    setUnfavoriteConfirmVisible(false);
+  };
+
+  const handleConfirmUnfavorite = async () => {
+    if (!brand?.clientId) return;
+
+    setIsUnfavoriting(true);
+    try {
+      removeFavoriteFromStore(brand.clientId);
+      const authUser = await getCurrentUser();
+      if (authUser) {
+        await removeFavoriteBrand(authUser.$id, brand.clientId);
       }
+      setUnfavoriteConfirmVisible(false);
+    } catch (error) {
+      console.error('Error syncing favorite with user profile:', error);
+      addFavoriteToStore(brand.clientId);
+    } finally {
+      setIsUnfavoriting(false);
     }
   };
 
@@ -678,6 +690,10 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
     handleShare,
     handleAddToCalendar,
     handleAddFavorite,
+    unfavoriteConfirmVisible,
+    handleConfirmUnfavorite,
+    handleCancelUnfavorite,
+    isUnfavoriting,
     handleCodeSubmit,
     handleLeaveReview,
     handleCloseReviewModal,
