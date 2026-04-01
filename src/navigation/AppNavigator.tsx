@@ -37,10 +37,20 @@ const AppNavigator = () => {
   const navigationRef = useRef<any>(null);
   const isSyncingSpecialBadgesRef = useRef(false);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const activeSpecialBadgeAwardRef = useRef<AwardedSpecialBadge | null>(null);
+  const activeTierAwardRef = useRef<AwardedTier | null>(null);
   const [pendingSpecialBadgeAwards, setPendingSpecialBadgeAwards] = useState<AwardedSpecialBadge[]>([]);
   const [activeSpecialBadgeAward, setActiveSpecialBadgeAward] = useState<AwardedSpecialBadge | null>(null);
   const [pendingTierAwards, setPendingTierAwards] = useState<AwardedTier[]>([]);
   const [activeTierAward, setActiveTierAward] = useState<AwardedTier | null>(null);
+
+  useEffect(() => {
+    activeSpecialBadgeAwardRef.current = activeSpecialBadgeAward;
+  }, [activeSpecialBadgeAward]);
+
+  useEffect(() => {
+    activeTierAwardRef.current = activeTierAward;
+  }, [activeTierAward]);
 
   useEffect(() => {
     checkAuthSession();
@@ -54,6 +64,9 @@ const AppNavigator = () => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const runSpecialBadgeSync = async () => {
+      if (appStateRef.current !== 'active') {
+        return;
+      }
       if (isSyncingSpecialBadgesRef.current) {
         return;
       }
@@ -63,12 +76,10 @@ const AppNavigator = () => {
         const newlyAwardedBadges = await syncSpecialBadgeAwards();
         const newlyAwardedTiers = await syncTierAwards();
 
-        if (newlyAwardedBadges.length === 0 || appStateRef.current !== 'active') {
-          // still process tiers below when app is active
-        } else {
+        if (newlyAwardedBadges.length > 0) {
           setPendingSpecialBadgeAwards((current) => {
             const queuedTypes = new Set(current.map((badge) => badge.type));
-            const activeType = activeSpecialBadgeAward?.type;
+            const activeType = activeSpecialBadgeAwardRef.current?.type;
             const filteredNewBadges = newlyAwardedBadges.filter((badge) => {
               if (activeType && badge.type === activeType) {
                 return false;
@@ -88,10 +99,10 @@ const AppNavigator = () => {
           });
         }
 
-        if (newlyAwardedTiers.length > 0 && appStateRef.current === 'active') {
+        if (newlyAwardedTiers.length > 0) {
           setPendingTierAwards((current) => {
             const queuedTierIds = new Set(current.map((award) => award.tier.id));
-            const activeTierId = activeTierAward?.tier.id;
+            const activeTierId = activeTierAwardRef.current?.tier.id;
             const filteredNewTierAwards = newlyAwardedTiers.filter((award) => {
               if (activeTierId && award.tier.id === activeTierId) {
                 return false;
@@ -134,7 +145,7 @@ const AppNavigator = () => {
       }
       appStateSubscription.remove();
     };
-  }, [activeSpecialBadgeAward, activeTierAward]);
+  }, []);
 
   useEffect(() => {
     if (activeSpecialBadgeAward || pendingSpecialBadgeAwards.length === 0) {
@@ -218,28 +229,34 @@ const AppNavigator = () => {
   };
 
   return (
-    <NavigationContainer
-      ref={(ref) => {
-        navigationRef.current = ref;
-        setNavigationRef(ref);
-      }}
-    >
-      <Stack.Navigator
-        initialRouteName={initialRouteName}
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: '#2D1B69' },
+    <>
+      <NavigationContainer
+        ref={(ref) => {
+          navigationRef.current = ref;
+          setNavigationRef(ref);
         }}
       >
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen name="NotificationSetup" component={NotificationSetupScreen} />
-        <Stack.Screen name="ConfirmAccount" component={ConfirmAccountScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
-      </Stack.Navigator>
+        <Stack.Navigator
+          initialRouteName={initialRouteName}
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#2D1B69' },
+          }}
+        >
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="NotificationSetup" component={NotificationSetupScreen} />
+          <Stack.Screen name="ConfirmAccount" component={ConfirmAccountScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+        </Stack.Navigator>
+      </NavigationContainer>
 
+      {/*
+        Render award modals outside NavigationContainer so RN Modal sits above the native stack
+        (inside the container they can be hidden behind react-native-screens on device).
+      */}
       <BadgeEarnedModal
         visible={Boolean(activeSpecialBadgeAward)}
         badgeType={activeSpecialBadgeType}
@@ -252,7 +269,7 @@ const AppNavigator = () => {
         points={activeTierAward?.tier.requiredPoints}
         onClose={handleCloseTierModal}
       />
-    </NavigationContainer>
+    </>
   );
 };
 
