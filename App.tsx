@@ -35,6 +35,7 @@ import { AchievementModal } from '@/screens/tabs/promotions/components';
 import type { Tier } from '@/screens/tabs/promotions/components';
 import { AppState, AppStateStatus } from 'react-native';
 import { getUserCurrentTier } from '@/lib/database/tiers';
+import { isTriviaTuesdayEastern } from '@/lib/triviaSchedule';
 import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
@@ -157,6 +158,7 @@ export default function App() {
         setUserProfileId(profile.$id); // for submit handler
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
+        if (!isTriviaTuesdayEastern()) return;
 
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
@@ -199,6 +201,7 @@ export default function App() {
         if (cancelled || !profile) return;
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
+        if (!isTriviaTuesdayEastern()) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
           setShowTrivia(true);
@@ -224,6 +227,7 @@ export default function App() {
       try {
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(userProfileId));
         if (cancelled) return;
+        if (!isTriviaTuesdayEastern()) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
           setShowTrivia(true);
@@ -245,6 +249,12 @@ export default function App() {
       if (nextState !== 'active') return;
 
       try {
+        if (!isTriviaTuesdayEastern()) {
+          setTriviaQueue([]);
+          setShowTrivia(false);
+          return;
+        }
+
         const user = await getCurrentUser();
         if (!user) return;
         const profile = await getUserProfile(user.$id);
@@ -276,6 +286,18 @@ export default function App() {
 
     return () => subscription.remove();
   }, []);
+
+  // Close trivia if Eastern Tuesday ends while the app stays open (e.g. after midnight Wed).
+  useEffect(() => {
+    if (!appIsReady) return;
+    const id = setInterval(() => {
+      if (!isTriviaTuesdayEastern() && triviaQueueRef.current.length > 0) {
+        setTriviaQueue([]);
+        setShowTrivia(false);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [appIsReady]);
 
   // Show Tier 1 modal for newly signed up users (after email verification)
   useEffect(() => {
@@ -443,15 +465,17 @@ export default function App() {
     }
   };
 
+  const triviaDayActive = isTriviaTuesdayEastern();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
           <AppNavigator />
-          {currentQuestion && (
+          {triviaDayActive && currentQuestion && (
             <TriviaModal
               key={currentQuestion.$id}
-              visible={showTrivia}
+              visible={showTrivia && triviaDayActive}
               question={currentQuestion}
               onClose={handleTriviaClose}
               onSubmitAnswer={handleSubmitAnswer}

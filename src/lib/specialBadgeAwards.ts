@@ -48,11 +48,20 @@ const parseBadgeState = (rawState: Partial<SpecialBadgeState> | null | undefined
 };
 
 const parseNotifications = (notificationsRaw: unknown): UserNotification[] => {
-  if (!Array.isArray(notificationsRaw)) {
-    return [];
+  let list: unknown[] = [];
+
+  if (Array.isArray(notificationsRaw)) {
+    list = notificationsRaw;
+  } else if (typeof notificationsRaw === 'string') {
+    try {
+      const parsed = JSON.parse(notificationsRaw) as unknown;
+      list = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      list = [];
+    }
   }
 
-  return notificationsRaw
+  return list
     .map((entry) => {
       if (typeof entry === 'string') {
         try {
@@ -136,6 +145,18 @@ const writeShownSpecialBadges = async (authId: string, state: SpecialBadgeState)
   }
 };
 
+/**
+ * Persist that the user dismissed the identifier-badge popup (backup if sync storage failed).
+ */
+export const markSpecialBadgePopupSeen = async (
+  authId: string,
+  badgeType: SpecialBadgeType
+): Promise<void> => {
+  const shown = await readShownSpecialBadges(authId);
+  shown[badgeType] = true;
+  await writeShownSpecialBadges(authId, shown);
+};
+
 export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> => {
   const user = await getCurrentUser();
   if (!user) {
@@ -175,6 +196,18 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
     }
 
     if (shownSpecialBadges[badgeType]) {
+      return;
+    }
+
+    // Already synced this badge as enabled in a prior session — do not re-award or re-popup
+    // when notification history is missing or unparsable (fixes repeat popups on login).
+    if (lastBadgeState[badgeType] && currentBadgeState[badgeType]) {
+      shownSpecialBadges[badgeType] = true;
+      return;
+    }
+
+    if (hasSpecialBadgeNotification(existingNotifications, badgeType)) {
+      shownSpecialBadges[badgeType] = true;
       return;
     }
 
