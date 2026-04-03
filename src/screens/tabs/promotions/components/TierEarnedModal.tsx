@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,8 +16,10 @@ import { SmallBlueStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
 import { Tier } from './TierItem';
 import { CloseIcon } from '@/components';
+import { captureAndShareView } from '@/utils/captureAndShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const appDownloadLink = 'https://samplefinder.com';
 
 interface TierEarnedModalProps {
   visible: boolean;
@@ -36,9 +38,11 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
   onClose,
   onShare,
 }) => {
+  const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [imageError, setImageError] = useState(false);
+  const [isCapturingShare, setIsCapturingShare] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -59,22 +63,35 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.9);
       setImageError(false);
+      setIsCapturingShare(false);
     }
   }, [visible]);
 
+  const tierNumber = tier?.order ?? 1;
+
   const handleShare = async () => {
     try {
-      if (onShare) {
-        await onShare();
+      const tierLabel = tier?.name ?? 'a new tier';
+      const shareMessage =
+        tierNumber === 1
+          ? `I just joined SampleFinder and earned ${points} points! Discover samples near you. ${appDownloadLink}`
+          : `I just reached ${tierLabel} on SampleFinder! Join me in discovering amazing samples. ${appDownloadLink}`;
+      setIsCapturingShare(true);
+      // Wait one frame so close/share are not included in capture.
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+      if (modalRef.current) {
+        await captureAndShareView(modalRef, shareMessage);
       }
+      onShare?.();
       onClose();
     } catch (error) {
       console.error('Error in handleShare:', error);
       onClose();
+    } finally {
+      setIsCapturingShare(false);
     }
   };
 
-  const tierNumber = tier?.order ?? 1;
   const tierDisplayParts = getTierDisplayParts(tier?.name ?? 'NewbieSampler');
   const requiredPoints = tier?.requiredPoints ?? 100;
 
@@ -125,6 +142,8 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
     >
       <View style={styles.overlay}>
         <Animated.View
+          ref={modalRef}
+          collapsable={false}
           style={[
             styles.modalContainer,
             {
@@ -133,11 +152,13 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
             },
           ]}
         >
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <View style={styles.closeButtonCircle}>
-             <CloseIcon/>
-            </View>
-          </TouchableOpacity>
+          {!isCapturingShare && (
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <View style={styles.closeButtonCircle}>
+                <CloseIcon />
+              </View>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.badgeContainer}>
             {tier?.imageURL && !imageError ? (
@@ -180,13 +201,15 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
             </Text>
           </View>
 
-          <CustomButton
-            title="Share"
-            onPress={handleShare}
-            variant="dark"
-            size="medium"
-            style={styles.actionButton}
-          />
+          {!isCapturingShare && (
+            <CustomButton
+              title="Share"
+              onPress={handleShare}
+              variant="dark"
+              size="medium"
+              style={styles.actionButton}
+            />
+          )}
         </Animated.View>
       </View>
     </Modal>
