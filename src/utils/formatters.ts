@@ -20,16 +20,17 @@ export const getTierEarnedHeadline = (tierOrder: number): string =>
   tierOrder === 1 ? 'Thanks for Joining!' : "You've Leveled Up!";
 
 /**
- * Body copy for tier-earned popups. Use `displayPoints` for tier 1 (e.g. total points);
+ * Body copy for tier-earned popups.
+ * Tier 1 copy is fixed to 100 points per product requirement.
  * `requiredPoints` is the threshold for the tier reached (tiers 2–5).
  */
 export const getTierEarnedPointsMessage = (
   tierOrder: number,
   requiredPoints: number,
-  displayPoints: number
+  _displayPoints: number
 ): string => {
   if (tierOrder === 1) {
-    return `You earned ${displayPoints.toLocaleString()} points with SampleFinder, just for signing up!`;
+    return 'You earned 100 points with SampleFinder, just for signing up!';
   }
   return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, unlocking your new tier!`;
 };

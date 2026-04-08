@@ -341,7 +341,7 @@ const AppNavigator = () => {
         tier={activeTierAward?.tier}
         points={
           (activeTierAward?.tier.order ?? 1) === 1
-            ? (activeTierAward?.userTotalPoints ?? activeTierAward?.tier.requiredPoints ?? 0)
+            ? 100
             : (activeTierAward?.tier.requiredPoints ?? 0)
         }
         onClose={handleCloseTierModal}
