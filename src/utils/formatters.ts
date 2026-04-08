@@ -288,8 +288,13 @@ export const parseEventDateTime = (
 /** Returns IANA zone if valid for Intl, otherwise undefined (fall back to device local). */
 export const resolveEventTimeZone = (timeZone?: string | null): string | undefined => {
   if (timeZone == null || typeof timeZone !== 'string') return undefined;
-  const trimmed = timeZone.trim();
+  let trimmed = timeZone.trim();
   if (!trimmed) return undefined;
+  // Common CMS/API typos and legacy aliases so Newfoundland resolves to America/St_Johns (NT display).
+  const lower = trimmed.toLowerCase();
+  if (lower === 'canada/newfoundland' || /^america\/st[\s_]johns$/i.test(trimmed)) {
+    trimmed = 'America/St_Johns';
+  }
   try {
     Intl.DateTimeFormat(undefined, { timeZone: trimmed }).format(new Date());
     return trimmed;
@@ -373,8 +378,13 @@ const EVENT_TIMEZONE_DISPLAY_ABBR: Record<string, string> = {
   'America/St_Johns': 'NT',
 };
 
+/** True when Intl emits an offset label (e.g. GMT-2:30 or GMT -2:30) instead of a zone tag. */
 function isIntlTimeZoneOffsetStyle(value: string): boolean {
-  return /^GMT[+-]/i.test(value);
+  const v = value.trim();
+  if (/^GMT[+-]/i.test(v)) return true;
+  // Some ICU builds insert a space: "GMT -2:30" — must not treat as a display abbreviation.
+  if (/^GMT\s*[-+]\s*\d/.test(v)) return true;
+  return false;
 }
 
 /** True when `shortGeneric` looks like a compact zone tag (ET, CT, HST), not a phrase or offset. */
