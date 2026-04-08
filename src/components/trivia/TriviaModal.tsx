@@ -121,12 +121,12 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       const result = await onSubmitAnswer(index);
       
       if (result.success) {
-        // Derive isCorrect robustly: API may omit it or send wrong type; pointsAwarded > 0 implies correct
+        // Trust server outcome: isCorrect and/or points awarded. correctAnswerIndex is for which option to highlight on loss.
         const points = result.pointsAwarded ?? 0;
         const apiCorrectIndex = (() => {
           if (result.correctAnswerIndex == null) return null;
           const n = Number(result.correctAnswerIndex);
-          return Number.isFinite(n) ? n : null;
+          return Number.isFinite(n) ? Math.round(n) : null;
         })();
         const apiIsCorrectRaw = result.isCorrect as unknown;
         const apiIsCorrect =
@@ -134,14 +134,17 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
 
         const isCorrect =
           apiIsCorrect ||
-          (points > 0) ||
+          points > 0 ||
           (apiCorrectIndex != null && apiCorrectIndex === index);
 
-        const correctIndex = apiCorrectIndex ?? (isCorrect ? index : null);
-        
+        // On a win, always highlight the option the user chose so UI never shows "correct" with a different row marked green.
+        const correctIndexForHighlight = isCorrect
+          ? index
+          : apiCorrectIndex;
+
         setAnswerState(isCorrect ? 'correct' : 'incorrect');
         setPointsAwarded(points);
-        setCorrectAnswerIndex(correctIndex);
+        setCorrectAnswerIndex(correctIndexForHighlight);
         
         if (onAnswerResult) {
           onAnswerResult(isCorrect, points);

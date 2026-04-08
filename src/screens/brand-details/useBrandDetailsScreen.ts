@@ -37,6 +37,8 @@ export interface BrandDetailsData {
   storeName: string;
   date: string; // e.g., "Aug 1, 2025"
   time: string; // e.g., "3 - 5 pm"
+  /** Venue / location display name from events (locations table) */
+  locationName?: string | null;
   address: {
     street: string;
     city: string;
@@ -376,20 +378,28 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
         }
       }
       
-      // Schedule push notification reminders (24h and 1h before event)
+      // Schedule push reminder side-effects without failing the primary "save event" action.
       if (eventData?.startTime) {
-        const eventStartDate = new Date(eventData.startTime);
-        const eventLocation = eventData.city ? `${eventData.address}, ${eventData.city}` : undefined;
-        
-        const scheduledReminders = await scheduleEventReminders(
-          brand.id,
-          eventStartDate,
-          eventTitle,
-          eventLocation
-        );
-        
-        if (scheduledReminders && Object.keys(scheduledReminders).length > 0) {
-          console.log('[handleAddToCalendar] Scheduled reminders:', scheduledReminders);
+        try {
+          const eventStartDate = new Date(eventData.startTime);
+          if (isNaN(eventStartDate.getTime())) {
+            console.warn('[handleAddToCalendar] Skipping reminders due to invalid event start time:', eventData.startTime);
+          } else {
+            const eventLocation = eventData.city ? `${eventData.address}, ${eventData.city}` : undefined;
+
+            const scheduledReminders = await scheduleEventReminders(
+              brand.id,
+              eventStartDate,
+              eventTitle,
+              eventLocation
+            );
+
+            if (scheduledReminders && Object.keys(scheduledReminders).length > 0) {
+              console.log('[handleAddToCalendar] Scheduled reminders:', scheduledReminders);
+            }
+          }
+        } catch (reminderErr) {
+          console.warn('[handleAddToCalendar] Failed to schedule reminders:', reminderErr);
         }
       }
     } catch (error) {

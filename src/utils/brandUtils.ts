@@ -135,6 +135,11 @@ export const convertEventToBrandDetails = (
     (client?.description ?? client?.brandDescription) ?? event.brandDescription ?? null;
 
   // Create BrandDetailsData
+  const locationName =
+    typeof event.locationName === 'string' && event.locationName.trim()
+      ? event.locationName.trim()
+      : null;
+
   const brandDetails: BrandDetailsData = {
     id: event.$id,
     clientId, // Brand/Client ID for favorites
@@ -142,6 +147,7 @@ export const convertEventToBrandDetails = (
     storeName,
     date: formattedDate,
     time: formattedTime,
+    locationName,
     address,
     products,
     eventInfo: event.eventInfo || '',

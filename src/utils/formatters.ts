@@ -20,16 +20,17 @@ export const getTierEarnedHeadline = (tierOrder: number): string =>
   tierOrder === 1 ? 'Thanks for Joining!' : "You've Leveled Up!";
 
 /**
- * Body copy for tier-earned popups. Use `displayPoints` for tier 1 (e.g. total points);
+ * Body copy for tier-earned popups.
+ * Tier 1 copy is fixed to 100 points per product requirement.
  * `requiredPoints` is the threshold for the tier reached (tiers 2–5).
  */
 export const getTierEarnedPointsMessage = (
   tierOrder: number,
   requiredPoints: number,
-  displayPoints: number
+  _displayPoints: number
 ): string => {
   if (tierOrder === 1) {
-    return `You earned ${displayPoints.toLocaleString()} points with SampleFinder, just for signing up!`;
+    return 'You earned 100 points with SampleFinder, just for signing up!';
   }
   return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, unlocking your new tier!`;
 };
@@ -287,8 +288,13 @@ export const parseEventDateTime = (
 /** Returns IANA zone if valid for Intl, otherwise undefined (fall back to device local). */
 export const resolveEventTimeZone = (timeZone?: string | null): string | undefined => {
   if (timeZone == null || typeof timeZone !== 'string') return undefined;
-  const trimmed = timeZone.trim();
+  let trimmed = timeZone.trim();
   if (!trimmed) return undefined;
+  // Common CMS/API typos and legacy aliases so Newfoundland resolves to America/St_Johns (NT display).
+  const lower = trimmed.toLowerCase();
+  if (lower === 'canada/newfoundland' || /^america\/st[\s_]johns$/i.test(trimmed)) {
+    trimmed = 'America/St_Johns';
+  }
   try {
     Intl.DateTimeFormat(undefined, { timeZone: trimmed }).format(new Date());
     return trimmed;
@@ -364,12 +370,67 @@ function formatWallClockInZone(date: Date, timeZone?: string): string {
   return `${hour}:${minute} ${dayPeriod}`;
 }
 
+/**
+ * IANA zones where Intl `short`/`shortGeneric` do not match product copy (stable abbreviations, not offsets).
+ * e.g. Newfoundland uses GMT-2:30 with `short`; `shortGeneric` is a long label, not "NT".
+ */
+const EVENT_TIMEZONE_DISPLAY_ABBR: Record<string, string> = {
+  'America/St_Johns': 'NT',
+};
+
+/** True when Intl emits an offset label (e.g. GMT-2:30 or GMT -2:30) instead of a zone tag. */
+function isIntlTimeZoneOffsetStyle(value: string): boolean {
+  const v = value.trim();
+  if (/^GMT[+-]/i.test(v)) return true;
+  // Some ICU builds insert a space: "GMT -2:30" — must not treat as a display abbreviation.
+  if (/^GMT\s*[-+]\s*\d/.test(v)) return true;
+  return false;
+}
+
+/** True when `shortGeneric` looks like a compact zone tag (ET, CT, HST), not a phrase or offset. */
+function isCompactTimeZoneAbbrev(value: string): boolean {
+  if (!value || isIntlTimeZoneOffsetStyle(value)) return false;
+  if (value.includes(' ')) return false;
+  return value.length <= 6;
+}
+
+/**
+ * Stable display abbreviations: ET not EDT, CT not CDT, NT not GMT-2:30.
+ * Prefers `shortGeneric` (Eastern Time → "ET"); falls back to `short` when generic is unusable.
+ */
 function shortTimeZoneName(date: Date, iana: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const fixed = EVENT_TIMEZONE_DISPLAY_ABBR[iana];
+  if (fixed) return fixed;
+
+  const shortGenericOpts: Intl.DateTimeFormatOptions = {
     timeZone: iana,
-    timeZoneName: 'short',
-  }).formatToParts(date);
-  return parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    timeZoneName: 'shortGeneric',
+  };
+
+  try {
+    const genericParts = new Intl.DateTimeFormat('en-US', shortGenericOpts).formatToParts(date);
+    const generic = genericParts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    if (generic && isCompactTimeZoneAbbrev(generic)) {
+      return generic;
+    }
+  } catch {
+    // Hermes / older ICU: fall through
+  }
+
+  try {
+    const shortParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: iana,
+      timeZoneName: 'short',
+    }).formatToParts(date);
+    const shortName = shortParts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    if (shortName && !isIntlTimeZoneOffsetStyle(shortName)) {
+      return shortName;
+    }
+  } catch {
+    // ignore
+  }
+
+  return '';
 }
 
 /**
@@ -397,7 +458,7 @@ export const formatEventDate = (isoDate: string, timeZone?: string | null): stri
 };
 
 /**
- * Formats ISO datetimes to a wall-clock range in the event zone, e.g. "3 - 5 pm CST" when timeZone is set.
+ * Formats ISO datetimes to a wall-clock range in the event zone, e.g. "3 - 5 pm CT" when timeZone is set (generic abbreviations: ET, CT, not EDT/CDT).
  */
 export const formatEventTime = (startTime: string, endTime: string, timeZone?: string | null): string => {
   if (!startTime || !endTime) return '';

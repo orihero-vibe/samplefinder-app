@@ -77,21 +77,36 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
           <View style={styles.eventDetails}>
             <Text
               style={styles.brandName}
-              {...(event.location.trim().split(/\s+/).length === 1 && { numberOfLines: 1, ellipsizeMode: 'tail' as const })}
-            >{event.location}</Text>
-            <Text style={styles.locationText}>{displayBrandName.length > 50 ? displayBrandName.substring(0, 50) + '...' : displayBrandName}</Text>
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {displayBrandName}
+            </Text>
+            <Text
+              style={styles.locationText}
+              {...(event.location.trim().split(/\s+/).length === 1 && {
+                numberOfLines: 1,
+                ellipsizeMode: 'tail' as const,
+              })}
+            >
+              {event.location}
+            </Text>
             <Text style={styles.distanceText}>{event.distance}</Text>
           </View>
         </View>
         {showDate && (
           <View style={styles.eventRight}>
             <Text style={styles.dateText}>{formattedDate}</Text>
-            <Text style={styles.timeText}>{event.time}</Text>
+            <Text style={styles.timeText} numberOfLines={3}>
+              {event.time}
+            </Text>
           </View>
         )}
         {!showDate && (
           <View style={styles.eventRight}>
-            <Text style={styles.timeText}>{event.time}</Text>
+            <Text style={styles.timeText} numberOfLines={3}>
+              {event.time}
+            </Text>
           </View>
         )}
       </View>
@@ -135,11 +150,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.brandBlueBright,
+    flexShrink: 1,
   },
   locationText: {
     fontSize: 15,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.brandBlueBright,
+    flexShrink: 1,
   },
   distanceText: {
     fontSize: 14,
@@ -150,18 +167,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     marginLeft: 8,
-    flexShrink: 0,
+    flexShrink: 1,
+    maxWidth: '38%',
     gap: 4,
   },
   dateText: {
     fontSize: 12,
     fontFamily: 'Quicksand_600SemiBold',
     color: Colors.brandBlueBright,
+    textAlign: 'right',
   },
   timeText: {
     fontSize: 13,
     fontFamily: 'Quicksand_500Medium',
     color: Colors.brandBlueBright,
+    textAlign: 'right',
   },
 });
 
