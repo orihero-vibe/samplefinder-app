@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Alert, Linking, Platform, AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { NotificationSetting, Notification } from './components';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { updateNotificationPreferences } from '@/lib/database/users';
 import { getUserNotifications, markNotificationsAsRead } from '@/lib/database';
 
@@ -39,15 +39,15 @@ export const useNotificationsScreen = () => {
   const loadNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         console.warn('[notifications] No user logged in');
         return;
       }
 
       const allNotifs = await getUserNotifications(user.$id, 100);
-      const unreadNotifs = allNotifs.filter((notif) => !notif.isRead).slice(0, 10);
-      const readNotifs = allNotifs.filter((notif) => notif.isRead).slice(0, 20);
+      const unreadNotifs = allNotifs.filter((notif) => !notif.isRead);
+      const readNotifs = allNotifs.filter((notif) => notif.isRead);
 
       setNotifications(unreadNotifs.map(mapNotificationToItem));
       setPreviousNotifications(readNotifs.map(mapNotificationToItem));
@@ -66,7 +66,7 @@ export const useNotificationsScreen = () => {
     isFlushingReadIdsRef.current = true;
 
     try {
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         console.warn('[notifications] No user logged in, cannot mark notifications as read');
         pendingReadIdsRef.current.clear();
@@ -106,7 +106,7 @@ export const useNotificationsScreen = () => {
         setEnablePushNotifications(systemEnabled);
         
         // Update database to match system permission
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (user) {
           await updateNotificationPreferences(user.$id, {
             enablePushNotifications: systemEnabled,
@@ -234,7 +234,7 @@ export const useNotificationsScreen = () => {
 
     // Save to database
     try {
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         console.warn('[notifications] No user logged in, cannot save preferences');
         return;
