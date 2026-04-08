@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { RoundedLogoImage } from '@/components';
@@ -19,28 +19,17 @@ interface HistoryItemProps {
   item: HistoryItemData;
   defaultExpanded?: boolean;
   isLastItem?: boolean;
-  onPress?: (eventId: string) => void;
 }
 
-const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false, isLastItem = false, onPress }) => {
+const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false, isLastItem = false }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
 
-  const handlePress = () => {
-    if (onPress && item.eventId) {
-      onPress(item.eventId);
-    }
-  };
-
   return (
-    <TouchableOpacity 
-      style={[styles.container, isLastItem && styles.lastItem]} 
-      onPress={handlePress}
-      activeOpacity={0.7}
-    >
+    <View style={[styles.container, isLastItem && styles.lastItem]}>
       <View style={styles.content}>
         {/* Icon and Main Info */}
         <View style={styles.mainRow}>
@@ -94,7 +83,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({ item, defaultExpanded = false
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };
 

@@ -61,7 +61,6 @@ const PromotionsScreen = () => {
     handleCloseAchievementModal,
     handleShareAchievement,
     handleViewMoreEvents,
-    handleHistoryEventPress,
   } = usePromotionsScreen({ contentRef, shareContentRef });
 
   const handleViewHistory = () => {
@@ -194,7 +193,7 @@ const PromotionsScreen = () => {
 
                 {!isShareMode && showHistory && (
                   <View ref={historyRef} collapsable={false}>
-                    <HistorySection historyItems={historyItems} onEventPress={handleHistoryEventPress} />
+                    <HistorySection historyItems={historyItems} />
                   </View>
                 )}
               </View>

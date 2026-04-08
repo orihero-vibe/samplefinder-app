@@ -5,7 +5,6 @@ import { captureAndShareView } from '@/utils/captureAndShare';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
 import { useAuthStore } from '@/stores/authStore';
-import { getNavigationRef } from '@/lib/notifications/handlers';
 import { 
   getUserCheckIns,
   getUserReviews,
@@ -353,22 +352,6 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     (navigation as any).navigate('Home');
   };
 
-  const handleHistoryEventPress = (eventId: string) => {
-    // Navigate to BrandDetails in HomeStack through root navigator
-    // Since PromotionsScreen is directly in TabNavigator, we use the root navigation ref
-    const rootNav = getNavigationRef();
-    if (rootNav) {
-      // Navigate through MainTabs -> Home -> BrandDetails (same pattern as notification handlers)
-      (rootNav as any).navigate('MainTabs', {
-        screen: 'Home',
-        params: {
-          screen: 'BrandDetails',
-          params: { eventId },
-        },
-      });
-    }
-  };
-
   const eventBadges: Badge[] = [
     { id: '1', label: 'EVENTS', achieved: eventCheckInsCount >= 10, count: 10 },
     { id: '2', label: 'EVENTS', achieved: eventCheckInsCount >= 25, count: 25 },
@@ -444,7 +427,6 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     handleCloseAchievementModal,
     handleShareAchievement,
     handleViewMoreEvents,
-    handleHistoryEventPress,
   };
 };
 
