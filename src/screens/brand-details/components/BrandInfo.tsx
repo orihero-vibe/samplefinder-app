@@ -27,6 +27,9 @@ const BrandInfo: React.FC<BrandInfoProps> = ({ brand }) => {
         <View style={styles.storeDetails}>
           <Text style={styles.storeName}>{brand.brandName}</Text>
           <Text style={styles.storeInfo}>{brand.time}</Text>
+          {brand.locationName ? (
+            <Text style={styles.storeInfo}>{brand.locationName}</Text>
+          ) : null}
           <Text style={styles.storeInfo}>{brand.address.street}</Text>
           <Text style={styles.storeInfo}>
             {brand.address.city}, {brand.address.state} {brand.address.zip}

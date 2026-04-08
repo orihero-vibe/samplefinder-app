@@ -37,6 +37,8 @@ export interface BrandDetailsData {
   storeName: string;
   date: string; // e.g., "Aug 1, 2025"
   time: string; // e.g., "3 - 5 pm"
+  /** Venue / location display name from events (locations table) */
+  locationName?: string | null;
   address: {
     street: string;
     city: string;

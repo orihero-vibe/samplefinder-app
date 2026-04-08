@@ -374,6 +374,7 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       brandDescription: result.brandDescription ?? null,
       categories: result.categories || [], // Include categories for adult filtering
       location,
+      locationName: result.locationName || '',
       timezone: result.timezone ?? null,
       isArchived: result.isArchived || false,
       isHidden: result.isHidden || false,
