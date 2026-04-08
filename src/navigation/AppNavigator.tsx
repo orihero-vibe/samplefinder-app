@@ -17,7 +17,11 @@ import { subscribeToDeepLinks, handleIncomingReferralLink } from '@/lib/deepLink
 import { DEEP_LINK_DOMAIN, CUSTOM_SCHEME } from '@/lib/deepLink.constants';
 import { CustomSplashScreen } from '@/components';
 import BadgeEarnedModal, { type BadgeType } from '@/components/shared/BadgeEarnedModal';
-import { syncSpecialBadgeAwards, type AwardedSpecialBadge } from '@/lib/specialBadgeAwards';
+import {
+  markSpecialBadgePopupSeen,
+  syncSpecialBadgeAwards,
+  type AwardedSpecialBadge,
+} from '@/lib/specialBadgeAwards';
 import TierEarnedModal from '@/screens/tabs/promotions/components/TierEarnedModal';
 import { syncTierAwards, type AwardedTier } from '@/lib/tierAwards';
 
@@ -257,21 +261,23 @@ const AppNavigator = () => {
 
   const activeSpecialBadgeType: BadgeType = activeSpecialBadgeAward?.type ?? 'events';
   const handleCloseSpecialBadgeModal = async () => {
-    const notificationId = activeSpecialBadgeAward?.notificationId;
+    const award = activeSpecialBadgeAward;
+    const notificationId = award?.notificationId;
     setActiveSpecialBadgeAward(null);
-
-    if (!notificationId) {
-      return;
-    }
 
     try {
       const user = useAuthStore.getState().user;
       if (!user) {
         return;
       }
-      await markNotificationAsRead(user.$id, notificationId);
+      if (award?.type) {
+        await markSpecialBadgePopupSeen(user.$id, award.type);
+      }
+      if (notificationId) {
+        await markNotificationAsRead(user.$id, notificationId);
+      }
     } catch (error) {
-      console.warn('[AppNavigator] Failed to mark special badge notification as read:', error);
+      console.warn('[AppNavigator] Failed to finalize special badge modal close:', error);
     }
   };
 

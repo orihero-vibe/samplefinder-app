@@ -20,6 +20,7 @@ import { CloseIcon } from '@/components';
 import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const appDownloadLink = 'https://samplefinder.com';
 
 interface TierEarnedModalProps {
   visible: boolean;
@@ -42,6 +43,7 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [imageError, setImageError] = useState(false);
+  const [isCapturingShare, setIsCapturingShare] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -62,33 +64,38 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.9);
       setImageError(false);
+      setIsCapturingShare(false);
     }
   }, [visible]);
 
-  const getShareMessage = () => {
-    const tierName = tier?.name ?? 'a new tier';
-    const order = tier?.order ?? 1;
-    if (order === 1) {
-      return `I just earned the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
-    }
-    return `I just leveled up to the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
-  };
+  const tierNumber = tier?.order ?? 1;
 
   const handleShare = async () => {
     try {
       if (onShare) {
         await onShare();
       } else {
-        await captureAndShareView(modalRef, getShareMessage());
+        const tierLabel = tier?.name ?? 'a new tier';
+        const shareMessage =
+          tierNumber === 1
+            ? `I just joined SampleFinder and earned ${points} points! Discover samples near you. ${appDownloadLink}`
+            : `I just reached ${tierLabel} on SampleFinder! Join me in discovering amazing samples. ${appDownloadLink}`;
+        setIsCapturingShare(true);
+        // Wait one frame so close/share are not included in capture.
+        await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+        if (modalRef.current) {
+          await captureAndShareView(modalRef, shareMessage);
+        }
       }
       onClose();
     } catch (error) {
       console.error('Error in handleShare:', error);
       onClose();
+    } finally {
+      setIsCapturingShare(false);
     }
   };
 
-  const tierNumber = tier?.order ?? 1;
   const tierDisplayParts = getTierDisplayParts(tier?.name ?? 'NewbieSampler');
   const requiredPoints = tier?.requiredPoints ?? 100;
 
@@ -138,11 +145,13 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
             },
           ]}
         >
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <View style={styles.closeButtonCircle}>
-             <CloseIcon/>
-            </View>
-          </TouchableOpacity>
+          {!isCapturingShare && (
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <View style={styles.closeButtonCircle}>
+                <CloseIcon />
+              </View>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.badgeContainer}>
             {tier?.imageURL && !imageError ? (
@@ -185,13 +194,15 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
             </Text>
           </View>
 
-          <CustomButton
-            title="Share"
-            onPress={handleShare}
-            variant="dark"
-            size="medium"
-            style={styles.actionButton}
-          />
+          {!isCapturingShare && (
+            <CustomButton
+              title="Share"
+              onPress={handleShare}
+              variant="dark"
+              size="medium"
+              style={styles.actionButton}
+            />
+          )}
         </Animated.View>
       </ModalBackdrop>
     </Modal>

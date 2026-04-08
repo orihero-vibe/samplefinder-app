@@ -581,8 +581,17 @@ async function sendPushNotificationToUsers(
       if (settled.status === 'fulfilled') {
         const result = settled.value as PushResult;
         lastResult = result;
-        sentCount += batch.length;
-        log(`Push batch ${i + j + 1}: messageId=${result.$id}, status=${result.status}, users=${batch.length}`);
+        const statusLower = String(result.status ?? '').toLowerCase();
+        const pushFailed = statusLower === 'failed' || statusLower === 'error';
+        if (pushFailed) {
+          failedCount += batch.length;
+          log(
+            `Push batch ${i + j + 1}: delivery failed messageId=${result.$id}, status=${result.status}, users=${batch.length}`
+          );
+        } else {
+          sentCount += batch.length;
+          log(`Push batch ${i + j + 1}: messageId=${result.$id}, status=${result.status}, users=${batch.length}`);
+        }
       } else {
         const errMsg = settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
         failedCount += batch.length;
@@ -1107,28 +1116,25 @@ async function checkAndSendTriviaTuesday(
   const sentCount = result.sentCount ?? 0;
   if (sentCount > 0) {
     await setSettingValue(databases, 'triviaTuesdayLastSent', todayStr);
-
-    for (const user of allUsers) {
-      if (!user.authID) continue;
-      try {
-        await appendNotificationToUserProfile(
-          databases,
-          user.$id,
-          {
-            id: ID.unique(),
-            type: 'Engagement',
-            title: 'TRIVIA TUESDAY',
-            message: 'Earn points by knowing fun facts about your favorite brands!',
-            isRead: false,
-            createdAt: new Date().toISOString(),
-            data: { type: 'Engagement' },
-          },
-          log
-        );
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        log(`Trivia Tuesday: failed to append in-app notification for user ${user.$id}: ${msg}`);
-      }
+    const triviaTitle = 'TRIVIA TUESDAY';
+    const triviaBody =
+      'Earn points by knowing fun facts about your favorite brands!';
+    const triviaCreatedAt = new Date().toISOString();
+    for (const u of allUsers) {
+      await appendNotificationToUserProfile(
+        databases,
+        u.$id,
+        {
+          id: ID.unique(),
+          type: 'Engagement',
+          title: triviaTitle,
+          message: triviaBody,
+          isRead: false,
+          createdAt: triviaCreatedAt,
+          data: { type: 'Engagement', campaign: 'triviaTuesday' },
+        },
+        log
+      );
     }
   }
   log(`Trivia Tuesday: sent to ${sentCount} users`);
@@ -1239,7 +1245,7 @@ async function checkAndSendSamplingToday(
           message: `Sampling at ${storeName} starts at ${timeStr}! Click to learn more!`,
           isRead: false,
           createdAt: new Date().toISOString(),
-          data: { eventId: event.$id, type: 'Event Reminder' },
+          data: { eventId: event.$id, type: 'Event Reminder', campaign: 'samplingToday' },
         },
         log
       );
@@ -1477,7 +1483,7 @@ async function checkAndSendNearbyFavoriteSampling(
           message: `Heads up, ${brandName} has a sampling event coming up near you. Click to learn more!`,
           isRead: false,
           createdAt: new Date().toISOString(),
-          data: { eventId: event.$id, type: 'Promotional' },
+          data: { eventId: event.$id, type: 'Promotional', campaign: 'nearbyFavorite' },
         },
         log
       );

@@ -11,7 +11,7 @@ import {
   Quicksand_600SemiBold,
   Quicksand_700Bold,
 } from '@expo-google-fonts/quicksand';
-import { 
+import {
   Poppins_400Regular,
   Poppins_500Medium,
   Poppins_600SemiBold,
@@ -19,12 +19,12 @@ import {
   Poppins_800ExtraBold,
   Poppins_900Black,
 } from '@expo-google-fonts/poppins';
-import { PlusJakartaSans_800ExtraBold} from '@expo-google-fonts/plus-jakarta-sans'
+import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans'
 import AppNavigator from '@/navigation/AppNavigator';
 import { TriviaModal } from '@/components/trivia';
 import type { TriviaQuestion } from '@/lib/database/trivia';
 import { getActiveTrivia, submitTriviaAnswer, dismissTrivia, fetchTiers, getUserProfile } from '@/lib/database';
-import { setupTokenRefreshListener, initializePushNotifications, cleanupPastEventReminders } from '@/lib/notifications';
+import { setupTokenRefreshListener, initializePushNotifications } from '@/lib/notifications';
 import { useAuthStore } from '@/stores/authStore';
 import { createUserNotification } from '@/lib/database';
 import { CustomSplashScreen } from '@/components';
@@ -35,6 +35,7 @@ import { AchievementModal } from '@/screens/tabs/promotions/components';
 import type { Tier } from '@/screens/tabs/promotions/components';
 import { AppState, AppStateStatus } from 'react-native';
 import { getUserCurrentTier } from '@/lib/database/tiers';
+import { isTriviaTuesdayEastern } from '@/lib/triviaSchedule';
 import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
@@ -119,11 +120,11 @@ export default function App() {
             }
 
             // Cleanup past event reminders (remove notifications for events that have passed)
-            try {
-              await cleanupPastEventReminders();
-            } catch (cleanupError) {
-              console.warn('[App] Failed to cleanup past event reminders:', cleanupError);
-            }
+            // try {
+            //   await clearPushNotificationCache();
+            // } catch (cleanupError) {
+            //   console.warn('[App] Failed to cleanup past event reminders:', cleanupError);
+            // }
           }
         } catch (error) {
           // User not logged in
@@ -158,6 +159,7 @@ export default function App() {
         setUserProfileId(profile.$id); // for submit handler
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
+        if (!isTriviaTuesdayEastern()) return;
 
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
@@ -200,6 +202,7 @@ export default function App() {
         if (cancelled || !profile) return;
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
+        if (!isTriviaTuesdayEastern()) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
           setShowTrivia(true);
@@ -225,6 +228,7 @@ export default function App() {
       try {
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(userProfileId));
         if (cancelled) return;
+        if (!isTriviaTuesdayEastern()) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
           setShowTrivia(true);
@@ -246,7 +250,13 @@ export default function App() {
       if (nextState !== 'active') return;
 
       try {
-        const user = useAuthStore.getState().user;
+        if (!isTriviaTuesdayEastern()) {
+          setTriviaQueue([]);
+          setShowTrivia(false);
+          return;
+        }
+
+        const user = await useAuthStore.getState().fetchUser();
         if (!user) return;
         const profile = await getUserProfile(user.$id);
         if (!profile) return;
@@ -277,6 +287,18 @@ export default function App() {
 
     return () => subscription.remove();
   }, []);
+
+  // Close trivia if Eastern Tuesday ends while the app stays open (e.g. after midnight Wed).
+  useEffect(() => {
+    if (!appIsReady) return;
+    const id = setInterval(() => {
+      if (!isTriviaTuesdayEastern() && triviaQueueRef.current.length > 0) {
+        setTriviaQueue([]);
+        setShowTrivia(false);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [appIsReady]);
 
   // Show Tier 1 modal for newly signed up users (after email verification)
   useEffect(() => {
@@ -397,7 +419,7 @@ export default function App() {
 
         const newTotalPoints = profile.totalPoints || 0;
         const oldTotalPoints = newTotalPoints - pointsAwarded;
-        
+
         const oldTier = getUserCurrentTier(tiers, oldTotalPoints);
         const newTier = getUserCurrentTier(tiers, newTotalPoints);
 
@@ -445,15 +467,17 @@ export default function App() {
     }
   };
 
+  const triviaDayActive = isTriviaTuesdayEastern();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
           <AppNavigator />
-          {currentQuestion && (
+          {triviaDayActive && currentQuestion && (
             <TriviaModal
               key={currentQuestion.$id}
-              visible={showTrivia}
+              visible={showTrivia && triviaDayActive}
               question={currentQuestion}
               onClose={handleTriviaClose}
               onSubmitAnswer={handleSubmitAnswer}
