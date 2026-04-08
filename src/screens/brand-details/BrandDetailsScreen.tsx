@@ -161,7 +161,12 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
             <ProductsSection products={brand.products} />
             <EventInfoSection eventInfo={brand.eventInfo} />
 
-            {!isShareMode && checkInStatus !== 'success' && <DiscountMessage />}
+            {!isShareMode && checkInStatus !== 'success' && (
+              <DiscountMessage
+                discount={brand.discount}
+                discountImageURL={brand.discountImageURL}
+              />
+            )}
 
             {!isShareMode && (checkInStatus === 'input' || checkInStatus === 'incorrect') && (
               <CheckInCodeInput
