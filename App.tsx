@@ -35,7 +35,7 @@ import { AchievementModal } from '@/screens/tabs/promotions/components';
 import type { Tier } from '@/screens/tabs/promotions/components';
 import { AppState, AppStateStatus } from 'react-native';
 import { getUserCurrentTier } from '@/lib/database/tiers';
-import { isTriviaTuesdayEastern } from '@/lib/triviaSchedule';
+import { isTriviaOfferedToday } from '@/lib/triviaSchedule';
 import './reactotron';
 
 // Keep the splash screen visible while we fetch resources
@@ -159,7 +159,7 @@ export default function App() {
         setUserProfileId(profile.$id); // for submit handler
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
-        if (!isTriviaTuesdayEastern()) return;
+        if (!isTriviaOfferedToday()) return;
 
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
@@ -202,7 +202,7 @@ export default function App() {
         if (cancelled || !profile) return;
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
-        if (!isTriviaTuesdayEastern()) return;
+        if (!isTriviaOfferedToday()) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
           setShowTrivia(true);
@@ -228,7 +228,7 @@ export default function App() {
       try {
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(userProfileId));
         if (cancelled) return;
-        if (!isTriviaTuesdayEastern()) return;
+        if (!isTriviaOfferedToday()) return;
         if (triviaQuestions.length > 0) {
           setTriviaQueue(triviaQuestions);
           setShowTrivia(true);
@@ -250,7 +250,7 @@ export default function App() {
       if (nextState !== 'active') return;
 
       try {
-        if (!isTriviaTuesdayEastern()) {
+        if (!isTriviaOfferedToday()) {
           setTriviaQueue([]);
           setShowTrivia(false);
           return;
@@ -292,7 +292,7 @@ export default function App() {
   useEffect(() => {
     if (!appIsReady) return;
     const id = setInterval(() => {
-      if (!isTriviaTuesdayEastern() && triviaQueueRef.current.length > 0) {
+      if (!isTriviaOfferedToday() && triviaQueueRef.current.length > 0) {
         setTriviaQueue([]);
         setShowTrivia(false);
       }
@@ -467,7 +467,7 @@ export default function App() {
     }
   };
 
-  const triviaDayActive = isTriviaTuesdayEastern();
+  const triviaDayActive = isTriviaOfferedToday();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
