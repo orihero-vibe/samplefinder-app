@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { createUserNotification, getUserProfile, updateUserProfile } from '@/lib/database';
 import type { UserNotification } from '@/lib/database';
 
@@ -137,7 +137,7 @@ const writeShownSpecialBadges = async (authId: string, state: SpecialBadgeState)
 };
 
 export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> => {
-  const user = await getCurrentUser();
+  const user = useAuthStore.getState().user;
   if (!user) {
     return [];
   }

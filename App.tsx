@@ -25,7 +25,7 @@ import { TriviaModal } from '@/components/trivia';
 import type { TriviaQuestion } from '@/lib/database/trivia';
 import { getActiveTrivia, submitTriviaAnswer, dismissTrivia, fetchTiers, getUserProfile } from '@/lib/database';
 import { setupTokenRefreshListener, initializePushNotifications, cleanupPastEventReminders } from '@/lib/notifications';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { createUserNotification } from '@/lib/database';
 import { CustomSplashScreen } from '@/components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
@@ -63,6 +63,7 @@ export default function App() {
   const setShouldShowTier1Modal = useTier1ModalStore((s) => s.setShouldShowTier1Modal);
   const [tier1ModalVisible, setTier1ModalVisible] = useState(false);
   const [tier1Tier, setTier1Tier] = useState<Tier | null>(null);
+  const [tier1WelcomePoints, setTier1WelcomePoints] = useState(100);
 
   // Global tier completion modal state
   const shouldShowTierModal = useTierCompletionStore((s) => s.shouldShowTierModal);
@@ -89,13 +90,13 @@ export default function App() {
           PlusJakartaSans_800ExtraBold
         });
 
-        // Set up push notification token refresh listener
-        setupTokenRefreshListener();
-
         // Initialize push notifications if user is logged in
         try {
-          const user = await getCurrentUser();
+          const user = await useAuthStore.getState().fetchUser();
           if (user) {
+            // Set up push notification token refresh listener (requires Firebase, so only when user is logged in)
+            setupTokenRefreshListener();
+
             initializePushNotifications().catch((error) => {
               console.warn('[App] Failed to initialize push notifications:', error);
             });
@@ -148,7 +149,7 @@ export default function App() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (cancelled || !user) return;
 
         const profile = await getUserProfile(user.$id);
@@ -193,7 +194,7 @@ export default function App() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (cancelled || !user) return;
         const profile = await getUserProfile(user.$id);
         if (cancelled || !profile) return;
@@ -245,7 +246,7 @@ export default function App() {
       if (nextState !== 'active') return;
 
       try {
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (!user) return;
         const profile = await getUserProfile(user.$id);
         if (!profile) return;
@@ -284,7 +285,7 @@ export default function App() {
     let cancelled = false;
     const loadAndShowTier1Modal = async () => {
       try {
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (cancelled || !user) return;
 
         const [profile, tiers] = await Promise.all([
@@ -309,6 +310,7 @@ export default function App() {
 
         if (!cancelled) {
           setTier1Tier(tier1);
+          setTier1WelcomePoints(profile.totalPoints ?? 0);
           setTier1ModalVisible(true);
           // Welcome notification is created in ConfirmAccountScreen before navigating to NotificationSetup
           // so it appears immediately on the notification onboarding screen.
@@ -419,7 +421,7 @@ export default function App() {
           );
 
           try {
-            const user = await getCurrentUser();
+            const user = useAuthStore.getState().user;
             if (user) {
               await createUserNotification({
                 userId: user.$id,
@@ -467,7 +469,7 @@ export default function App() {
           <AchievementModal
             visible={tier1ModalVisible}
             tier={tier1Tier}
-            points={100}
+            points={tier1WelcomePoints}
             onClose={handleCloseTier1Modal}
             onShare={handleShareTier1}
           />

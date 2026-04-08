@@ -25,6 +25,7 @@ const SignUpScreen = () => {
     username,
     email,
     password,
+    referralCode,
     fieldErrors,
     isCheckingUsername,
     showError,
@@ -42,6 +43,7 @@ const SignUpScreen = () => {
     setUsername,
     setEmail,
     setPassword,
+    setReferralCode,
     setShowPushNotificationModal,
     setShowAgeVerificationModal,
     setShowTermsModal,
@@ -174,6 +176,20 @@ const SignUpScreen = () => {
           inputBorderWidth={3}
           error={!!fieldErrors.password}
           errorMessage={fieldErrors.password}
+        />
+
+        <CustomInput
+          label="Referral code (optional)"
+          value={referralCode}
+          onChangeText={setReferralCode}
+          type="text"
+          labelColor="white"
+          inputBorderColor={Colors.blueColorMode}
+          inputBorderWidth={3}
+          error={!!fieldErrors.referralCode}
+          errorMessage={fieldErrors.referralCode}
+          placeholder="6 characters"
+          maxLength={6}
         />
 
         {showError && !errorMessage && (

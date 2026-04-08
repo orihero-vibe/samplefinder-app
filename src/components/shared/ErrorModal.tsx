@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -57,7 +58,7 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
@@ -101,15 +102,13 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
             <Text style={styles.okButtonText}>OK</Text>
           </TouchableOpacity>
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(75, 31, 86, 0.85)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,

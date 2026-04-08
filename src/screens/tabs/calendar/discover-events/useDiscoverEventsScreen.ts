@@ -6,12 +6,12 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
 import { fetchAllUpcomingEvents, EventRow, fetchClients, ClientData, fetchCategories, CategoryData, getUserProfile } from '@/lib/database';
 import { convertEventToCalendarEventDetail, extractClientFromEvent, filterEventsByAdultCategories } from '@/utils/brandUtils';
-import { formatEventTime, formatEventDistance, isEventUpcoming } from '@/utils/formatters';
+import { formatEventTime, formatEventDate, formatEventDistance, isEventUpcoming } from '@/utils/formatters';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
 import { UnifiedEvent } from '@/components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 interface EventWithClient {
   event: EventRow;
@@ -49,7 +49,7 @@ export const useDiscoverEventsScreen = () => {
     const loadUserAndCategories = async () => {
       try {
         // Load user profile to check isAdult status
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (user?.$id) {
           const profile = await getUserProfile(user.$id);
           setUserIsAdult(profile?.isAdult || false);
@@ -154,7 +154,7 @@ export const useDiscoverEventsScreen = () => {
               : undefined
           });
 
-          const time = formatEventTime(event.startTime, event.endTime);
+          const time = formatEventTime(event.startTime, event.endTime, event.timezone);
           const logoURL = client?.logoURL || null; // Brand logo from client
 
           return {
@@ -204,7 +204,10 @@ export const useDiscoverEventsScreen = () => {
 
   const calendarEvents: UnifiedEvent[] = events.map((eventWithClient) => ({
     id: eventWithClient.event.$id,
-    date: eventWithClient.date,
+    date: formatEventDate(
+      eventWithClient.event.startTime || eventWithClient.event.date,
+      eventWithClient.event.timezone
+    ),
     name: eventWithClient.eventName,
     brandName: eventWithClient.brandName,
     location: eventWithClient.location,

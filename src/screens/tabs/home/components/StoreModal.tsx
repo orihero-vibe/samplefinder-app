@@ -10,6 +10,7 @@ import { EventData } from './UpcomingEvents';
 import { TabParamList } from '@/navigation/TabNavigator';
 import { HomeStackParamList } from '@/navigation/HomeStack';
 import Monicon from '@monicon/native';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 type StoreModalNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>,
@@ -53,7 +54,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <View style={styles.modalContainer}>
           {/* Header with close button */}
           <View style={styles.header}>
@@ -106,15 +107,13 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents
             <View style={styles.separator} />
           </ScrollView>
         </View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,

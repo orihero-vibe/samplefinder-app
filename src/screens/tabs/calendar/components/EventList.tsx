@@ -44,7 +44,14 @@ const EventList: React.FC<EventListProps> = ({ events, selectedDate, showUpcomin
   // Filter events based on mode: upcoming = not past date, and if today then end time must not be past
   const filteredEvents = showUpcoming
     ? events
-        .filter((event) => isEventUpcoming({ date: event.date, startTime: event.startTime, endTime: event.endTime }))
+        .filter((event) =>
+          isEventUpcoming({
+            date: event.date,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            timezone: event.timezone,
+          })
+        )
         .sort((a, b) => {
         // First sort by date (ascending)
         const dateA = new Date(a.date).getTime();

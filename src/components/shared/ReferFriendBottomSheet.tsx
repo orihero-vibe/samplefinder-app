@@ -5,13 +5,17 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import type { ComponentProps } from 'react';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import GradientBottomSheetBackdrop from '@/components/shared/GradientBottomSheetBackdrop';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import CustomButton from './CustomButton';
+import { buildReferralUrl } from '@/lib/deepLink';
 
 interface ReferFriendBottomSheetProps {
   bottomSheetRef: React.RefObject<BottomSheet | null>;
@@ -29,36 +33,41 @@ const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
   const snapPoints = useMemo(() => ['75%'], []);
 
   const renderBackdrop = useMemo(
-    () => (props: any) => (
-      <BottomSheetBackdrop
+    () => (props: ComponentProps<typeof GradientBottomSheetBackdrop>) => (
+      <GradientBottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.5}
+        opacity={0.55}
       />
     ),
     []
   );
 
+  const referralUrl = buildReferralUrl(referralCode);
+
   const handleCopyCode = async () => {
     try {
-      await Clipboard.setStringAsync(referralCode);
-      Alert.alert('Copied!', 'Referral code copied to clipboard');
+      await Clipboard.setStringAsync(referralUrl);
+      Alert.alert('Copied!', 'Referral link copied to clipboard');
     } catch (error) {
       console.error('Failed to copy code:', error);
-      Alert.alert('Error', 'Failed to copy referral code');
+      Alert.alert('Error', 'Failed to copy referral link');
     }
   };
 
-  const handleReferFriend = () => {
-    // Handle refer friend action
-    console.log('Refer friend pressed');
-    // Close this bottom sheet and show success modal
-    bottomSheetRef.current?.close();
-    // Call success callback after a short delay to allow close animation
-    setTimeout(() => {
-      onReferSuccess?.();
-    }, 300);
+  const handleReferFriend = async () => {
+    try {
+      await Share.share({
+        message: `Join me on SampleFinder! Use my referral link to get 100 bonus points: ${referralUrl}`,
+      });
+      bottomSheetRef.current?.close();
+      setTimeout(() => {
+        onReferSuccess?.();
+      }, 300);
+    } catch (error) {
+      console.error('Failed to share referral link:', error);
+    }
   };
 
   return (

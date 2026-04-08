@@ -6,7 +6,7 @@ import {
   removeEventFromUserCalendar, 
   getUserSavedEventIds 
 } from '@/lib/database';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { 
   scheduleEventReminders, 
   getEventReminders, 
@@ -37,7 +37,7 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
       addSavedEvent: async (eventId: string) => {
         try {
           // Get current user
-          const user = await getCurrentUser();
+          const user = useAuthStore.getState().user;
           if (!user) {
             throw new Error('User not authenticated');
           }
@@ -72,7 +72,7 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
       removeSavedEvent: async (eventId: string) => {
         try {
           // Get current user
-          const user = await getCurrentUser();
+          const user = useAuthStore.getState().user;
           if (!user) {
             throw new Error('User not authenticated');
           }
@@ -100,7 +100,7 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
       syncWithUserProfile: async () => {
         try {
           // Get current user
-          const user = await getCurrentUser();
+          const user = useAuthStore.getState().user;
           if (!user) {
             console.log('[calendarEventsStore] No user found, skipping sync');
             set({ isInitialized: true });

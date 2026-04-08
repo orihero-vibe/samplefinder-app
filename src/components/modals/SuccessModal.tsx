@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 interface SuccessModalProps {
   visible: boolean;
@@ -31,7 +32,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <View style={styles.modalContainer}>
           <View style={styles.iconContainer}>
             <MaterialIcons name="check-circle" size={80} color="#4CAF50" />
@@ -48,7 +49,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
             <Text style={styles.buttonText}>{buttonText}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
@@ -56,9 +57,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

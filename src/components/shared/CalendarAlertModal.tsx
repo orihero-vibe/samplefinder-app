@@ -11,6 +11,7 @@ import {
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { CalendarAddIcon, CalendarAddedIcon } from '@/icons';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -65,7 +66,7 @@ const CalendarAlertModal: React.FC<CalendarAlertModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
@@ -113,15 +114,13 @@ const CalendarAlertModal: React.FC<CalendarAlertModalProps> = ({
             <Text style={styles.okButtonText}>OK</Text>
           </TouchableOpacity>
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(75, 31, 86, 0.85)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,

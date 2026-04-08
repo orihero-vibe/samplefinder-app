@@ -19,6 +19,8 @@ export interface UserProfileRow extends UserProfileData {
   $updatedAt: string;
   avatarURL?: string | null;
   referralCode?: string | null;
+  /** Set when this user signed up with someone else's referral code (server). */
+  usedReferralCode?: string | null;
   isBlocked?: boolean;
   isAdult?: boolean;
   totalEvents?: number;
@@ -129,6 +131,8 @@ export interface EventRow {
   categories?: string[]; // Array of category IDs
   location?: [number, number]; // Point type: [longitude, latitude]
   locationName?: string; // Location name from locations table
+  /** IANA timezone id for event-local display (e.g. America/Chicago); optional in Appwrite */
+  timezone?: string | null;
   isArchived?: boolean;
   isHidden?: boolean; // Fixed typo: was isHidder
   $createdAt?: string;
@@ -152,6 +156,7 @@ export interface EventsByLocationResponse {
     discount?: string | null; // Discount text/description
     discountImageURL?: string | null;
     brandDescription?: string | null; // Brand description text field
+    timezone?: string | null;
     distance: number; // in meters (from backend calculation)
     client: {
       $id: string;

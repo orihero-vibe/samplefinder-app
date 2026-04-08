@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { getTierDisplayParts } from '@/utils/formatters';
+import { getTierDisplayParts, getTierEarnedHeadline, getTierEarnedPointsMessage } from '@/utils/formatters';
+import { captureAndShareView } from '@/utils/captureAndShare';
 import { SmallBlueStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
 import { Tier } from './TierItem';
 import { CloseIcon } from '@/components';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -36,6 +38,7 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
   onClose,
   onShare,
 }) => {
+  const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [imageError, setImageError] = useState(false);
@@ -62,10 +65,21 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
     }
   }, [visible]);
 
+  const getShareMessage = () => {
+    const tierName = tier?.name ?? 'a new tier';
+    const order = tier?.order ?? 1;
+    if (order === 1) {
+      return `I just earned the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+    }
+    return `I just leveled up to the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+  };
+
   const handleShare = async () => {
     try {
       if (onShare) {
         await onShare();
+      } else {
+        await captureAndShareView(modalRef, getShareMessage());
       }
       onClose();
     } catch (error) {
@@ -97,23 +111,12 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
 
   const badgeColors = getTierBadgeColors(tierNumber);
 
-  const getMainMessage = () => {
-    if (tierNumber === 1) {
-      return "Thanks for Joining!";
-    }
-    return "You've Leveled Up!";
-  };
-
   const getPointsMessage = () => {
     if (message) return message;
-    
-    if (tierNumber === 1) {
-      return `You earned ${points} points with SampleFinder, just for signing up!`;
-    }
-    return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, advancing you to the next Tier!`;
+    return getTierEarnedPointsMessage(tierNumber, requiredPoints, points);
   };
 
-  const mainMessage = getMainMessage();
+  const mainMessage = getTierEarnedHeadline(tierNumber);
   const pointsMessage = getPointsMessage();
 
   return (
@@ -123,8 +126,10 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <Animated.View
+          ref={modalRef}
+          collapsable={false}
           style={[
             styles.modalContainer,
             {
@@ -188,15 +193,13 @@ const TierEarnedModal: React.FC<TierEarnedModalProps> = ({
             style={styles.actionButton}
           />
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

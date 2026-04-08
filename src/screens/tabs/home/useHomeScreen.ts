@@ -5,9 +5,9 @@ import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import * as Location from 'expo-location';
 import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile, fetchLocations, LocationRow } from '@/lib/database';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { MapMarkerData, FilterType, EventData, StoreData, FilterButtonLayout, MeasureCallback } from './components';
-import { formatEventDistance, isEventUpcoming } from '@/utils/formatters';
+import { formatEventDate, formatEventTime, formatEventDistance, isEventUpcoming } from '@/utils/formatters';
 import { geocodeLocation, isValidLocationInput } from '@/utils/geocoding';
 import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 
@@ -422,7 +422,7 @@ export const useHomeScreen = () => {
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         console.log('[HomeScreen] Current user:', user?.$id);
         if (user?.$id) {
           const profile = await getUserProfile(user.$id);
@@ -601,27 +601,34 @@ export const useHomeScreen = () => {
         }
 
         const mapAndSortEventRows = (rows: EventRow[]): EventData[] => {
-          const list: EventData[] = rows.map((event) => {
-            const startTime = new Date(event.startTime);
-            const endTime = new Date(event.endTime);
-            const startHour = startTime.getHours();
-            const endHour = endTime.getHours();
-            const startMin = startTime.getMinutes();
-            const endMin = endTime.getMinutes();
-            const formatTime = (hour: number, min: number) => {
-              const period = hour >= 12 ? 'pm' : 'am';
-              const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-              return min > 0 ? `${displayHour}:${min.toString().padStart(2, '0')} ${period}` : `${displayHour} ${period}`;
-            };
-            const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
-            const formattedDistance = userLocation
+          const parseDistance = (distanceStr: string): number => {
+            if (distanceStr === 'Distance unknown') return 999999;
+            const numericValue = parseFloat(distanceStr.replace(/[^\d.]/g, '')) || 999999;
+            if (distanceStr.includes('ft')) return numericValue / 5280;
+            return numericValue;
+          };
+          const distanceForRow = (ev: EventRow): string =>
+            userLocation && ev.location
               ? formatEventDistance({
                   userLocation,
-                  eventCoordinates: event.location
-                    ? { latitude: event.location[1], longitude: event.location[0] }
-                    : undefined,
+                  eventCoordinates: { latitude: ev.location[1], longitude: ev.location[0] },
                 })
               : 'Distance unknown';
+
+          const sortedRows = [...rows].sort((a, b) => {
+            const dateA = new Date(a.startTime || a.date).getTime();
+            const dateB = new Date(b.startTime || b.date).getTime();
+            const dateDiff = dateA - dateB;
+            if (dateDiff === 0) {
+              return parseDistance(distanceForRow(a)) - parseDistance(distanceForRow(b));
+            }
+            return dateDiff;
+          });
+
+          return sortedRows.map((event) => {
+            const formattedTime = formatEventTime(event.startTime, event.endTime, event.timezone);
+            const formattedDate = formatEventDate(event.startTime || event.date, event.timezone);
+            const formattedDistance = distanceForRow(event);
             const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
             const clientObj = clientId ? clientsMap.get(clientId) : (typeof event.client === 'object' ? event.client : null);
             const location = clientObj?.name || clientObj?.title || event.city || 'Location';
@@ -633,27 +640,11 @@ export const useHomeScreen = () => {
               brandName: brandName,
               location,
               distance: formattedDistance,
-              date: new Date(event.startTime || event.date),
+              date: formattedDate,
               time: formattedTime,
               logoURL: clientObj?.logoURL || null,
             };
           });
-          list.sort((a, b) => {
-            const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
-            const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
-            const dateDiff = dateA - dateB;
-            if (dateDiff === 0) {
-              const parseDistance = (distanceStr: string): number => {
-                if (distanceStr === 'Distance unknown') return 999999;
-                const numericValue = parseFloat(distanceStr.replace(/[^\d.]/g, '')) || 999999;
-                if (distanceStr.includes('ft')) return numericValue / 5280;
-                return numericValue;
-              };
-              return parseDistance(a.distance) - parseDistance(b.distance);
-            }
-            return dateDiff;
-          });
-          return list;
         };
 
         const transformedEvents = mapAndSortEventRows(filteredEvents);
@@ -882,22 +873,14 @@ export const useHomeScreen = () => {
       }
       
       if (locationEvents.length > 0) {
-        const formatTime = (hour: number, min: number) => {
-          const period = hour >= 12 ? 'pm' : 'am';
-          const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-          return min > 0 ? `${displayHour}:${min.toString().padStart(2, '0')} ${period}` : `${displayHour} ${period}`;
-        };
+        const sortedLocationEvents = [...locationEvents].sort(
+          (a, b) =>
+            new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime()
+        );
+        const eventsData: EventData[] = sortedLocationEvents.map((event) => {
+          const formattedTime = formatEventTime(event.startTime, event.endTime, event.timezone);
+          const formattedDate = formatEventDate(event.startTime || event.date, event.timezone);
 
-        // Transform all filtered events at this location
-        const eventsData: EventData[] = locationEvents.map((event) => {
-          const startTime = new Date(event.startTime);
-          const endTime = new Date(event.endTime);
-          const startHour = startTime.getHours();
-          const endHour = endTime.getHours();
-          const startMin = startTime.getMinutes();
-          const endMin = endTime.getMinutes();
-          const formattedTime = `${formatTime(startHour, startMin)} - ${formatTime(endHour, endMin)}`;
-          
           // Look up client from allClients
           const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
           const clientObj = clientId ? allClients.find(c => c.$id === clientId) : (typeof event.client === 'object' ? event.client : null);
@@ -921,18 +904,11 @@ export const useHomeScreen = () => {
             brandName: brandName,
             location: clientObj?.name || clientObj?.title || event.city || 'Location',
             distance: formattedDistance,
-            date: new Date(event.startTime || event.date),
+            date: formattedDate,
             time: formattedTime,
             logoURL: clientObj?.logoURL || null,
             productTypes: Array.isArray(productTypes) ? productTypes : [],
           };
-        });
-
-        // Sort events by date
-        eventsData.sort((a, b) => {
-          const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-          const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-          return dateA.getTime() - dateB.getTime();
         });
 
         const storeData: StoreData = {

@@ -42,7 +42,7 @@ Sample `200` Response:
 | Build Commands    | `npm install`                                                                          |
 | Permissions       | `any`                                                                                  |
 | Timeout (Seconds) | 15                                                                                     |
-| Endpoints         | `/ping`, `/get-events-by-location`, `/get-active-trivia`, `/submit-answer`, `/delete-account` |
+| Endpoints         | `/ping`, `/apply-referral`, `/get-events-by-location`, `/get-active-trivia`, `/submit-answer`, `/delete-account` |
 
 ## 🔒 Environment Variables
 
@@ -52,4 +52,4 @@ The following environment variables are automatically provided by Appwrite:
 - `APPWRITE_FUNCTION_PROJECT_ID` - Project ID
 - `APPWRITE_FUNCTION_KEY` - API key with admin privileges (required for user deletion)
 
-No additional configuration required.
+For referral rewards after signup verification, set **`APPWRITE_NOTIFICATION_FUNCTION_ID`** to the Notification function ID so `/apply-referral` can trigger `/send-referral-points-notification`. See `.env.example`.

@@ -11,12 +11,13 @@ import {
 } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { getTierDisplayParts } from '@/utils/formatters';
+import { getTierDisplayParts, getTierEarnedHeadline, getTierEarnedPointsMessage } from '@/utils/formatters';
 import { SmallBlueStarIcon, SmallStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
 import { Tier } from './TierItem';
 import { CloseIcon } from '@/components';
 import { captureAndShareView } from '@/utils/captureAndShare';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -124,26 +125,17 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
 
   const badgeColors = getTierBadgeColors(tierNumber);
 
-  // Get main message based on tier state
   const getMainMessage = () => {
     if (!isEarned) {
       return "You're On Your Way!";
     }
-    if (tierNumber === 1) {
-      return "Thanks for Joining!";
-    }
-    return "You've Leveled Up!";
+    return getTierEarnedHeadline(tierNumber);
   };
 
-  // Get points message
   const getPointsMessage = () => {
     if (message) return message;
-    
     if (isEarned) {
-      if (tierNumber === 1) {
-        return `You earned ${points} points with SampleFinder, just for signing up!`;
-      }
-      return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, advancing you to the next Tier!`;
+      return getTierEarnedPointsMessage(tierNumber, requiredPoints, points);
     }
     return `${currentPoints} / ${requiredPoints.toLocaleString()} points`;
   };
@@ -158,7 +150,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <Animated.View
           ref={modalRef}
           collapsable={false}
@@ -241,15 +233,13 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
             style={styles.actionButton}
           />
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

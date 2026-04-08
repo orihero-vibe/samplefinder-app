@@ -10,10 +10,10 @@ import { TabParamList } from '@/navigation/TabNavigator';
 import { CalendarStackParamList } from '@/navigation/CalendarStack';
 import { fetchAllEvents, fetchClients, EventRow, ClientData, fetchCategories, CategoryData, getUserProfile } from '@/lib/database';
 import { convertEventToCalendarEventDetail, extractClientFromEvent, filterEventsByAdultCategories } from '@/utils/brandUtils';
-import { isEventUpcoming } from '@/utils/formatters';
+import { isEventUpcoming, getEventCalendarAnchorDate } from '@/utils/formatters';
 import { CalendarEvent, CalendarEventDetail } from './components';
 import { useCalendarEventsStore } from '@/stores/calendarEventsStore';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 type CalendarScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<CalendarStackParamList, 'CalendarMain'>,
@@ -52,7 +52,7 @@ export const useCalendarScreen = () => {
     const loadUserAndCategories = async () => {
       try {
         // Load user profile to check isAdult status
-        const user = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (user?.$id) {
           const profile = await getUserProfile(user.$id);
           setUserIsAdult(profile?.isAdult || false);
@@ -127,12 +127,13 @@ export const useCalendarScreen = () => {
               date: event.startTime || event.date,
               startTime: event.startTime,
               endTime: event.endTime,
+              timezone: event.timezone,
             })
         );
 
         const simpleEvents: CalendarEvent[] = userSavedEventRows.map((event) => ({
           id: event.$id,
-          date: new Date(event.startTime || event.date),
+          date: getEventCalendarAnchorDate(event.startTime || event.date, event.timezone),
         }));
 
         const detailed: CalendarEventDetail[] = userSavedEventRows.map((event) => {

@@ -16,6 +16,7 @@ import CertifiedInfluencerIcon from '@/icons/CertifiedInfluencerIcon';
 import BadgeEarnedPopupIcon from '@/icons/BadgeEarnedPopupIcon';
 import { CloseIcon } from '@/components';
 import { captureAndShareView } from '@/utils/captureAndShare';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 import radialBg from '@/assets/radial-bg.png';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -117,7 +118,7 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <Animated.View
           ref={modalRef}
           collapsable={false}
@@ -176,15 +177,13 @@ const BadgeEarnedModal: React.FC<BadgeEarnedModalProps> = ({
               </TouchableOpacity>
             </View>
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(75, 31, 86, 0.4)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

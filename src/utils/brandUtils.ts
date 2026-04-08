@@ -1,7 +1,14 @@
 import { EventRow, ClientData, CategoryData } from '@/lib/database';
 import { BrandDetailsData } from '@/screens/brand-details';
 import { CalendarEventDetail } from '@/screens/tabs/calendar/components';
-import { formatEventDate, formatEventTime, parseProducts, formatEventDistance, isEventTodayOrLater } from './formatters';
+import {
+  formatEventDate,
+  formatEventTime,
+  parseProducts,
+  formatEventDistance,
+  isEventTodayOrLater,
+  getEventCalendarAnchorDate,
+} from './formatters';
 import { Colors } from '@/constants/Colors';
 import { NewBrandData } from '@/screens/tabs/favorites/components';
 
@@ -100,11 +107,8 @@ export const convertEventToBrandDetails = (
   event: EventRow,
   client: ClientData | null
 ): BrandDetailsData => {
-  // Format date from ISO to "Aug 1, 2025" (use startTime for timezone-accurate date)
-  const formattedDate = formatEventDate(event.startTime || event.date);
-  
-  // Format time from ISO to "3 - 5 pm"
-  const formattedTime = formatEventTime(event.startTime, event.endTime);
+  const formattedDate = formatEventDate(event.startTime || event.date, event.timezone);
+  const formattedTime = formatEventTime(event.startTime, event.endTime, event.timezone);
   
   // Parse products string to array
   const products = parseProducts(event.products);
@@ -159,9 +163,8 @@ export const convertEventToCalendarEventDetail = (
   client: ClientData | null,
   userLocation?: { latitude: number; longitude: number }
 ): CalendarEventDetail => {
-  // Format time from ISO to "3 - 5 pm"
-  const formattedTime = formatEventTime(event.startTime, event.endTime);
-  
+  const formattedTime = formatEventTime(event.startTime, event.endTime, event.timezone);
+
   // Get location name from client, fallback to event address
   const location = client?.name || client?.title || event.address || 'Location TBD';
   
@@ -215,12 +218,13 @@ export const convertEventToCalendarEventDetail = (
 
   return {
     id: event.$id,
-    date: new Date(event.startTime || event.date),
+    date: getEventCalendarAnchorDate(event.startTime || event.date, event.timezone),
     name: brandName,
     brandName: brandName, // Use event name as brand name (not client name)
     location,             // Location is client/store name
     distance,
     time: formattedTime,
+    timezone: event.timezone ?? null,
     startTime: event.startTime ? new Date(event.startTime) : undefined,
     endTime: event.endTime ? new Date(event.endTime) : undefined,
     logoURL,
@@ -304,7 +308,9 @@ export const convertClientsToBrands = (
       
       // Prefer client's brand description (from clients table), then event-level brandDescription
       const sortedEvents = clientEvents.sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
-      const upcomingEvents = sortedEvents.filter((event) => isEventTodayOrLater(event.startTime || event.date));
+      const upcomingEvents = sortedEvents.filter((event) =>
+        isEventTodayOrLater(event.startTime || event.date, event.timezone)
+      );
       const mostRelevantEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : sortedEvents[sortedEvents.length - 1];
       const eventBrandDescription = mostRelevantEvent?.brandDescription || null;
       const description =

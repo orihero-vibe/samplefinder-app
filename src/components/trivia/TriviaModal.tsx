@@ -22,6 +22,7 @@ import SparkleIcon from '@/icons/SparkleIcon';
 import { AchievementStartIcon, MediumStarIcon, SmallStarIcon, } from '@/icons';
 import { captureAndShareView } from '@/utils/captureAndShare';
 import { RoundedLogoImage } from '@/components';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -392,7 +393,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       animationType="none"
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <Animated.View
           ref={modalRef}
           collapsable={false}
@@ -437,15 +438,13 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
 
           {renderResult()}
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

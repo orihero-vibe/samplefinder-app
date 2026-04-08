@@ -55,7 +55,9 @@ function validateEventsRequestBody(body) {
         throw new Error('longitude must be between -180 and 180');
     }
     const page = bodyObj.page !== undefined ? Number(bodyObj.page) : DEFAULT_PAGE;
-    const pageSize = bodyObj.pageSize !== undefined ? Number(bodyObj.pageSize) : DEFAULT_PAGE_SIZE;
+    const pageSize = bodyObj.pageSize !== undefined
+        ? Number(bodyObj.pageSize)
+        : DEFAULT_PAGE_SIZE;
     if (page < 1 || !Number.isInteger(page)) {
         throw new Error('page must be a positive integer');
     }
@@ -110,7 +112,8 @@ async function getEventsByLocation(databases, userLat, userLon, page, pageSize, 
                 Array.isArray(event.location.coordinates) &&
                 event.location.coordinates.length >= 2) {
                 // GeoJSON format: {coordinates: [longitude, latitude]}
-                const coords = event.location.coordinates;
+                const coords = event.location
+                    .coordinates;
                 eventLon = coords[0];
                 eventLat = coords[1];
             }
@@ -211,7 +214,9 @@ async function getActiveTrivia(databases, userId, log) {
     const answeredTriviaIds = new Set();
     for (const response of userResponsesResult.documents) {
         const triviaRef = response.trivia;
-        const triviaId = typeof triviaRef === 'string' ? triviaRef : triviaRef?.$id || triviaRef?.id;
+        const triviaId = typeof triviaRef === 'string'
+            ? triviaRef
+            : triviaRef?.$id || triviaRef?.id;
         if (triviaId) {
             answeredTriviaIds.add(triviaId);
         }
@@ -226,10 +231,13 @@ async function getActiveTrivia(databases, userId, log) {
     // Also remove correctOptionIndex from the response for security
     const unansweredTrivia = [];
     for (const trivia of activeTriviaResponse.documents) {
-        const wasSkippedByUser = Array.isArray(trivia.skippedUsers) && trivia.skippedUsers.includes(userId);
+        const wasSkippedByUser = Array.isArray(trivia.skippedUsers) &&
+            trivia.skippedUsers.includes(userId);
         const clientId = trivia.client?.$id;
         const isFavoritedBrand = !clientId || favoriteIds.has(clientId);
-        if (!answeredTriviaIds.has(trivia.$id) && !wasSkippedByUser && isFavoritedBrand) {
+        if (!answeredTriviaIds.has(trivia.$id) &&
+            !wasSkippedByUser &&
+            isFavoritedBrand) {
             unansweredTrivia.push({
                 $id: trivia.$id,
                 question: trivia.question,
@@ -414,7 +422,9 @@ async function updateUserStatus(users, databases, userId, block, log) {
         }
         return {
             success: true,
-            message: block ? 'User successfully blocked' : 'User successfully unblocked',
+            message: block
+                ? 'User successfully blocked'
+                : 'User successfully unblocked',
         };
     }
     catch (err) {
@@ -434,17 +444,27 @@ async function createUser(users, databases, data, log) {
     log(`Creating user: ${data.email}`);
     try {
         // 1. Check if email already exists in Auth
-        const existingByEmail = await users.list([Query.equal('email', data.email)]);
+        const existingByEmail = await users.list([
+            Query.equal('email', data.email),
+        ]);
         if (existingByEmail.total > 0) {
-            throw { code: 409, message: 'A user with this email already exists. Please use a different email.' };
+            throw {
+                code: 409,
+                message: 'A user with this email already exists. Please use a different email.',
+            };
         }
         // 2. Check if phone already exists (when provided)
         if (data.phoneNumber?.trim()) {
             const phoneFormatted = `+1${data.phoneNumber.replace(/\D/g, '')}`;
             if (phoneFormatted.length >= 12) {
-                const existingByPhone = await users.list([Query.equal('phone', phoneFormatted)]);
+                const existingByPhone = await users.list([
+                    Query.equal('phone', phoneFormatted),
+                ]);
                 if (existingByPhone.total > 0) {
-                    throw { code: 409, message: 'A user with this phone number already exists. Please use a different email or phone.' };
+                    throw {
+                        code: 409,
+                        message: 'A user with this phone number already exists. Please use a different email or phone.',
+                    };
                 }
             }
         }
@@ -452,7 +472,10 @@ async function createUser(users, databases, data, log) {
         if (data.username?.trim()) {
             const existingByUsername = await databases.listDocuments(DATABASE_ID, USER_PROFILES_TABLE_ID, [Query.equal('username', data.username.trim())]);
             if (existingByUsername.total > 0) {
-                throw { code: 409, message: 'Username already exists. Please choose a different username.' };
+                throw {
+                    code: 409,
+                    message: 'Username already exists. Please choose a different username.',
+                };
             }
         }
         // 4. Create Auth user (node-appwrite v14 uses positional params: userId, email, phone, password, name)
@@ -624,9 +647,15 @@ async function verifyEmailOTP(endpoint, projectId, userId, otp, log) {
         const text = await res.text();
         log(`OTP verification failed: ${res.status} ${text}`);
         if (res.status === 401 || res.status === 400 || res.status === 404) {
-            throw { code: 400, message: 'Invalid or expired code. Please request a new password reset.' };
+            throw {
+                code: 400,
+                message: 'Invalid or expired code. Please request a new password reset.',
+            };
         }
-        throw { code: 400, message: 'Invalid or expired code. Please request a new password reset.' };
+        throw {
+            code: 400,
+            message: 'Invalid or expired code. Please request a new password reset.',
+        };
     }
 }
 /**
@@ -668,10 +697,102 @@ async function resetPasswordAfterOTP(users, databases, endpoint, projectId, user
         };
     }
 }
+const REFERRAL_REWARD_POINTS = 100;
+/**
+ * Triggers the Notification function to send REFERRAL POINTS EARNED (push + in-app append).
+ */
+async function invokeReferralPointsNotification(endpoint, projectId, apiKey, notificationFunctionId, referrerAuthId, points, log) {
+    if (!notificationFunctionId) {
+        log('Referral push skipped: APPWRITE_NOTIFICATION_FUNCTION_ID is not set');
+        return;
+    }
+    const base = endpoint.replace(/\/$/, '');
+    const url = `${base}/functions/${notificationFunctionId}/executions`;
+    const innerBody = JSON.stringify({ userId: referrerAuthId, points });
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Appwrite-Key': apiKey,
+            'X-Appwrite-Project': projectId,
+        },
+        body: JSON.stringify({
+            body: innerBody,
+            async: false,
+            path: '/send-referral-points-notification',
+            method: 'POST',
+        }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+        throw new Error(`Notification function HTTP ${res.status}: ${text}`);
+    }
+    log(`Referral notification execution OK: ${text.slice(0, 240)}`);
+}
+/**
+ * Awards referral points to the referrer and notifies them. Requires the execution
+ * to be started by the same user as body.userId (APPWRITE_FUNCTION_USER_ID).
+ */
+async function applyReferralReward(databases, endpoint, projectId, apiKey, body, log) {
+    const initiator = process.env.APPWRITE_FUNCTION_USER_ID;
+    if (!initiator || initiator !== body.userId) {
+        log('apply-referral: rejected — userId must match authenticated execution user');
+        throw {
+            code: 401,
+            message: 'Unauthorized',
+        };
+    }
+    const rawCode = typeof body.referralCode === 'string'
+        ? body.referralCode.trim().toUpperCase()
+        : '';
+    if (!rawCode) {
+        return { success: true, applied: false, message: 'No referral code' };
+    }
+    const newUserResult = await databases.listDocuments(DATABASE_ID, USER_PROFILES_TABLE_ID, [Query.equal('authID', body.userId), Query.limit(1)]);
+    if (newUserResult.documents.length === 0) {
+        throw { code: 404, message: 'User profile not found' };
+    }
+    const newUserProfile = newUserResult.documents[0];
+    const newUserDocId = newUserProfile.$id;
+    const existingUsed = newUserProfile.usedReferralCode;
+    if (typeof existingUsed === 'string' && existingUsed.trim().length > 0) {
+        log('apply-referral: invitee already used a referral code');
+        return {
+            success: true,
+            applied: false,
+            message: 'Referral already applied',
+        };
+    }
+    const referrerResult = await databases.listDocuments(DATABASE_ID, USER_PROFILES_TABLE_ID, [Query.equal('referralCode', rawCode), Query.limit(2)]);
+    if (referrerResult.documents.length === 0) {
+        log(`apply-referral: invalid referral code ${rawCode}`);
+        return { success: true, applied: false, message: 'Invalid referral code' };
+    }
+    const referrerProfile = referrerResult.documents[0];
+    const referrerAuthId = referrerProfile.authID;
+    if (!referrerAuthId || referrerAuthId === body.userId) {
+        throw { code: 400, message: 'Cannot use your own referral code' };
+    }
+    const referrerDocId = referrerProfile.$id;
+    const currentPoints = typeof referrerProfile.totalPoints === 'number'
+        ? referrerProfile.totalPoints
+        : 0;
+    await databases.updateDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, referrerDocId, { totalPoints: currentPoints + REFERRAL_REWARD_POINTS });
+    await databases.updateDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, newUserDocId, { usedReferralCode: rawCode });
+    const notificationFnId = process.env.APPWRITE_NOTIFICATION_FUNCTION_ID?.trim() || '';
+    try {
+        await invokeReferralPointsNotification(endpoint, projectId, apiKey, notificationFnId, referrerAuthId, REFERRAL_REWARD_POINTS, log);
+    }
+    catch (notifyErr) {
+        const msg = notifyErr instanceof Error ? notifyErr.message : String(notifyErr);
+        log(`apply-referral: points granted; referral push failed: ${msg}`);
+    }
+    return { success: true, applied: true, message: 'Referral applied' };
+}
 // ============================================================================
 // MAIN HANDLER
 // ============================================================================
-export default async function handler({ req, res, log, error }) {
+export default async function handler({ req, res, log, error, }) {
     try {
         // Initialize Appwrite client
         const endpoint = process.env.APPWRITE_FUNCTION_API_ENDPOINT ||
@@ -700,6 +821,46 @@ export default async function handler({ req, res, log, error }) {
         // ========================================================================
         if (req.path === '/ping') {
             return res.text('Pong');
+        }
+        if (req.path === '/apply-referral' && req.method === 'POST') {
+            log('Processing apply-referral request');
+            let requestBody;
+            try {
+                let raw;
+                if (typeof req.body === 'string') {
+                    raw = JSON.parse(req.body);
+                }
+                else if (req.body && typeof req.body === 'object') {
+                    raw = req.body;
+                }
+                else {
+                    throw new Error('Request body is required');
+                }
+                if (!raw.userId || typeof raw.userId !== 'string') {
+                    throw new Error('userId is required');
+                }
+                requestBody = {
+                    userId: raw.userId,
+                    referralCode: typeof raw.referralCode === 'string' ? raw.referralCode : undefined,
+                };
+            }
+            catch (validationError) {
+                const errorMessage = validationError instanceof Error
+                    ? validationError.message
+                    : String(validationError);
+                return res.json({ success: false, error: errorMessage }, 400);
+            }
+            try {
+                const result = await applyReferralReward(databases, endpoint, projectId, apiKey, requestBody, log);
+                return res.json(result);
+            }
+            catch (err) {
+                const typedErr = err;
+                if (typedErr.code && typedErr.message) {
+                    return res.json({ success: false, error: typedErr.message }, typedErr.code);
+                }
+                throw err;
+            }
         }
         // ========================================================================
         // EVENT ENDPOINTS

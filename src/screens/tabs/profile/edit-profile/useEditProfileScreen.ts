@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { Alert, Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getCurrentUser, deleteAccount } from '@/lib/auth';
+import { deleteAccount } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { getUserProfile, updateUserProfile, UserProfileRow, checkUsernameExistsForDifferentUser, checkPhoneNumberExistsForDifferentUser } from '@/lib/database';
 import { updateEmail, updatePassword } from '@/lib/auth';
 import { uploadAvatar, deleteAvatar, extractFileIdFromUrl } from '@/lib/storage';
@@ -48,7 +49,7 @@ export const useEditProfileScreen = () => {
       setError('');
       
       // Get current authenticated user
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         setError('Not authenticated. Please log in again.');
         setIsLoading(false);
@@ -318,7 +319,7 @@ export const useEditProfileScreen = () => {
         throw new Error('Profile data not loaded');
       }
 
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated. Please log in again.');
       }
@@ -534,7 +535,7 @@ export const useEditProfileScreen = () => {
       setIsUploadingAvatar(true);
       setError('');
 
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated. Please log in again.');
       }

@@ -2,9 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { getCurrentUser, verifyEmail, sendEmailOTP, resendVerificationEmail, logout } from '@/lib/auth';
+import { verifyEmail, sendEmailOTP, resendVerificationEmail, logout } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { initializePushNotifications } from '@/lib/notifications';
 import { createUserNotification } from '@/lib/database';
+import { applyReferralAfterVerification } from '@/lib/referral';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 import { useTier1ModalStore } from '@/stores/tier1ModalStore';
 
@@ -27,7 +29,7 @@ export const useConfirmAccountScreen = () => {
         // Step 1: Get current user from session
         // Add a small delay to ensure session is available after navigation
         await new Promise(resolve => setTimeout(resolve, 100));
-        const user = await getCurrentUser();
+        const user = await useAuthStore.getState().fetchUser();
         if (!user) {
           console.error('[ConfirmAccount] No user found in session');
           setError('Session expired. Please sign in again to verify your account.');
@@ -85,6 +87,8 @@ export const useConfirmAccountScreen = () => {
 
     try {
       await verifyEmail(userId, code);
+
+      await applyReferralAfterVerification(userId);
 
       // Create a welcome notification after verification so the user can
       // access it later from the Profile notifications screen.

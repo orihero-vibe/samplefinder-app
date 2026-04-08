@@ -29,6 +29,8 @@ export interface CalendarEventDetail {
    */
   startTime?: Date;
   endTime?: Date;
+  /** IANA zone from Appwrite; used for upcoming filtering */
+  timezone?: string | null;
   /**
    * Alternative logo format for generating placeholder logos when logoURL is not available.
    * Currently not used by EventCard (which uses logoURL), but reserved for future use

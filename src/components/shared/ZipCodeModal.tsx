@@ -12,6 +12,7 @@ import {
 import CustomInput from './CustomInput';
 import CustomButton from './CustomButton';
 import { Colors } from '@/constants/Colors';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 interface ZipCodeModalProps {
   visible: boolean;
@@ -61,7 +62,7 @@ const ZipCodeModal: React.FC<ZipCodeModalProps> = ({
       onRequestClose={onDismiss ?? (() => {})}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoidingView}
@@ -114,15 +115,14 @@ const ZipCodeModal: React.FC<ZipCodeModalProps> = ({
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  backdropContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },

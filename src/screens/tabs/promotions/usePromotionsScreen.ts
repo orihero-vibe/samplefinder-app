@@ -4,7 +4,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { captureAndShareView } from '@/utils/captureAndShare';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { getNavigationRef } from '@/lib/notifications/handlers';
 import { 
   getUserCheckIns,
@@ -91,7 +91,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
         setIsLoading(true);
       }
       
-      const authUser = await getCurrentUser();
+      const authUser = useAuthStore.getState().user;
       
       if (!authUser) {
         setIsLoading(false);

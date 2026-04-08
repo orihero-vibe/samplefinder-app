@@ -14,6 +14,7 @@ import {
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import CloseIcon from '@/components/shared/CloseIcon';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -80,7 +81,7 @@ const BadgeRequirementsModal: React.FC<BadgeRequirementsModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <Animated.View
           style={[
             styles.modalContainer,
@@ -175,15 +176,13 @@ const BadgeRequirementsModal: React.FC<BadgeRequirementsModalProps> = ({
             <Text style={styles.applyButtonText}>Apply</Text>
           </TouchableOpacity>
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

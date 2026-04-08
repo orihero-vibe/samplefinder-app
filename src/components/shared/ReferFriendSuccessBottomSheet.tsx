@@ -5,7 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import type { ComponentProps } from 'react';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import GradientBottomSheetBackdrop from '@/components/shared/GradientBottomSheetBackdrop';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import { SparkleIcon } from '@/icons';
@@ -26,12 +28,12 @@ const ReferFriendSuccessBottomSheet: React.FC<ReferFriendSuccessBottomSheetProps
   const snapPoints = useMemo(() => ['75%'], []);
 
   const renderBackdrop = useMemo(
-    () => (props: any) => (
-      <BottomSheetBackdrop
+    () => (props: ComponentProps<typeof GradientBottomSheetBackdrop>) => (
+      <GradientBottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.5}
+        opacity={0.55}
       />
     ),
     []

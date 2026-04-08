@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { fetchTiers, getUnreadNotifications, getUserProfile } from '@/lib/database';
 import type { UserNotification, TierRow } from '@/lib/database';
 import type { Tier } from '@/screens/tabs/promotions/components';
@@ -7,6 +7,8 @@ import type { Tier } from '@/screens/tabs/promotions/components';
 export interface AwardedTier {
   tier: Tier;
   notificationId?: string;
+  /** User total points when the award was detected (for tier 1 welcome copy). */
+  userTotalPoints?: number;
 }
 
 const getLastSeenTierStorageKey = (authId: string) => `lastSeenTierLevel:${authId}`;
@@ -63,7 +65,7 @@ const resolveTierFromTierLevel = (tiers: TierRow[], tierLevel: string): TierRow 
 };
 
 export const syncTierAwards = async (): Promise<AwardedTier[]> => {
-  const user = await getCurrentUser();
+  const user = useAuthStore.getState().user;
   if (!user) return [];
 
   const [profile, tiers, unreadNotifications] = await Promise.all([
@@ -90,6 +92,7 @@ export const syncTierAwards = async (): Promise<AwardedTier[]> => {
     awardedTiers.push({
       tier: toTierForModal(tier),
       notificationId: notification.id,
+      userTotalPoints: profile.totalPoints ?? 0,
     });
   }
 
@@ -105,7 +108,10 @@ export const syncTierAwards = async (): Promise<AwardedTier[]> => {
   if (currentTierLevel !== lastSeenTierLevel && currentTierLevel.length > 0) {
     const currentTier = resolveTierFromTierLevel(tiers, currentTierLevel);
     if (currentTier && !queuedTierIds.has(currentTier.$id)) {
-      awardedTiers.push({ tier: toTierForModal(currentTier) });
+      awardedTiers.push({
+        tier: toTierForModal(currentTier),
+        userTotalPoints: profile.totalPoints ?? 0,
+      });
     }
   }
 

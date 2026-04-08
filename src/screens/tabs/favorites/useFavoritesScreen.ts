@@ -7,7 +7,7 @@ import { convertClientsToBrands, filterEventsByAdultCategories, extractClientFro
 import { ClientData, EventRow } from '@/lib/database';
 import { formatEventDate, formatEventTime, isEventTodayOrLater } from '@/utils/formatters';
 import type { EventData } from './components/BrandUpcomingEvents';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 export interface FavoriteBrandData {
   id: string;
@@ -45,7 +45,7 @@ export const useFavoritesScreen = () => {
       }
       
       // Get current user and their favorites from database
-      const authUser = await getCurrentUser();
+      const authUser = useAuthStore.getState().user;
       let isAdult = false;
       if (authUser) {
         const userProfile = await getUserProfile(authUser.$id);
@@ -149,7 +149,9 @@ export const useFavoritesScreen = () => {
         .sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
       
       // Get brandDescription from the most recent event (prioritize upcoming events, then past events)
-      const upcomingEvents = allBrandEvents.filter((event) => isEventTodayOrLater(event.startTime || event.date));
+      const upcomingEvents = allBrandEvents.filter((event) =>
+        isEventTodayOrLater(event.startTime || event.date, event.timezone)
+      );
       const mostRelevantEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : allBrandEvents[allBrandEvents.length - 1];
       const brandDescription = mostRelevantEvent?.brandDescription || null;
       
@@ -170,8 +172,8 @@ export const useFavoritesScreen = () => {
             brandName: brandName,
             location,
             distance: city && state ? `${city}, ${state}` : (city || state || ''), // Use distance field for city, state
-            date: formatEventDate(event.startTime || event.date),
-            time: formatEventTime(event.startTime, event.endTime),
+            date: formatEventDate(event.startTime || event.date, event.timezone),
+            time: formatEventTime(event.startTime, event.endTime, event.timezone),
             logoURL: client.logoURL || null, // Brand logo from client
           };
         });
@@ -208,7 +210,7 @@ export const useFavoritesScreen = () => {
     try {
       removeFavoriteFromStore(brandId);
 
-      const authUser = await getCurrentUser();
+      const authUser = useAuthStore.getState().user;
       if (authUser) {
         await removeFavoriteBrand(authUser.$id, brandId);
       }
@@ -248,7 +250,7 @@ export const useFavoritesScreen = () => {
         // Remove favorite
         removeFavoriteFromStore(brandId);
         
-        const authUser = await getCurrentUser();
+        const authUser = useAuthStore.getState().user;
         if (authUser) {
           await removeFavoriteBrand(authUser.$id, brandId);
         }
@@ -256,7 +258,7 @@ export const useFavoritesScreen = () => {
         // Add favorite
         addFavoriteToStore(brandId);
         
-        const authUser = await getCurrentUser();
+        const authUser = useAuthStore.getState().user;
         if (authUser) {
           await addFavoriteBrand(authUser.$id, brandId);
         }

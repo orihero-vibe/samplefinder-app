@@ -84,6 +84,7 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
           brandDescription: row.brandDescription ?? null,
           categories: row.categories || [], // Include categories for adult filtering
           location,
+          timezone: row.timezone ?? null,
           isArchived: row.isArchived || false,
           isHidden: row.isHidden || false,
           $createdAt: row.$createdAt,
@@ -180,6 +181,7 @@ export const fetchAllEvents = async (): Promise<EventRow[]> => {
         categories: row.categories || [], // Include categories for adult filtering
         location,
         locationName: row.locationName || '',
+        timezone: row.timezone ?? null,
         isArchived: row.isArchived || false,
         isHidden: row.isHidden || false,
         $createdAt: row.$createdAt,
@@ -281,6 +283,7 @@ export const fetchAllUpcomingEvents = async (): Promise<EventRow[]> => {
         categories: row.categories || [], // Include categories for adult filtering
         location,
         locationName: row.locationName || '',
+        timezone: row.timezone ?? null,
         isArchived: row.isArchived || false,
         isHidden: row.isHidden || false,
         $createdAt: row.$createdAt,
@@ -371,6 +374,7 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       brandDescription: result.brandDescription ?? null,
       categories: result.categories || [], // Include categories for adult filtering
       location,
+      timezone: result.timezone ?? null,
       isArchived: result.isArchived || false,
       isHidden: result.isHidden || false,
       $createdAt: result.$createdAt,

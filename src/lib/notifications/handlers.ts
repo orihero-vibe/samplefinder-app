@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { NavigationContainerRef } from '@react-navigation/native';
 import type { NotificationData } from './types';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { createUserNotification } from '@/lib/database';
 
 let navigationRef: NavigationContainerRef<any> | null = null;
@@ -14,7 +14,7 @@ const addEventReminderToNotifications = async (notification: Notifications.Notif
   const data = notification.request.content.data as NotificationData & { type?: string; eventId?: string; reminderType?: string };
   if (data?.type !== 'event_reminder' || !data?.eventId) return;
   try {
-    const user = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     if (!user) return;
     const title = notification.request.content.title || 'Sampling Today';
     const body = notification.request.content.body || 'Event reminder';

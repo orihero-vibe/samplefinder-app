@@ -3,7 +3,8 @@ import { View } from 'react-native';
 import { useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { Alert, Linking, Share } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
-import { logout, getCurrentUser } from '@/lib/auth';
+import { logout } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { captureAndShareView } from '@/utils/captureAndShare';
 import { getUserProfile, calculateTierStatus, fetchTiers, getUserCurrentTier, UserProfileRow, getUserCheckInsCount, getUserReviewsCount, getUnreadNotificationCount } from '@/lib/database';
 import { formatDateForDisplay } from '@/utils/formatters';
@@ -41,7 +42,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
       setIsLoading(true);
       setError('');
       
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         setError('Not authenticated. Please log in again.');
         setHasUnreadNotifications(false);

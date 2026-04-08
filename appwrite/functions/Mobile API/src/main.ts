@@ -44,6 +44,8 @@ interface EventData {
   eventInfo: string;
   isArchived: boolean;
   isHidden: boolean;
+  /** IANA id when set in admin (e.g. America/Chicago) */
+  timezone?: string | null;
   location?: [number, number]; // [longitude, latitude]
   client?: string;
   categories?: string;
@@ -116,6 +118,12 @@ interface CreateUserRequest {
   phoneNumber?: string;
   role?: string;
   tierLevel?: string;
+}
+
+/** Apply referral after the invitee verifies email (Mobile API + Notification function). */
+interface ApplyReferralRequest {
+  userId: string;
+  referralCode?: string;
 }
 
 interface TriviaClientDocument {
@@ -245,10 +253,11 @@ function validateEventsRequestBody(body: unknown): GetEventsByLocationRequest {
     throw new Error('longitude must be between -180 and 180');
   }
 
-  const page =
-    bodyObj.page !== undefined ? Number(bodyObj.page) : DEFAULT_PAGE;
+  const page = bodyObj.page !== undefined ? Number(bodyObj.page) : DEFAULT_PAGE;
   const pageSize =
-    bodyObj.pageSize !== undefined ? Number(bodyObj.pageSize) : DEFAULT_PAGE_SIZE;
+    bodyObj.pageSize !== undefined
+      ? Number(bodyObj.pageSize)
+      : DEFAULT_PAGE_SIZE;
 
   if (page < 1 || !Number.isInteger(page)) {
     throw new Error('page must be a positive integer');
@@ -322,11 +331,14 @@ async function getEventsByLocation(
         typeof event.location === 'object' &&
         event.location !== null &&
         'coordinates' in event.location &&
-        Array.isArray((event.location as { coordinates: number[] }).coordinates) &&
+        Array.isArray(
+          (event.location as { coordinates: number[] }).coordinates
+        ) &&
         (event.location as { coordinates: number[] }).coordinates.length >= 2
       ) {
         // GeoJSON format: {coordinates: [longitude, latitude]}
-        const coords = (event.location as { coordinates: number[] }).coordinates;
+        const coords = (event.location as { coordinates: number[] })
+          .coordinates;
         eventLon = coords[0];
         eventLat = coords[1];
       }
@@ -357,7 +369,9 @@ async function getEventsByLocation(
           if (clientObj.$id || clientObj.name) {
             clientData = clientObj as unknown as ClientData;
           } else {
-            const clientId = (clientObj.id || clientObj.$id) as string | undefined;
+            const clientId = (clientObj.id || clientObj.$id) as
+              | string
+              | undefined;
             if (clientId && typeof clientId === 'string') {
               const clientResponse = await databases.getDocument(
                 DATABASE_ID,
@@ -432,18 +446,19 @@ async function getActiveTrivia(
   const now = new Date().toISOString();
 
   // Fetch active trivia and user's responses in parallel to minimize execution time
-  const [activeTriviaResponse, userResponsesResult, userProfile] = await Promise.all([
-    databases.listDocuments(DATABASE_ID, TRIVIA_TABLE_ID, [
-      Query.lessThanEqual('startDate', now),
-      Query.greaterThanEqual('endDate', now),
-      Query.limit(GET_ACTIVE_TRIVIA_LIMIT),
-    ]),
-    databases.listDocuments(DATABASE_ID, TRIVIA_RESPONSES_TABLE_ID, [
-      Query.equal('user', userId),
-      Query.limit(GET_ACTIVE_TRIVIA_RESPONSES_LIMIT),
-    ]),
-    databases.getDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, userId),
-  ]);
+  const [activeTriviaResponse, userResponsesResult, userProfile] =
+    await Promise.all([
+      databases.listDocuments(DATABASE_ID, TRIVIA_TABLE_ID, [
+        Query.lessThanEqual('startDate', now),
+        Query.greaterThanEqual('endDate', now),
+        Query.limit(GET_ACTIVE_TRIVIA_LIMIT),
+      ]),
+      databases.listDocuments(DATABASE_ID, TRIVIA_RESPONSES_TABLE_ID, [
+        Query.equal('user', userId),
+        Query.limit(GET_ACTIVE_TRIVIA_RESPONSES_LIMIT),
+      ]),
+      databases.getDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, userId),
+    ]);
 
   log(`Found ${activeTriviaResponse.total} active trivia questions`);
 
@@ -456,7 +471,9 @@ async function getActiveTrivia(
   for (const response of userResponsesResult.documents) {
     const triviaRef = response.trivia as string | { $id?: string; id?: string };
     const triviaId =
-      typeof triviaRef === 'string' ? triviaRef : triviaRef?.$id || triviaRef?.id;
+      typeof triviaRef === 'string'
+        ? triviaRef
+        : triviaRef?.$id || triviaRef?.id;
     if (triviaId) {
       answeredTriviaIds.add(triviaId);
     }
@@ -476,11 +493,16 @@ async function getActiveTrivia(
 
   for (const trivia of activeTriviaResponse.documents as unknown as TriviaDocument[]) {
     const wasSkippedByUser =
-      Array.isArray(trivia.skippedUsers) && trivia.skippedUsers.includes(userId);
+      Array.isArray(trivia.skippedUsers) &&
+      trivia.skippedUsers.includes(userId);
     const clientId = trivia.client?.$id;
     const isFavoritedBrand = !clientId || favoriteIds.has(clientId);
 
-    if (!answeredTriviaIds.has(trivia.$id) && !wasSkippedByUser && isFavoritedBrand) {
+    if (
+      !answeredTriviaIds.has(trivia.$id) &&
+      !wasSkippedByUser &&
+      isFavoritedBrand
+    ) {
       unansweredTrivia.push({
         $id: trivia.$id,
         question: trivia.question,
@@ -508,7 +530,12 @@ async function submitTriviaAnswer(
   triviaId: string,
   answerIndex: number,
   log: (message: string) => void
-): Promise<{ isCorrect: boolean; correctAnswerIndex: number; pointsAwarded: number; message: string }> {
+): Promise<{
+  isCorrect: boolean;
+  correctAnswerIndex: number;
+  pointsAwarded: number;
+  message: string;
+}> {
   const now = new Date().toISOString();
 
   // 1. Get the trivia question and validate it exists
@@ -651,7 +678,9 @@ async function dismissTrivia(
     ? [...trivia.skippedUsers]
     : [];
   if (skippedUsers.includes(userId)) {
-    log(`User ${userId} already in skippedUsers for trivia ${triviaId}, no update`);
+    log(
+      `User ${userId} already in skippedUsers for trivia ${triviaId}, no update`
+    );
     return;
   }
   skippedUsers.push(userId);
@@ -711,19 +740,19 @@ async function updateUserStatus(
     // 3. Update user profile isBlocked field
     try {
       log(`Attempting to find user profile by authID: ${userId}`);
-      
+
       const profileQuery = await databases.listDocuments(
         DATABASE_ID,
         USER_PROFILES_TABLE_ID,
         [Query.equal('authID', userId)]
       );
-      
+
       log(`Profile query completed. Total found: ${profileQuery.total}`);
-      
+
       if (profileQuery.total === 0) {
         throw { code: 404, message: 'User profile not found' };
       }
-      
+
       // Update the profile document
       const profile = profileQuery.documents[0];
       log(`Updating user profile document: ${profile.$id}`);
@@ -734,10 +763,11 @@ async function updateUserStatus(
         { isBlocked: block }
       );
       log(`User profile updated successfully`);
-      
     } catch (profileError: unknown) {
       const typedProfileError = profileError as { message?: string };
-      log(`Error updating profile: ${typedProfileError.message || 'Unknown error'}`);
+      log(
+        `Error updating profile: ${typedProfileError.message || 'Unknown error'}`
+      );
       // If profile update fails, revert the auth status
       await users.updateStatus(userId, block);
       throw {
@@ -748,11 +778,15 @@ async function updateUserStatus(
 
     return {
       success: true,
-      message: block ? 'User successfully blocked' : 'User successfully unblocked',
+      message: block
+        ? 'User successfully blocked'
+        : 'User successfully unblocked',
     };
   } catch (err: unknown) {
     const typedErr = err as { code?: number; message?: string };
-    log(`Error during user status update: ${typedErr.message || 'Unknown error'}`);
+    log(
+      `Error during user status update: ${typedErr.message || 'Unknown error'}`
+    );
     throw typedErr;
   }
 }
@@ -770,23 +804,40 @@ async function createUser(
   databases: Databases,
   data: CreateUserRequest,
   log: (message: string) => void
-): Promise<{ success: boolean; userId: string; profileId: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  userId: string;
+  profileId: string;
+  error?: string;
+}> {
   log(`Creating user: ${data.email}`);
 
   try {
     // 1. Check if email already exists in Auth
-    const existingByEmail = await users.list([Query.equal('email', data.email)]);
+    const existingByEmail = await users.list([
+      Query.equal('email', data.email),
+    ]);
     if (existingByEmail.total > 0) {
-      throw { code: 409, message: 'A user with this email already exists. Please use a different email.' };
+      throw {
+        code: 409,
+        message:
+          'A user with this email already exists. Please use a different email.',
+      };
     }
 
     // 2. Check if phone already exists (when provided)
     if (data.phoneNumber?.trim()) {
       const phoneFormatted = `+1${data.phoneNumber.replace(/\D/g, '')}`;
       if (phoneFormatted.length >= 12) {
-        const existingByPhone = await users.list([Query.equal('phone', phoneFormatted)]);
+        const existingByPhone = await users.list([
+          Query.equal('phone', phoneFormatted),
+        ]);
         if (existingByPhone.total > 0) {
-          throw { code: 409, message: 'A user with this phone number already exists. Please use a different email or phone.' };
+          throw {
+            code: 409,
+            message:
+              'A user with this phone number already exists. Please use a different email or phone.',
+          };
         }
       }
     }
@@ -799,13 +850,18 @@ async function createUser(
         [Query.equal('username', data.username.trim())]
       );
       if (existingByUsername.total > 0) {
-        throw { code: 409, message: 'Username already exists. Please choose a different username.' };
+        throw {
+          code: 409,
+          message:
+            'Username already exists. Please choose a different username.',
+        };
       }
     }
 
     // 4. Create Auth user (node-appwrite v14 uses positional params: userId, email, phone, password, name)
     const userId = ID.unique();
-    const name = [data.firstname, data.lastname].filter(Boolean).join(' ').trim() || '';
+    const name =
+      [data.firstname, data.lastname].filter(Boolean).join(' ').trim() || '';
     await users.create(
       userId,
       data.email,
@@ -882,32 +938,40 @@ async function deleteUserAccount(
     try {
       log(`Attempting to find user profile by authID: ${userId}`);
       log(`Database ID: ${DATABASE_ID}, Table ID: ${USER_PROFILES_TABLE_ID}`);
-      
+
       // Query for the user profile document where authID matches the user's auth ID
       const profileQuery = await databases.listDocuments(
         DATABASE_ID,
         USER_PROFILES_TABLE_ID,
         [Query.equal('authID', userId)]
       );
-      
+
       log(`Profile query completed. Total found: ${profileQuery.total}`);
-      
+
       if (profileQuery.total === 0) {
-        log(`No user profile found with authID: ${userId} - continuing with auth deletion`);
+        log(
+          `No user profile found with authID: ${userId} - continuing with auth deletion`
+        );
       } else {
         log(`Found ${profileQuery.total} profile(s) to delete`);
         // Delete the profile document(s) - there should only be one, but handle multiple just in case
         for (const profile of profileQuery.documents) {
-          log(`Profile document details: ID=${profile.$id}, authID=${profile.authID || 'N/A'}`);
+          log(
+            `Profile document details: ID=${profile.$id}, authID=${profile.authID || 'N/A'}`
+          );
           log(`Attempting to delete user profile document: ${profile.$id}`);
-          await databases.deleteDocument(DATABASE_ID, USER_PROFILES_TABLE_ID, profile.$id);
+          await databases.deleteDocument(
+            DATABASE_ID,
+            USER_PROFILES_TABLE_ID,
+            profile.$id
+          );
           log(`User profile deleted successfully: ${profile.$id}`);
         }
         log(`Deleted ${profileQuery.total} user profile(s) from database`);
       }
     } catch (profileError: unknown) {
       // Log the full error for debugging
-      const typedProfileError = profileError as { 
+      const typedProfileError = profileError as {
         constructor?: { name?: string };
         message?: string;
         code?: number;
@@ -927,7 +991,7 @@ async function deleteUserAccount(
           response: typedProfileError.response,
         })}`
       );
-      
+
       // For any error, throw it to prevent partial deletion
       throw {
         code: 500,
@@ -947,7 +1011,9 @@ async function deleteUserAccount(
     };
   } catch (err: unknown) {
     const typedErr = err as { code?: number; message?: string };
-    log(`Error during account deletion: ${typedErr.message || 'Unknown error'}`);
+    log(
+      `Error during account deletion: ${typedErr.message || 'Unknown error'}`
+    );
     throw typedErr;
   }
 }
@@ -1021,9 +1087,16 @@ async function verifyEmailOTP(
     const text = await res.text();
     log(`OTP verification failed: ${res.status} ${text}`);
     if (res.status === 401 || res.status === 400 || res.status === 404) {
-      throw { code: 400, message: 'Invalid or expired code. Please request a new password reset.' };
+      throw {
+        code: 400,
+        message:
+          'Invalid or expired code. Please request a new password reset.',
+      };
     }
-    throw { code: 400, message: 'Invalid or expired code. Please request a new password reset.' };
+    throw {
+      code: 400,
+      message: 'Invalid or expired code. Please request a new password reset.',
+    };
   }
 }
 
@@ -1057,7 +1130,8 @@ async function resetPasswordAfterOTP(
       [Query.equal('authID', userId)]
     );
     if (profileQuery.total > 0) {
-      const username = (profileQuery.documents[0] as { username?: string }).username ?? '';
+      const username =
+        (profileQuery.documents[0] as { username?: string }).username ?? '';
       if (
         username &&
         newPassword.trim().toLowerCase() === username.trim().toLowerCase()
@@ -1081,11 +1155,170 @@ async function resetPasswordAfterOTP(
   }
 }
 
+const REFERRAL_REWARD_POINTS = 100;
+
+/**
+ * Triggers the Notification function to send REFERRAL POINTS EARNED (push + in-app append).
+ */
+async function invokeReferralPointsNotification(
+  endpoint: string,
+  projectId: string,
+  apiKey: string,
+  notificationFunctionId: string,
+  referrerAuthId: string,
+  points: number,
+  log: (message: string) => void
+): Promise<void> {
+  if (!notificationFunctionId) {
+    log('Referral push skipped: APPWRITE_NOTIFICATION_FUNCTION_ID is not set');
+    return;
+  }
+  const base = endpoint.replace(/\/$/, '');
+  const url = `${base}/functions/${notificationFunctionId}/executions`;
+  const innerBody = JSON.stringify({ userId: referrerAuthId, points });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Appwrite-Key': apiKey,
+      'X-Appwrite-Project': projectId,
+    },
+    body: JSON.stringify({
+      body: innerBody,
+      async: false,
+      path: '/send-referral-points-notification',
+      method: 'POST',
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Notification function HTTP ${res.status}: ${text}`);
+  }
+  log(`Referral notification execution OK: ${text.slice(0, 240)}`);
+}
+
+/**
+ * Awards referral points to the referrer and notifies them. Requires the execution
+ * to be started by the same user as body.userId (APPWRITE_FUNCTION_USER_ID).
+ */
+async function applyReferralReward(
+  databases: Databases,
+  endpoint: string,
+  projectId: string,
+  apiKey: string,
+  body: ApplyReferralRequest,
+  log: (message: string) => void
+): Promise<{ success: boolean; applied: boolean; message?: string }> {
+  const initiator = process.env.APPWRITE_FUNCTION_USER_ID;
+  if (!initiator || initiator !== body.userId) {
+    log(
+      'apply-referral: rejected — userId must match authenticated execution user'
+    );
+    throw {
+      code: 401,
+      message: 'Unauthorized',
+    };
+  }
+
+  const rawCode =
+    typeof body.referralCode === 'string'
+      ? body.referralCode.trim().toUpperCase()
+      : '';
+  if (!rawCode) {
+    return { success: true, applied: false, message: 'No referral code' };
+  }
+
+  const newUserResult = await databases.listDocuments(
+    DATABASE_ID,
+    USER_PROFILES_TABLE_ID,
+    [Query.equal('authID', body.userId), Query.limit(1)]
+  );
+  if (newUserResult.documents.length === 0) {
+    throw { code: 404, message: 'User profile not found' };
+  }
+
+  const newUserProfile = newUserResult.documents[0] as Record<string, unknown>;
+  const newUserDocId = newUserProfile.$id as string;
+  const existingUsed = newUserProfile.usedReferralCode;
+  if (typeof existingUsed === 'string' && existingUsed.trim().length > 0) {
+    log('apply-referral: invitee already used a referral code');
+    return {
+      success: true,
+      applied: false,
+      message: 'Referral already applied',
+    };
+  }
+
+  const referrerResult = await databases.listDocuments(
+    DATABASE_ID,
+    USER_PROFILES_TABLE_ID,
+    [Query.equal('referralCode', rawCode), Query.limit(2)]
+  );
+  if (referrerResult.documents.length === 0) {
+    log(`apply-referral: invalid referral code ${rawCode}`);
+    return { success: true, applied: false, message: 'Invalid referral code' };
+  }
+
+  const referrerProfile = referrerResult.documents[0] as Record<
+    string,
+    unknown
+  >;
+  const referrerAuthId = referrerProfile.authID as string;
+  if (!referrerAuthId || referrerAuthId === body.userId) {
+    throw { code: 400, message: 'Cannot use your own referral code' };
+  }
+
+  const referrerDocId = referrerProfile.$id as string;
+  const currentPoints =
+    typeof referrerProfile.totalPoints === 'number'
+      ? referrerProfile.totalPoints
+      : 0;
+
+  await databases.updateDocument(
+    DATABASE_ID,
+    USER_PROFILES_TABLE_ID,
+    referrerDocId,
+    { totalPoints: currentPoints + REFERRAL_REWARD_POINTS }
+  );
+
+  await databases.updateDocument(
+    DATABASE_ID,
+    USER_PROFILES_TABLE_ID,
+    newUserDocId,
+    { usedReferralCode: rawCode }
+  );
+
+  const notificationFnId =
+    process.env.APPWRITE_NOTIFICATION_FUNCTION_ID?.trim() || '';
+  try {
+    await invokeReferralPointsNotification(
+      endpoint,
+      projectId,
+      apiKey,
+      notificationFnId,
+      referrerAuthId,
+      REFERRAL_REWARD_POINTS,
+      log
+    );
+  } catch (notifyErr: unknown) {
+    const msg =
+      notifyErr instanceof Error ? notifyErr.message : String(notifyErr);
+    log(`apply-referral: points granted; referral push failed: ${msg}`);
+  }
+
+  return { success: true, applied: true, message: 'Referral applied' };
+}
+
 // ============================================================================
 // MAIN HANDLER
 // ============================================================================
 
-export default async function handler({ req, res, log, error }: HandlerContext) {
+export default async function handler({
+  req,
+  res,
+  log,
+  error,
+}: HandlerContext) {
   try {
     // Initialize Appwrite client
     const endpoint =
@@ -1125,6 +1358,57 @@ export default async function handler({ req, res, log, error }: HandlerContext) 
     // ========================================================================
     if (req.path === '/ping') {
       return res.text('Pong');
+    }
+
+    if (req.path === '/apply-referral' && req.method === 'POST') {
+      log('Processing apply-referral request');
+
+      let requestBody: ApplyReferralRequest;
+      try {
+        let raw: Record<string, unknown>;
+        if (typeof req.body === 'string') {
+          raw = JSON.parse(req.body) as Record<string, unknown>;
+        } else if (req.body && typeof req.body === 'object') {
+          raw = req.body as Record<string, unknown>;
+        } else {
+          throw new Error('Request body is required');
+        }
+        if (!raw.userId || typeof raw.userId !== 'string') {
+          throw new Error('userId is required');
+        }
+        requestBody = {
+          userId: raw.userId,
+          referralCode:
+            typeof raw.referralCode === 'string' ? raw.referralCode : undefined,
+        };
+      } catch (validationError: unknown) {
+        const errorMessage =
+          validationError instanceof Error
+            ? validationError.message
+            : String(validationError);
+        return res.json({ success: false, error: errorMessage }, 400);
+      }
+
+      try {
+        const result = await applyReferralReward(
+          databases,
+          endpoint,
+          projectId,
+          apiKey,
+          requestBody,
+          log
+        );
+        return res.json(result);
+      } catch (err: unknown) {
+        const typedErr = err as { code?: number; message?: string };
+        if (typedErr.code && typedErr.message) {
+          return res.json(
+            { success: false, error: typedErr.message },
+            typedErr.code
+          );
+        }
+        throw err;
+      }
     }
 
     // ========================================================================
@@ -1286,16 +1570,10 @@ export default async function handler({ req, res, log, error }: HandlerContext) 
       const body = req.body as DismissTriviaRequest;
 
       if (!body || !body.userId) {
-        return res.json(
-          { success: false, error: 'userId is required' },
-          400
-        );
+        return res.json({ success: false, error: 'userId is required' }, 400);
       }
       if (!body.triviaId) {
-        return res.json(
-          { success: false, error: 'triviaId is required' },
-          400
-        );
+        return res.json({ success: false, error: 'triviaId is required' }, 400);
       }
       try {
         await dismissTrivia(databases, body.userId, body.triviaId, log);
@@ -1333,7 +1611,12 @@ export default async function handler({ req, res, log, error }: HandlerContext) 
       }
 
       try {
-        const result = await deleteUserAccount(users, databases, body.userId, log);
+        const result = await deleteUserAccount(
+          users,
+          databases,
+          body.userId,
+          log
+        );
 
         return res.json({
           success: true,
@@ -1408,7 +1691,7 @@ export default async function handler({ req, res, log, error }: HandlerContext) 
     // ========================================================================
     // USER STATUS MANAGEMENT
     // ========================================================================
-    
+
     // UPDATE user status (block/unblock)
     if (req.path === '/update-user-status' && req.method === 'POST') {
       log('Processing update-user-status request');

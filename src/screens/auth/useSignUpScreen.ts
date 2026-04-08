@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { signup } from '@/lib/auth';
 import { isValidEmail, isValidPhoneNumber, isValidDate } from '@/utils/formatters';
 import { checkUsernameExists, checkPhoneNumberExists } from '@/lib/database/users';
+import {
+  normalizeReferralCodeInput,
+  validateOptionalReferralCode,
+  PENDING_REFERRAL_STORAGE_KEY,
+} from '@/lib/referral';
+import { REFERRAL_CODE_PATTERN } from '@/lib/deepLink.constants';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -18,10 +25,15 @@ interface FieldErrors {
   username?: string;
   email?: string;
   password?: string;
+  referralCode?: string;
 }
+
+type SignUpScreenRouteProp = RouteProp<RootStackParamList, 'SignUp'>;
 
 export const useSignUpScreen = () => {
   const navigation = useNavigation<SignUpScreenNavigationProp>();
+  const route = useRoute<SignUpScreenRouteProp>();
+  const routeReferralCode = route.params?.referralCode;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -30,6 +42,9 @@ export const useSignUpScreen = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState(
+    routeReferralCode ? normalizeReferralCodeInput(routeReferralCode).slice(0, 6) : '',
+  );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -256,7 +271,10 @@ export const useSignUpScreen = () => {
     
     const passwordError = validatePassword(password);
     if (passwordError) errors.password = passwordError;
-    
+
+    const referralErr = validateOptionalReferralCode(referralCode);
+    if (referralErr) errors.referralCode = referralErr;
+
     // Check username if it's not empty
     if (username.trim()) {
       const usernameError = await validateUsername(username);
@@ -340,11 +358,28 @@ export const useSignUpScreen = () => {
   // On mount: show Age Verification modal first
   useEffect(() => {
     setShowAgeVerificationModal(true);
-    
+
     // Cleanup: clear original signup data when component unmounts
     return () => {
       originalSignupData.current = null;
     };
+  }, []);
+
+  // Load pending referral code from AsyncStorage (e.g. from a deep link before app install)
+  useEffect(() => {
+    if (referralCode) return; // already set from route params
+
+    const loadPendingReferral = async () => {
+      try {
+        const pending = await AsyncStorage.getItem(PENDING_REFERRAL_STORAGE_KEY);
+        if (pending && REFERRAL_CODE_PATTERN.test(pending)) {
+          setReferralCode(pending);
+        }
+      } catch {
+        // Ignore storage errors
+      }
+    };
+    loadPendingReferral();
   }, []);
 
   // Real-time validation for fields (except username which is debounced)
@@ -418,6 +453,14 @@ export const useSignUpScreen = () => {
     setErrorMessage('');
   };
 
+  const handleReferralCodeChange = (text: string) => {
+    const n = normalizeReferralCodeInput(text).slice(0, 6);
+    setReferralCode(n);
+    updateFieldError('referralCode', validateOptionalReferralCode(n));
+    setShowError(false);
+    setErrorMessage('');
+  };
+
   // Check if form is valid (all fields filled and no errors)
   const isFormValid = 
     firstName.trim() !== '' &&
@@ -470,6 +513,7 @@ export const useSignUpScreen = () => {
         zipCode: zipCode.trim(),
         dateOfBirth: dateOfBirth.trim(),
         username: username.trim(),
+        referralCode: referralCode.trim() || undefined,
       });
 
       navigation.navigate('ConfirmAccount', { phoneNumber: phoneNumber.trim() });
@@ -600,6 +644,7 @@ export const useSignUpScreen = () => {
     username,
     email,
     password,
+    referralCode,
     fieldErrors,
     isCheckingUsername,
     showError,
@@ -618,6 +663,7 @@ export const useSignUpScreen = () => {
     setUsername: handleUsernameChange,
     setEmail: handleEmailChange,
     setPassword: handlePasswordChange,
+    setReferralCode: handleReferralCodeChange,
     setShowPushNotificationModal,
     setShowAgeVerificationModal,
     setShowTermsModal,

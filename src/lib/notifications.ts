@@ -55,6 +55,28 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/** Must match the FCM provider ID in Appwrite Console → Messaging → Providers. */
+const DEFAULT_FCM_PROVIDER_ID = '69cac0a30038ed1a7b92';
+
+export const getFcmProviderId = (): string =>
+  (process.env.EXPO_PUBLIC_APPWRITE_FCM_PROVIDER_ID || '').trim() || DEFAULT_FCM_PROVIDER_ID;
+
+/**
+ * Android 8+: explicit channels improve system tray / heads-up behavior for local notifications
+ * and provide a stable default when the FCM payload does not set android.channel_id.
+ */
+export async function ensureAndroidNotificationChannels(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+  await Notifications.setNotificationChannelAsync('default', {
+    name: 'General',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    sound: 'default',
+  });
+}
+
 // Storage keys
 const PUSH_TARGET_ID_KEY = '@push_target_id';
 const PUSH_TOKEN_KEY = '@push_token';
@@ -267,7 +289,7 @@ export const registerPushTarget = async (identifier: string, providerId?: string
       const result = await account.createPushTarget({
         targetId: targetId,
         identifier: identifier,
-        providerId: providerId || '69cac0a30038ed1a7b92', // Use FCM provider ID
+        providerId: providerId || getFcmProviderId(),
       });
       
       console.log('[notifications] Push target created successfully:', result);
@@ -401,10 +423,10 @@ export const initializePushNotifications = async (): Promise<boolean> => {
       return false;
     }
     
-    // Register native token with Appwrite
-    // Use the FCM provider ID from Appwrite (6936f46d003100bd238e)
-    const fcmProviderId = '69cac0a30038ed1a7b92'; // Your Firebase provider ID from Appwrite
-    const result = await registerPushTarget(token, fcmProviderId);
+    await ensureAndroidNotificationChannels();
+
+    // Register native token with Appwrite (provider ID from env or default)
+    const result = await registerPushTarget(token, getFcmProviderId());
     if (!result) {
       console.warn('[notifications] Could not register push target');
       return false;
@@ -427,10 +449,18 @@ let tokenRefreshTimeout: NodeJS.Timeout | null = null;
  */
 export const setupTokenRefreshListener = (): void => {
   console.log('[notifications] Setting up Firebase token refresh listener...');
-  
+
   // Listen for Firebase FCM token refresh
   // This happens when the token changes (app reinstall, token expiration, etc.)
-  onTokenRefresh(getFirebaseMessaging(), async (token) => {
+  let messaging;
+  try {
+    messaging = getFirebaseMessaging();
+  } catch (error) {
+    console.warn('[notifications] Firebase not available, skipping token refresh listener:', error);
+    return;
+  }
+
+  onTokenRefresh(messaging, async (token) => {
     console.log('[notifications] FCM token refreshed:', token);
     console.log('[notifications] Platform:', Platform.OS);
     

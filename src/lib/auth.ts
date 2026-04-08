@@ -1,6 +1,7 @@
 import { Account, ID, ExecutionMethod } from 'react-native-appwrite';
 import appwriteClient from './appwrite';
 import { createUserProfile } from './database';
+import { storePendingReferralCode } from './referral';
 import { functions } from './database/config';
 import { APPWRITE_EVENTS_FUNCTION_ID } from '@env';
 // Note: Push notifications are initialized after email verification completes,
@@ -51,6 +52,8 @@ export interface SignUpCredentials {
   zipCode: string;
   dateOfBirth: string;
   username: string;
+  /** Optional friend's code; stored locally until email verification, then sent to Mobile API. */
+  referralCode?: string;
 }
 
 export interface User {
@@ -178,6 +181,8 @@ export const signup = async (credentials: SignUpCredentials): Promise<User> => {
         isAdult: isAdult,
       });
       console.log('[auth.signup] User profile created successfully');
+
+      await storePendingReferralCode(credentials.referralCode);
     } catch (profileError: any) {
       console.error('[auth.signup] Error creating user profile:', profileError);
       console.error('[auth.signup] Profile error message:', profileError?.message);

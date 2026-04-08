@@ -8,9 +8,10 @@ import {
 } from 'react-native';
 import BottomSheet, {
   BottomSheetScrollView,
-  BottomSheetBackdrop,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
+import type { ComponentProps } from 'react';
+import GradientBottomSheetBackdrop from '@/components/shared/GradientBottomSheetBackdrop';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
 import ReviewStarFilledIcon from '@/icons/ReviewStarFilledIcon';
@@ -70,13 +71,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   );
 
   const renderBackdrop = useMemo(
-    () => (props: any) => (
-      <BottomSheetBackdrop
+    () => (props: ComponentProps<typeof GradientBottomSheetBackdrop>) => (
+      <GradientBottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.6}
-        style={[props.style, { backgroundColor: 'rgba(75, 31, 86, 0.7)' }]}
+        opacity={0.75}
       />
     ),
     []

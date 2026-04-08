@@ -11,12 +11,13 @@ import {
 } from 'react-native';
 import { Monicon } from '@monicon/native';
 import { Colors } from '@/constants/Colors';
-import { getTierDisplayParts } from '@/utils/formatters';
+import { getTierDisplayParts, getTierEarnedHeadline, getTierEarnedPointsMessage } from '@/utils/formatters';
 import { SmallBlueStarIcon } from '@/icons';
 import CustomButton from '@/components/shared/CustomButton';
 import { Tier } from './TierItem';
 import { CloseIcon } from '@/components';
 import { captureAndShareView } from '@/utils/captureAndShare';
+import ModalBackdrop from '@/components/shared/ModalBackdrop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const appDownloadLink = 'https://samplefinder.com';
@@ -77,32 +78,41 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
     onClose();
   };
 
+  const tierNumber = tier?.order ?? 1;
+  const tierDisplayParts = getTierDisplayParts(tier?.name ?? 'NewbieSampler');
+  /** Points required to complete the selected tier (denominator for progress). */
+  const tierGoalPoints = tier?.requiredPoints ?? 100;
+  const userTotalPoints = totalPoints ?? tier?.currentPoints ?? 0;
+  const isMaxTier = !nextTierRequiredPoints && tier?.badgeEarned;
+  /** Earned tier with a higher tier still available — show tier-earned popup, not progress. */
+  const isEarnedMidTier = Boolean(tier?.badgeEarned && nextTierRequiredPoints != null);
+  const progressPoints = progressTotalPoints ?? userTotalPoints;
+  const progress = tier?.badgeEarned
+    ? 100
+    : Math.min((progressPoints / tierGoalPoints) * 100, 100);
+
+  const getShareMessage = () => {
+    const tierName = tier?.name ?? 'a new tier';
+    if (isEarnedMidTier) {
+      if (tierNumber === 1) {
+        return `I just earned the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+      }
+      return `I just leveled up to the ${tierName} tier on SampleFinder! Join me in discovering amazing samples and earning rewards.`;
+    }
+    return `I'm earning the ${tierName} tier on SampleFinder! Join me in discovering amazing samples. ${appDownloadLink}`;
+  };
+
   const handleShare = async () => {
     try {
-      const tierName = tier?.name ?? 'a new';
-      const message = `I'm earning the ${tierName} tier on SampleFinder! Join me in discovering amazing samples. ${appDownloadLink}`;
       setIsCapturingShare(true);
-      // Wait one frame so hidden actions are not included in capture.
-      await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
-      await captureAndShareView(modalRef, message);
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      await captureAndShareView(modalRef, getShareMessage());
     } catch (error) {
       console.error('Error sharing tier achievement:', error);
     } finally {
       setIsCapturingShare(false);
     }
   };
-
-  const tierNumber = tier?.order ?? 1;
-  const tierDisplayParts = getTierDisplayParts(tier?.name ?? 'NewbieSampler');
-  const requiredPoints = nextTierRequiredPoints ?? tier?.requiredPoints ?? 100;
-  const maxPointsToDisplay = tier?.requiredPoints ?? requiredPoints;
-  const userTotalPoints = totalPoints ?? tier?.currentPoints ?? 0;
-  const isMaxTier = !nextTierRequiredPoints && tier?.badgeEarned;
-  const progressPoints = progressTotalPoints ?? userTotalPoints;
-  // If tier is achieved (e.g. from admin `tierLevel`), show it as completed.
-  const progress = tier?.badgeEarned
-    ? 100
-    : Math.min((progressPoints / requiredPoints) * 100, 100);
 
   const getTierBadgeColors = (tierNum: number) => {
     switch (tierNum) {
@@ -130,7 +140,7 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <ModalBackdrop containerStyle={styles.backdropContainer}>
         <Animated.View
           ref={modalRef}
           collapsable={false}
@@ -166,64 +176,123 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
           </View>
 
           <View style={styles.tierNameRow}>
-            <Text style={styles.tierName}>{tierDisplayParts.main}</Text>
+            <Text
+              style={[
+                styles.tierName,
+                (isEarnedMidTier || isMaxTier) && styles.tierNameEarnedPalette,
+              ]}
+            >
+              {tierDisplayParts.main}
+            </Text>
             {tierDisplayParts.subtitle ? (
-              <Text style={styles.tierNameSubtitle}>{tierDisplayParts.subtitle}</Text>
+              <Text
+                style={[
+                  styles.tierNameSubtitle,
+                  (isEarnedMidTier || isMaxTier) && styles.tierNameSubtitleEarnedPalette,
+                ]}
+              >
+                {tierDisplayParts.subtitle}
+              </Text>
             ) : null}
           </View>
 
-          <Text style={styles.mainMessage}>
-            {isMaxTier ? 'You\'re at the Top!' : 'You\'re On Your Way!'}
-          </Text>
-
-          <Text style={styles.pointsMessage}>
-            {isMaxTier 
-              ? `${userTotalPoints.toLocaleString()} points earned`
-              : `${userTotalPoints.toLocaleString()} / ${maxPointsToDisplay.toLocaleString()} points`
-            }
-          </Text>
-
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBarContainer}>
-              <View style={[styles.progressBar, { width: `${progress}%` }]} />
-            </View>
-          </View>
-
-          <View style={styles.pointsIndicatorContainer}>
-            <SmallBlueStarIcon />
-            <Text style={styles.pointsIndicatorText}>
-              {isMaxTier ? 'Keep exploring new events!' : 'Keep earning points!'}
-            </Text>
-          </View>
-
-          {!isCapturingShare && (
+          {isEarnedMidTier ? (
             <>
-              <CustomButton
-                title="Share"
-                onPress={handleShare}
-                variant="dark"
-                size="medium"
-                style={styles.actionButton}
-              />
-              <CustomButton
-                title="View More Events"
-                onPress={handleViewMoreEvents}
-                variant="dark"
-                size="medium"
-                style={styles.actionButton}
-              />
+              <Text style={[styles.mainMessage, styles.mainMessageEarnedPalette]}>
+                {getTierEarnedHeadline(tierNumber)}
+              </Text>
+              <Text style={[styles.pointsMessage, styles.pointsMessageEarnedPalette]}>
+                {getTierEarnedPointsMessage(tierNumber, tierGoalPoints, userTotalPoints)
+                  .split('**')
+                  .map((part, index) =>
+                    index % 2 === 1 ? (
+                      <Text key={index} style={styles.boldText}>
+                        {part}
+                      </Text>
+                    ) : (
+                      part
+                    )
+                  )}
+              </Text>
+              <View style={styles.pointsIndicatorContainer}>
+                <SmallBlueStarIcon />
+                <Text style={[styles.pointsIndicatorText, styles.pointsIndicatorEarnedPalette]}>
+                  You earned points!
+                </Text>
+              </View>
+              {!isCapturingShare && (
+                <CustomButton
+                  title="Share"
+                  onPress={handleShare}
+                  variant="dark"
+                  size="medium"
+                  style={styles.actionButton}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <Text
+                style={[
+                  styles.mainMessage,
+                  isMaxTier && styles.mainMessageEarnedPalette,
+                ]}
+              >
+                {isMaxTier ? "You're at the Top!" : "You're On Your Way!"}
+              </Text>
+
+              <Text
+                style={[
+                  styles.pointsMessage,
+                  isMaxTier && styles.pointsMessageEarnedPalette,
+                ]}
+              >
+                {isMaxTier
+                  ? `${userTotalPoints.toLocaleString()} points earned`
+                  : `${userTotalPoints.toLocaleString()} / ${tierGoalPoints.toLocaleString()} points`}
+              </Text>
+
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBarContainer}>
+                  <View style={[styles.progressBar, { width: `${progress}%` }]} />
+                </View>
+              </View>
+
+              <View style={styles.pointsIndicatorContainer}>
+                <SmallBlueStarIcon />
+                <Text style={styles.pointsIndicatorText}>
+                  {isMaxTier ? 'Keep exploring new events!' : 'Keep earning points!'}
+                </Text>
+              </View>
+
+              {!isCapturingShare && (
+                <>
+                  <CustomButton
+                    title="Share"
+                    onPress={handleShare}
+                    variant="dark"
+                    size="medium"
+                    style={styles.actionButton}
+                  />
+                  <CustomButton
+                    title="View More Events"
+                    onPress={handleViewMoreEvents}
+                    variant="dark"
+                    size="medium"
+                    style={styles.actionButton}
+                  />
+                </>
+              )}
             </>
           )}
         </Animated.View>
-      </View>
+      </ModalBackdrop>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backdropContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -333,6 +402,24 @@ const styles = StyleSheet.create({
   actionButton: {
     width: '100%',
     marginTop: 8,
+  },
+  tierNameEarnedPalette: {
+    color: Colors.pinDarkBlue,
+  },
+  tierNameSubtitleEarnedPalette: {
+    color: Colors.pinDarkBlue,
+  },
+  mainMessageEarnedPalette: {
+    color: Colors.pinDarkBlue,
+  },
+  pointsMessageEarnedPalette: {
+    color: Colors.black,
+  },
+  pointsIndicatorEarnedPalette: {
+    color: Colors.pinDarkBlue,
+  },
+  boldText: {
+    fontFamily: 'Quicksand_700Bold',
   },
 });
 

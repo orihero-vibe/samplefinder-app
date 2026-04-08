@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { AppState, type AppStateStatus, Linking } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import SignUpScreen from '@/screens/auth/SignUpScreen';
@@ -9,9 +10,11 @@ import NotificationSetupScreen from '@/screens/auth/NotificationSetupScreen';
 import ForgotPasswordScreen from '@/screens/auth/ForgotPasswordScreen';
 import PasswordResetScreen from '@/screens/auth/PasswordResetScreen';
 import TabNavigator from '@/navigation/TabNavigator';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { markNotificationAsRead } from '@/lib/database';
 import { setNavigationRef, setupNotificationHandlers, getLastNotificationResponse } from '@/lib/notifications/handlers';
+import { subscribeToDeepLinks, handleIncomingReferralLink } from '@/lib/deepLink';
+import { DEEP_LINK_DOMAIN, CUSTOM_SCHEME } from '@/lib/deepLink.constants';
 import { CustomSplashScreen } from '@/components';
 import BadgeEarnedModal, { type BadgeType } from '@/components/shared/BadgeEarnedModal';
 import { syncSpecialBadgeAwards, type AwardedSpecialBadge } from '@/lib/specialBadgeAwards';
@@ -20,7 +23,7 @@ import { syncTierAwards, type AwardedTier } from '@/lib/tierAwards';
 
 export type RootStackParamList = {
   Login: undefined;
-  SignUp: undefined;
+  SignUp: { referralCode?: string } | undefined;
   NotificationSetup: { phoneNumber?: string };
   ConfirmAccount: { phoneNumber?: string };
   ForgotPassword: { email?: string };
@@ -52,12 +55,75 @@ const AppNavigator = () => {
     activeTierAwardRef.current = activeTierAward;
   }, [activeTierAward]);
 
+  const linking = useMemo<LinkingOptions<RootStackParamList>>(() => ({
+    prefixes: [
+      `https://${DEEP_LINK_DOMAIN}`,
+      `${CUSTOM_SCHEME}://`,
+    ],
+    config: {
+      screens: {
+        SignUp: 'referral/:referralCode',
+      },
+    },
+    async getInitialURL() {
+      // Let notification-based navigation take priority
+      const lastNotification = await Notifications.getLastNotificationResponseAsync();
+      if (lastNotification) return null;
+
+      const url = await Linking.getInitialURL();
+      if (!url) return null;
+
+      // If user is signed in, don't route to SignUp — show alert instead
+      try {
+        const user = useAuthStore.getState().user;
+        if (user) {
+          await handleIncomingReferralLink(url);
+          return null;
+        }
+      } catch {
+        // not signed in — let the linking config route to SignUp
+      }
+
+      // Store referral code for the signup flow
+      await handleIncomingReferralLink(url);
+      return url;
+    },
+    subscribe(listener) {
+      // Subscribe to deep links (warm/hot start).
+      // For signed-in users, intercept and show alert instead of navigating.
+      const linkingSub = Linking.addEventListener('url', async ({ url }) => {
+        try {
+          const user = useAuthStore.getState().user;
+          if (user) {
+            await handleIncomingReferralLink(url);
+            return;
+          }
+        } catch {
+          // not signed in
+        }
+        listener(url);
+      });
+
+      return () => linkingSub.remove();
+    },
+  }), []);
+
   useEffect(() => {
     checkAuthSession();
     setupNotificationHandlers();
-    
+
     // Check for notification that opened the app
     getLastNotificationResponse();
+  }, []);
+
+  // Handle deep links when user is already authenticated (warm start)
+  useEffect(() => {
+    const unsubscribe = subscribeToDeepLinks((code) => {
+      // If user is logged in, the alert is shown by handleIncomingReferralLink.
+      // If user is not logged in, React Navigation linking config handles routing to SignUp.
+      console.log('[AppNavigator] Deep link referral code received:', code);
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -169,8 +235,8 @@ const AppNavigator = () => {
 
   const checkAuthSession = async () => {
     try {
-      const user = await getCurrentUser();
-      
+      const user = await useAuthStore.getState().fetchUser();
+
       if (user) {
         setInitialRouteName('MainTabs');
       } else {
@@ -199,7 +265,7 @@ const AppNavigator = () => {
     }
 
     try {
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return;
       }
@@ -218,7 +284,7 @@ const AppNavigator = () => {
     }
 
     try {
-      const user = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return;
       }
@@ -231,6 +297,7 @@ const AppNavigator = () => {
   return (
     <>
       <NavigationContainer
+        linking={linking}
         ref={(ref) => {
           navigationRef.current = ref;
           setNavigationRef(ref);
@@ -266,7 +333,11 @@ const AppNavigator = () => {
       <TierEarnedModal
         visible={Boolean(activeTierAward)}
         tier={activeTierAward?.tier}
-        points={activeTierAward?.tier.requiredPoints}
+        points={
+          (activeTierAward?.tier.order ?? 1) === 1
+            ? (activeTierAward?.userTotalPoints ?? activeTierAward?.tier.requiredPoints ?? 0)
+            : (activeTierAward?.tier.requiredPoints ?? 0)
+        }
         onClose={handleCloseTierModal}
       />
     </>

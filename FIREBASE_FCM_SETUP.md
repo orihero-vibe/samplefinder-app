@@ -79,13 +79,14 @@ Make sure these files exist and are properly configured:
 
 ### For Android:
 1. App gets FCM token from Firebase → `messaging().getToken()`
-2. Registers token with Appwrite using FCM provider (`6936f46d003100bd238e`)
-3. Push notifications sent through Firebase → Android device
+2. Registers token with Appwrite using your **FCM Messaging provider** from Appwrite Console → Messaging → Providers (copy the provider ID).
+3. Set the same ID in the app as `EXPO_PUBLIC_APPWRITE_FCM_PROVIDER_ID` (see `getFcmProviderId()` in `src/lib/notifications.ts`). If unset, the app falls back to the project default constant—**keep env and console in sync** or pushes will fail with invalid provider errors.
+4. Push notifications sent through Firebase → Android device
 
 ### For iOS:
 1. App gets FCM token from Firebase → `messaging().getToken()`
 2. Firebase internally handles APNs communication (using the APNs key you uploaded)
-3. Registers FCM token with Appwrite using FCM provider
+3. Registers FCM token with Appwrite using the same FCM Messaging provider ID as Android (`EXPO_PUBLIC_APPWRITE_FCM_PROVIDER_ID` / `getFcmProviderId()`).
 4. Push notifications sent through Firebase → APNs → iOS device
 
 ## Common Issues & Solutions
@@ -121,6 +122,7 @@ After setup, test by:
 1. Triggering a notification in your app
 2. Check Appwrite Console → Messaging → Logs
 3. Look for successful message delivery
+4. Confirm the **provider ID** in logs matches `EXPO_PUBLIC_APPWRITE_FCM_PROVIDER_ID` / `getFcmProviderId()` in the client
 
 ## Packages Installed
 

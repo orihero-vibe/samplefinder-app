@@ -15,6 +15,25 @@ export const getTierDisplayParts = (name: string): { main: string; subtitle: str
   return { main: name, subtitle: null };
 };
 
+/** Headline when a tier badge is earned (not in-progress). */
+export const getTierEarnedHeadline = (tierOrder: number): string =>
+  tierOrder === 1 ? 'Thanks for Joining!' : "You've Leveled Up!";
+
+/**
+ * Body copy for tier-earned popups. Use `displayPoints` for tier 1 (e.g. total points);
+ * `requiredPoints` is the threshold for the tier reached (tiers 2–5).
+ */
+export const getTierEarnedPointsMessage = (
+  tierOrder: number,
+  requiredPoints: number,
+  displayPoints: number
+): string => {
+  if (tierOrder === 1) {
+    return `You earned ${displayPoints.toLocaleString()} points with SampleFinder, just for signing up!`;
+  }
+  return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, unlocking your new tier!`;
+};
+
 /**
  * Formats a phone number as (XXX) XXX-XXXX
  */
@@ -265,22 +284,111 @@ export const parseEventDateTime = (
   return { start, end };
 };
 
+/** Returns IANA zone if valid for Intl, otherwise undefined (fall back to device local). */
+export const resolveEventTimeZone = (timeZone?: string | null): string | undefined => {
+  if (timeZone == null || typeof timeZone !== 'string') return undefined;
+  const trimmed = timeZone.trim();
+  if (!trimmed) return undefined;
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: trimmed }).format(new Date());
+    return trimmed;
+  } catch {
+    return undefined;
+  }
+};
+
+const getYmdInTimeZone = (date: Date, timeZone: string): { year: number; month: number; day: number } => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const year = parseInt(parts.find((p) => p.type === 'year')?.value ?? 'NaN', 10);
+  const month = parseInt(parts.find((p) => p.type === 'month')?.value ?? 'NaN', 10);
+  const day = parseInt(parts.find((p) => p.type === 'day')?.value ?? 'NaN', 10);
+  return { year, month, day };
+};
+
 /**
- * Formats an ISO datetime string to date format "Aug 1, 2025"
+ * Calendar anchor in the device's local Date for grid/list matching: Y-M-D is taken from the event's
+ * wall-clock day in `timeZone` when set, otherwise from the instant in the device local zone.
  */
-export const formatEventDate = (isoDate: string): string => {
+export const getEventCalendarAnchorDate = (isoDate: string, timeZone?: string | null): Date => {
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return date;
+  const tz = resolveEventTimeZone(timeZone);
+  if (!tz) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+  }
+  const { year, month, day } = getYmdInTimeZone(date, tz);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+};
+
+/** Negative if event calendar day is before "today" in the comparison zone, 0 if same day, positive if after. */
+export const compareEventDayToToday = (isoDate: string, timeZone?: string | null): number => {
+  const d = new Date(isoDate);
+  if (isNaN(d.getTime())) return 0;
+  const tz = resolveEventTimeZone(timeZone);
+  const now = new Date();
+  if (!tz) {
+    const ev = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const td = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return ev.getTime() - td.getTime();
+  }
+  const evYmd = getYmdInTimeZone(d, tz);
+  const tdYmd = getYmdInTimeZone(now, tz);
+  if (evYmd.year !== tdYmd.year) return evYmd.year - tdYmd.year;
+  if (evYmd.month !== tdYmd.month) return evYmd.month - tdYmd.month;
+  return evYmd.day - tdYmd.day;
+};
+
+function formatWallClockInZone(date: Date, timeZone?: string): string {
+  const tz = resolveEventTimeZone(timeZone);
+  const opts: Intl.DateTimeFormatOptions = {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+    ...(tz ? { timeZone: tz } : {}),
+  };
+  const parts = new Intl.DateTimeFormat('en-US', opts).formatToParts(date);
+  let hour = '';
+  let minute = '';
+  let dayPeriod = '';
+  for (const p of parts) {
+    if (p.type === 'hour') hour = p.value;
+    if (p.type === 'minute') minute = p.value;
+    if (p.type === 'dayPeriod') dayPeriod = p.value.toLowerCase();
+  }
+  if (minute === '00') return `${hour} ${dayPeriod}`;
+  return `${hour}:${minute} ${dayPeriod}`;
+}
+
+function shortTimeZoneName(date: Date, iana: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: iana,
+    timeZoneName: 'short',
+  }).formatToParts(date);
+  return parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+}
+
+/**
+ * Formats an ISO datetime string to date format "Aug 1, 2025" in the event zone when provided.
+ */
+export const formatEventDate = (isoDate: string, timeZone?: string | null): string => {
   if (!isoDate) return '';
-  
+
   try {
     const date = new Date(isoDate);
     if (isNaN(date.getTime())) {
-      return isoDate; // Return as-is if can't parse
+      return isoDate;
     }
-    
+    const tz = resolveEventTimeZone(timeZone);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      ...(tz ? { timeZone: tz } : {}),
     });
   } catch (error) {
     console.error('[formatters.formatEventDate] Error formatting date:', error);
@@ -289,30 +397,37 @@ export const formatEventDate = (isoDate: string): string => {
 };
 
 /**
- * Formats ISO datetime strings to time range format "3 - 5 pm"
+ * Formats ISO datetimes to a wall-clock range in the event zone, e.g. "3 - 5 pm CST" when timeZone is set.
  */
-export const formatEventTime = (startTime: string, endTime: string): string => {
+export const formatEventTime = (startTime: string, endTime: string, timeZone?: string | null): string => {
   if (!startTime || !endTime) return '';
-  
+
   try {
     const start = new Date(startTime);
     const end = new Date(endTime);
-    
+
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return '';
     }
-    
-    const formatHour = (date: Date) => {
-      const hour = date.getHours();
-      const period = hour >= 12 ? 'pm' : 'am';
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      const minutes = date.getMinutes();
-      return minutes > 0 
-        ? `${displayHour}:${minutes.toString().padStart(2, '0')} ${period}`
-        : `${displayHour} ${period}`;
-    };
-    
-    return `${formatHour(start)} - ${formatHour(end)}`;
+
+    const tz = resolveEventTimeZone(timeZone);
+    if (!tz) {
+      const formatHour = (date: Date) => {
+        const hour = date.getHours();
+        const period = hour >= 12 ? 'pm' : 'am';
+        const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+        const minutes = date.getMinutes();
+        return minutes > 0
+          ? `${displayHour}:${minutes.toString().padStart(2, '0')} ${period}`
+          : `${displayHour} ${period}`;
+      };
+      return `${formatHour(start)} - ${formatHour(end)}`;
+    }
+
+    const startStr = formatWallClockInZone(start, tz);
+    const endStr = formatWallClockInZone(end, tz);
+    const abbr = shortTimeZoneName(start, tz);
+    return abbr ? `${startStr} - ${endStr} ${abbr}` : `${startStr} - ${endStr}`;
   } catch (error) {
     console.error('[formatters.formatEventTime] Error formatting time:', error);
     return '';
@@ -323,12 +438,9 @@ export const formatEventTime = (startTime: string, endTime: string): string => {
  * Returns true if event date is today or later (compares by calendar date only).
  * Use for "upcoming" so today's events still display even if their start time has passed.
  */
-export const isEventTodayOrLater = (eventDate: string | Date): boolean => {
-  const event = new Date(eventDate);
-  const today = new Date();
-  event.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  return event >= today;
+export const isEventTodayOrLater = (eventDate: string | Date, timeZone?: string | null): boolean => {
+  const iso = typeof eventDate === 'string' ? eventDate : eventDate.toISOString();
+  return compareEventDayToToday(iso, timeZone) >= 0;
 };
 
 /**
@@ -338,6 +450,8 @@ export interface EventWithDateAndTimes {
   date: string | Date;
   startTime?: string | Date;
   endTime?: string | Date;
+  /** IANA timezone from Appwrite when set */
+  timezone?: string | null;
 }
 
 /**
@@ -346,19 +460,20 @@ export interface EventWithDateAndTimes {
  * - Excludes events with date === today when endTime is already past.
  * Use this for "Upcoming Events" lists so only future dates and today's not-yet-ended events show.
  */
+const toIso = (v: string | Date | undefined): string => {
+  if (v == null) return '';
+  return typeof v === 'string' ? v : v.toISOString();
+};
+
 export const isEventUpcoming = (event: EventWithDateAndTimes): boolean => {
-  // Prefer startTime so calendar day matches display (formatEventDate uses startTime || date).
-  const primary = event.startTime || event.date;
-  const eventDate = new Date(primary);
-  const today = new Date();
-  eventDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  if (eventDate < today) return false;
-  if (eventDate > today) return true;
-  // Same calendar day as today
+  const primaryIso = toIso(event.startTime) || toIso(event.date);
+  if (!primaryIso) return false;
+  const dayCmp = compareEventDayToToday(primaryIso, event.timezone);
+  if (dayCmp < 0) return false;
+  if (dayCmp > 0) return true;
   if (event.endTime) {
-    const end = new Date(event.endTime);
-    return end > new Date();
+    const end = new Date(toIso(event.endTime));
+    return !isNaN(end.getTime()) && end > new Date();
   }
   return true;
 };

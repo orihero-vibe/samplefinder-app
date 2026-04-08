@@ -6,7 +6,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Share, Alert } from 'react-native';
 import { captureAndShareView } from '@/utils/captureAndShare';
 import BottomSheet from '@gorhom/bottom-sheet';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import {
   fetchEventById,
   fetchClients,
@@ -198,7 +198,7 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
         setBrand(brandData);
         setCheckInCode(String(event.checkInCode ?? ''));
         
-        const authUser = await getCurrentUser();
+        const authUser = useAuthStore.getState().user;
         if (authUser) {
           const userProfile = await getUserProfile(authUser.$id);
           if (userProfile) {
@@ -361,7 +361,7 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
       setIsAddedToCalendar(true);
       
       const eventTitle = eventData?.name || brand.brandName;
-      const authUser = await getCurrentUser();
+      const authUser = useAuthStore.getState().user;
       if (authUser) {
         try {
           await createUserNotification({
@@ -412,7 +412,7 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
 
     try {
       addFavoriteToStore(brand.clientId);
-      const authUser = await getCurrentUser();
+      const authUser = useAuthStore.getState().user;
       if (authUser) {
         await addFavoriteBrand(authUser.$id, brand.clientId);
       }
@@ -433,7 +433,7 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
     setIsUnfavoriting(true);
     try {
       removeFavoriteFromStore(brand.clientId);
-      const authUser = await getCurrentUser();
+      const authUser = useAuthStore.getState().user;
       if (authUser) {
         await removeFavoriteBrand(authUser.$id, brand.clientId);
       }
@@ -480,7 +480,7 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
         try {
           setIsSubmittingCheckIn(true);
           
-          const authUser = await getCurrentUser();
+          const authUser = useAuthStore.getState().user;
           if (!authUser) {
             Alert.alert('Error', 'You must be logged in to check in');
             setIsSubmittingCheckIn(false);
@@ -597,7 +597,7 @@ export const useBrandDetailsScreen = ({ route, contentRef, shareContentRef }: Br
     try {
       setIsSubmittingReview(true);
 
-      const authUser = await getCurrentUser();
+      const authUser = useAuthStore.getState().user;
       if (!authUser) {
         Alert.alert('Error', 'You must be logged in to leave a review');
         setIsSubmittingReview(false);

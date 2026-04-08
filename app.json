@@ -2,7 +2,7 @@
   "expo": {
     "name": "SampleFinder",
     "slug": "samplefinder-app",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,7 +13,7 @@
       "backgroundColor": "#1a1a2e"
     },
     "ios": {
-      "buildNumber": "31",
+      "buildNumber": "41",
       "supportsTablet": true,
       "bundleIdentifier": "com.samplefinder.app",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -24,7 +24,8 @@
         "NSCameraUsageDescription": "This app needs access to your camera to take profile pictures."
       },
       "usesAppleSignIn": false,
-      "appleTeamId": "AYNR8DRWG3"
+      "appleTeamId": "AYNR8DRWG3",
+      "associatedDomains": ["applinks:samplefinder.com"]
     },
     "android": {
       "icon": "./src/assets/icon.png",
@@ -35,7 +36,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "versionCode": 2,
+      "versionCode": 41,
       "package": "com.samplefinder.app",
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -60,6 +61,8 @@
     },
     "plugins": [
       "./app.plugin.js",
+      "./app.deeplink-plugin.js",
+      "./app.firebase-plugin.js",
       [
         "expo-notifications",
         {

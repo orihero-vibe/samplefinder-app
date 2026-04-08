@@ -1,7 +1,7 @@
 {
     "projectId": "691d4a54003b21bf0136",
-    "endpoint": "https://nyc.cloud.appwrite.io/v1",
     "projectName": "SampleFinder",
+    "endpoint": "https://nyc.cloud.appwrite.io/v1",
     "settings": {
         "services": {
             "account": true,
@@ -168,7 +168,7 @@
             "enabled": true,
             "logging": true,
             "entrypoint": "src/main.js",
-            "commands": "npm install && npm run build",
+            "commands": "npm install --include=dev && npm run build",
             "path": "functions/Notification functions"
         }
     ],
@@ -857,7 +857,11 @@
                     "type": "string",
                     "required": true,
                     "array": false,
-                    "elements": ["Event Reminder", "Promotional", "Engagement"],
+                    "elements": [
+                        "Event Reminder",
+                        "Promotional",
+                        "Engagement"
+                    ],
                     "format": "enum",
                     "default": null
                 },
@@ -866,7 +870,11 @@
                     "type": "string",
                     "required": true,
                     "array": false,
-                    "elements": ["All", "Targeted", "Specific Segment"],
+                    "elements": [
+                        "All",
+                        "Targeted",
+                        "Specific Segment"
+                    ],
                     "format": "enum",
                     "default": null
                 },
@@ -875,7 +883,11 @@
                     "type": "string",
                     "required": true,
                     "array": false,
-                    "elements": ["Scheduled", "Sent", "Draft"],
+                    "elements": [
+                        "Scheduled",
+                        "Sent",
+                        "Draft"
+                    ],
                     "format": "enum",
                     "default": null
                 }
