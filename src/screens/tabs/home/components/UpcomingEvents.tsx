@@ -40,7 +40,7 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events, isShowingNearby
     navigation.navigate('BrandDetails', { eventId: event.id });
   };
 
-  const sectionTitle = isShowingNearbySuggestions ? 'NEARBY EVENTS SUGGESTIONS' : 'UPCOMING EVENTS';
+  const sectionTitle = isShowingNearbySuggestions ? 'OTHER RESULTS IN YOUR AREA' : 'UPCOMING EVENTS';
   const emptyMessage = isShowingNearbySuggestions
     ? 'No nearby events to suggest'
     : 'No upcoming events found';
@@ -50,10 +50,10 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ events, isShowingNearby
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, isShowingNearbySuggestions && styles.suggestionTitle]}>{sectionTitle}</Text>
       {isShowingNearbySuggestions && events.length > 0 && (
-        <Text style={styles.suggestionSubtext}>No events match your filters. Here are events near you.</Text>
+        <Text style={styles.suggestionSubtext}>No Matching Results at this Time</Text>
       )}
+      <Text style={[styles.title, isShowingNearbySuggestions && styles.suggestionTitle]}>{sectionTitle}</Text>
       <View style={styles.eventsContainer}>
         {events.length === 0 ? (
           <View style={styles.emptyState}>
@@ -100,14 +100,15 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   suggestionTitle: {
-    color: Colors.grayText,
+    paddingBottom: 12,
+    paddingTop: 8
   },
   suggestionSubtext: {
     fontSize: 14,
     fontFamily: 'Quicksand_400Regular',
-    color: Colors.grayText,
+    color: Colors.failure,
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingTop: 16
   },
   eventsContainer: {
     paddingHorizontal: 20,
