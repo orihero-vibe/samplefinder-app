@@ -61,6 +61,9 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
+  resendTextDisabled: {
+    color: '#CCC',
+  },
   resendLoadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
