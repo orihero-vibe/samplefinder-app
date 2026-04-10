@@ -88,7 +88,7 @@ const StoreModal: React.FC<StoreModalProps> = ({ visible, store, isLoadingEvents
               store.events.map((event, index) => {
                 const storeEvent: StoreEventData = {
                   id: event.id,
-                  name: event.brandName || event.name,
+                  name: event.name || event.brandName || 'Event',
                   date: event.date,
                   time: event.time,
                   logoURL: event.logoURL,

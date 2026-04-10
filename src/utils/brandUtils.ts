@@ -113,8 +113,8 @@ export const convertEventToBrandDetails = (
   // Parse products string to array
   const products = parseProducts(event.products);
   
-  // Get store name from client, fallback to event name or default
-  const storeName = client?.name || client?.title || 'Store';
+  // Event name for detail subtitle
+  const storeName = event.name || 'Event';
   
   // Get address components from event and client
   const address = {
@@ -124,8 +124,8 @@ export const convertEventToBrandDetails = (
     zip: event.zipCode || client?.zip || client?.zipCode || '',
   };
   
-  // Get brand name from event name
-  const brandName = event.name || 'Brand';
+  // Brand name should come from client
+  const brandName = client?.name || client?.title || 'Brand';
   
   // Get client ID for favorites
   const clientId = client?.$id || '';
@@ -185,8 +185,8 @@ export const convertEventToCalendarEventDetail = (
       : undefined
   });
   
-  // Brand name comes from event.name (event title/brand)
-  const brandName = event.name || 'Brand';
+  // Brand name should come from client
+  const brandName = client?.name || client?.title || 'Brand';
   
   // Generate logo from brand name
   const logoText = brandName
@@ -225,8 +225,8 @@ export const convertEventToCalendarEventDetail = (
   return {
     id: event.$id,
     date: getEventCalendarAnchorDate(event.startTime || event.date, event.timezone),
-    name: brandName,
-    brandName: brandName, // Use event name as brand name (not client name)
+    name: event.name || 'Event',
+    brandName: brandName,
     location,             // Location is client/store name
     distance,
     time: formattedTime,

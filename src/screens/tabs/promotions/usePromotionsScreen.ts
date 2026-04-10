@@ -76,6 +76,14 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
     return null;
   };
+
+  const getPointsTierOrder = (tiers: TierRow[], points: number): number | null => {
+    if (!tiers.length) return null;
+    const achieved = tiers
+      .filter((tier) => points >= (tier.requiredPoints ?? 0))
+      .sort((a, b) => (b.order ?? 0) - (a.order ?? 0))[0];
+    return achieved?.order ?? null;
+  };
   
   // Fetch user statistics and history on mount and when screen comes into focus
   useFocusEffect(
@@ -104,10 +112,12 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
       }
 
       // Fetch tiers, check-ins, and reviews in parallel for better performance
-      const [tiers, checkIns, reviews] = await Promise.all([
+      const [tiers, profileCheckIns, profileReviews, authCheckIns, authReviews] = await Promise.all([
         fetchTiers(),
         getUserCheckIns(userProfile.$id),
         getUserReviews(userProfile.$id),
+        getUserCheckIns(authUser.$id),
+        getUserReviews(authUser.$id),
       ]);
 
       const rawTotalPoints = userProfile.totalPoints ?? 0;
@@ -115,16 +125,38 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
 
       // If admin manually updated tierLevel, treat it as the canonical truth for "earned" tier state.
       const canonicalTier = resolveCanonicalTier(tiers, profileTierLevel);
+      const pointsTierOrder = getPointsTierOrder(tiers, rawTotalPoints);
 
       // Canonical tier order drives which tier is shown as "earned".
       // Progress bars should always reflect the user's real points (no clamping).
-      const derivedCanonicalTierOrder: number | null = canonicalTier ? canonicalTier.order : null;
+      const derivedCanonicalTierOrder: number | null = canonicalTier?.order ?? null;
+      const effectiveTierOrder =
+        derivedCanonicalTierOrder === null
+          ? pointsTierOrder
+          : pointsTierOrder === null
+            ? derivedCanonicalTierOrder
+            : Math.max(derivedCanonicalTierOrder, pointsTierOrder);
+
+      // Legacy users can have stale tierLevel values that lag behind real points.
+      // Use the higher of tierLevel and points-derived order for earned/in-progress UI state.
+      const mergedCheckInsMap = new Map<string, CheckInRow>();
+      [...profileCheckIns, ...authCheckIns].forEach((item) => {
+        if (!item?.$id) return;
+        mergedCheckInsMap.set(item.$id, item);
+      });
+      const mergedReviewsMap = new Map<string, ReviewRow>();
+      [...profileReviews, ...authReviews].forEach((item) => {
+        if (!item?.$id) return;
+        mergedReviewsMap.set(item.$id, item);
+      });
+      const checkIns = Array.from(mergedCheckInsMap.values());
+      const reviews = Array.from(mergedReviewsMap.values());
 
       // Set data from profile and fetched arrays (avoid redundant API calls)
       setTiersData(tiers);
       setIsAmbassador(userProfile.isAmbassador || false);
       setIsInfluencer(userProfile.isInfluencer || false);
-      setCanonicalTierOrder(derivedCanonicalTierOrder);
+      setCanonicalTierOrder(effectiveTierOrder);
       setTotalPoints(rawTotalPoints);
       setPointsForProgress(rawTotalPoints);
       setEventCheckInsCount(checkIns.length);

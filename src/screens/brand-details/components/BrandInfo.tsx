@@ -16,7 +16,7 @@ const BrandInfo: React.FC<BrandInfoProps> = ({ brand }) => {
   return (
     <View style={styles.container}>
       {/* Brand Name */}
-      <Text style={styles.brandName}>{brand.storeName}</Text>
+      <Text style={styles.brandName}>{brand.brandName}</Text>
 
       {/* Date and Store Details */}
       <View style={styles.detailsContainer}>
@@ -25,7 +25,7 @@ const BrandInfo: React.FC<BrandInfoProps> = ({ brand }) => {
           <Text style={styles.dayText}>{day}</Text>
         </View>
         <View style={styles.storeDetails}>
-          <Text style={styles.storeName}>{brand.brandName}</Text>
+          <Text style={styles.storeName}>{brand.storeName}</Text>
           <Text style={styles.storeInfo}>{brand.time}</Text>
           {brand.locationName ? (
             <Text style={styles.storeInfo}>{brand.locationName}</Text>

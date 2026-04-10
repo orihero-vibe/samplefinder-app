@@ -229,7 +229,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
         title="Remove from favorites?"
         description={
           brand
-            ? `Are you sure you want to unfavorite ${brand.storeName}? You can add this brand back anytime.`
+            ? `Are you sure you want to unfavorite ${brand.brandName}? You can add this brand back anytime.`
             : ''
         }
         confirmText="Yes, Unfavorite"

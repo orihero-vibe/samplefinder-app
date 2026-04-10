@@ -7,11 +7,13 @@ import * as Location from 'expo-location';
 import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile, fetchLocations, LocationRow } from '@/lib/database';
 import { useAuthStore } from '@/stores/authStore';
 import { MapMarkerData, FilterType, EventData, StoreData, FilterButtonLayout, MeasureCallback } from './components';
-import { formatEventDate, formatEventTime, formatEventDistance, isEventUpcoming } from '@/utils/formatters';
+import { formatEventDate, formatEventTime, formatEventDistance, isEventUpcoming, calculateDistance } from '@/utils/formatters';
 import { geocodeLocation, isValidLocationInput } from '@/utils/geocoding';
 import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 
 let hasAutoShownZipModalThisSession = false;
+const MAX_EVENT_RADIUS_MILES = 50;
+const METERS_PER_MILE = 1609.34;
 
 export const useHomeScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null);
@@ -564,14 +566,17 @@ export const useHomeScreen = () => {
 
         // Apply radius filter using event.location (only when we have a user location)
         if (hasRadiusFilter && radiusValues.length > 0 && userLocation) {
-          const maxRadiusMiles = Math.max(...radiusValues.map(v => parseFloat(v)));
-          const maxRadiusMeters = maxRadiusMiles * 1609.34;
+          const maxRadiusMiles = Math.min(
+            Math.max(...radiusValues.map(v => parseFloat(v))),
+            MAX_EVENT_RADIUS_MILES
+          );
+          const maxRadiusMeters = maxRadiusMiles * METERS_PER_MILE;
           
           filteredEvents = filteredEvents.filter((event) => {
             if (!event.location) return false;
             
             // Calculate distance from user to event location
-            const distance = calculateDistanceMeters(
+            const distance = calculateDistance(
               userLocation.latitude,
               userLocation.longitude,
               event.location[1], // latitude
@@ -632,11 +637,11 @@ export const useHomeScreen = () => {
             const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
             const clientObj = clientId ? clientsMap.get(clientId) : (typeof event.client === 'object' ? event.client : null);
             const location = clientObj?.name || clientObj?.title || event.city || 'Location';
-            const brandName = event.name || 'Brand';
-            const productName = event.products || event.name || 'Product';
+            const brandName = clientObj?.name || clientObj?.title || 'Brand';
+            const eventName = event.name || 'Event';
             return {
               id: event.$id,
-              name: productName,
+              name: eventName,
               brandName: brandName,
               location,
               distance: formattedDistance,
@@ -651,10 +656,24 @@ export const useHomeScreen = () => {
         const hasDatesFilter = datesValues.length > 0;
         const hasAnyFilterForFallback = hasCategoryFilter || hasRadiusFilter || hasDatesFilter;
 
-        // When any filter (category, dates, radius) is active but no events match, show nearby event suggestions.
-        // Only suggest upcoming events (exclude past dates and today's events whose end time has passed).
-        if (hasAnyFilterForFallback && transformedEvents.length === 0 && eventsActiveNow.length > 0) {
-          const nearbyEvents = mapAndSortEventRows(eventsActiveNow);
+        // When any filter (category, dates, radius) is active but no events match, suggest other upcoming
+        // events in the user's area only (50 mi), not the full global list.
+        const eventsInAreaForFallback: EventRow[] =
+          userLocation != null
+            ? eventsActiveNow.filter((event) => {
+                if (!event.location) return false;
+                const distance = calculateDistance(
+                  userLocation.latitude,
+                  userLocation.longitude,
+                  event.location[1],
+                  event.location[0]
+                );
+                return distance <= MAX_EVENT_RADIUS_MILES * METERS_PER_MILE;
+              })
+            : [];
+
+        if (hasAnyFilterForFallback && transformedEvents.length === 0 && eventsInAreaForFallback.length > 0) {
+          const nearbyEvents = mapAndSortEventRows(eventsInAreaForFallback);
           setEvents(nearbyEvents);
           setIsShowingNearbySuggestions(true);
         } else {
@@ -689,7 +708,7 @@ export const useHomeScreen = () => {
       event.location.length >= 2 &&
       location.location.length >= 2
     ) {
-      const distMeters = calculateDistanceMeters(
+      const distMeters = calculateDistance(
         event.location[1],
         event.location[0],
         location.location[1],
@@ -698,21 +717,6 @@ export const useHomeScreen = () => {
       return distMeters < 50; // Within 50m = same location
     }
     return false;
-  };
-
-  // Helper function to calculate distance in meters
-  const calculateDistanceMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371000; // Earth's radius in meters
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
   };
 
   const initialRegion = useMemo(() => {
@@ -836,14 +840,17 @@ export const useHomeScreen = () => {
 
       // Apply radius filter if active
       if (radiusValues.length > 0 && userLocation) {
-        const maxRadiusMiles = Math.max(...radiusValues.map(v => parseFloat(v)));
-        const maxRadiusMeters = maxRadiusMiles * 1609.34;
+          const maxRadiusMiles = Math.min(
+            Math.max(...radiusValues.map(v => parseFloat(v))),
+            MAX_EVENT_RADIUS_MILES
+          );
+          const maxRadiusMeters = maxRadiusMiles * METERS_PER_MILE;
         
         locationEvents = locationEvents.filter((event) => {
           if (!event.location) return false;
           
           // Calculate distance from user to event location
-          const distance = calculateDistanceMeters(
+          const distance = calculateDistance(
             userLocation.latitude,
             userLocation.longitude,
             event.location[1], // latitude
@@ -884,8 +891,8 @@ export const useHomeScreen = () => {
           // Look up client from allClients
           const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
           const clientObj = clientId ? allClients.find(c => c.$id === clientId) : (typeof event.client === 'object' ? event.client : null);
-          const brandName = event.name || 'Brand';
-          const productName = event.products || event.name || 'Product';
+          const brandName = clientObj?.name || clientObj?.title || 'Brand';
+          const eventName = event.name || 'Event';
           
           // Calculate distance from user location to event
           const formattedDistance = userLocation && event.location
@@ -900,7 +907,7 @@ export const useHomeScreen = () => {
           
           return {
             id: event.$id,
-            name: productName,
+            name: eventName,
             brandName: brandName,
             location: clientObj?.name || clientObj?.title || event.city || 'Location',
             distance: formattedDistance,
