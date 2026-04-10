@@ -55,6 +55,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   const [pointsAwarded, setPointsAwarded] = useState<number>(0);
   const [countdown, setCountdown] = useState<number>(5);
   const [closeEnabledAfterWin, setCloseEnabledAfterWin] = useState(true);
+  const [isCapturingShare, setIsCapturingShare] = useState(false);
   const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
@@ -82,6 +83,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     } else {
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.9);
+      setIsCapturingShare(false);
     }
   }, [visible]);
 
@@ -185,9 +187,14 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   const handleShare = async () => {
     try {
       const message = `I just won trivia and earned ${pointsAwarded} points on SampleFinder! 🎉`;
+      setIsCapturingShare(true);
+      // Wait one frame so close/share controls are hidden before capture.
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
       await captureAndShareView(modalRef, message);
     } catch (error) {
       console.error('Error sharing trivia win:', error);
+    } finally {
+      setIsCapturingShare(false);
     }
   };
 
@@ -322,9 +329,11 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           <View style={styles.sparkleContainerTopRight}>
             <SmallStarIcon size={40} />
           </View>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
-            <Text style={styles.shareButtonText}>Share</Text>
-          </TouchableOpacity>
+          {!isCapturingShare && (
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
+              <Text style={styles.shareButtonText}>Share</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     } else if (answerState === 'incorrect') {
@@ -408,16 +417,18 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
             },
           ]}
         >
-          <TouchableOpacity
-            style={[
-              styles.closeButton,
-              answerState === 'correct' && !closeEnabledAfterWin && styles.closeButtonDisabled,
-            ]}
-            onPress={handleClose}
-            disabled={answerState === 'correct' && !closeEnabledAfterWin}
-          >
-            <CloseIcon size={24} color={Colors.pinDarkBlue} />
-          </TouchableOpacity>
+          {!isCapturingShare && (
+            <TouchableOpacity
+              style={[
+                styles.closeButton,
+                answerState === 'correct' && !closeEnabledAfterWin && styles.closeButtonDisabled,
+              ]}
+              onPress={handleClose}
+              disabled={answerState === 'correct' && !closeEnabledAfterWin}
+            >
+              <CloseIcon size={24} color={Colors.pinDarkBlue} />
+            </TouchableOpacity>
+          )}
 
           {question.client?.logoURL ? renderBrandLogo() : renderLocationIcon()}
 
