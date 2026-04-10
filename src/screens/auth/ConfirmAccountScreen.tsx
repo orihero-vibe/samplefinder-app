@@ -18,6 +18,8 @@ const ConfirmAccountScreen = () => {
     email,
     isLoading,
     isResending,
+    resendTimer,
+    canResend,
     error,
     codeInputRef,
     handleCodeChange,
@@ -78,7 +80,7 @@ const ConfirmAccountScreen = () => {
         <TouchableOpacity 
           onPress={handleResendCode} 
           style={styles.resendContainer}
-          disabled={isResending || isLoading}
+          disabled={!canResend || isResending || isLoading}
         >
           {isResending ? (
             <View style={styles.resendLoadingContainer}>
@@ -86,7 +88,14 @@ const ConfirmAccountScreen = () => {
               <Text style={[styles.resendText, styles.resendLoadingText]}>Sending...</Text>
             </View>
           ) : (
-            <Text style={styles.resendText}>Resend code</Text>
+            <Text
+              style={[
+                styles.resendText,
+                !canResend && styles.resendTextDisabled,
+              ]}
+            >
+              {resendTimer > 0 ? `Resend code (${resendTimer}s)` : 'Resend code'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
