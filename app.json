@@ -63,6 +63,7 @@
       "./app.plugin.js",
       "./app.deeplink-plugin.js",
       "./app.firebase-plugin.js",
+      "./app.plugin.android-fullscreen-splash.js",
       [
         "expo-notifications",
         {
