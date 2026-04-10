@@ -50,7 +50,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         icon = <CalendarIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
         break;
       case 'Promotions':
-        icon = <SparkleIcon size={iconSize} color={iconColor} circleColor={circleColor} />;
+        icon = (
+          <View style={styles.promotionsIconOffset}>
+            <SparkleIcon size={iconSize} color={iconColor} circleColor={circleColor} />
+          </View>
+        );
         break;
     }
 
@@ -152,6 +156,9 @@ const styles = StyleSheet.create({
   },
   favoritesIconOffset: {
     marginTop: 3,
+  },
+  promotionsIconOffset: {
+    marginLeft: 4,
   },
 });
 
