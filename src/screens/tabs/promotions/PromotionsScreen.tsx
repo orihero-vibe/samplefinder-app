@@ -18,11 +18,13 @@ import {
   TiersSection,
 } from './components';
 import { usePromotionsScreen } from './usePromotionsScreen';
+import { useReferralSettings } from '@/lib/useReferralSettings';
 import styles from './styles';
 
 const PromotionsScreen = () => {
   const contentRef = useRef<View>(null);
   const shareContentRef = useRef<View>(null);
+  const { refereePts, referrerPts } = useReferralSettings();
   const scrollViewRef = useRef<ScrollView>(null);
   const historyRef = useRef<View>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -204,12 +206,15 @@ const PromotionsScreen = () => {
 
       <ReferFriendBottomSheet
         bottomSheetRef={referFriendBottomSheetRef}
+        refereePts={refereePts}
+        referrerPts={referrerPts}
         onClose={handleCloseReferFriend}
         onReferSuccess={handleReferSuccess}
       />
 
       <ReferFriendSuccessBottomSheet
         bottomSheetRef={referFriendSuccessBottomSheetRef}
+        points={referrerPts ?? undefined}
         onClose={handleCloseReferSuccess}
         onViewRewards={handleViewRewards}
       />

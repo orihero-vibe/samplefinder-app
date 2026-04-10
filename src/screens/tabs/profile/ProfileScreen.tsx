@@ -7,6 +7,7 @@ import BackShareHeader from '@/components/wrappers/BackShareHeader';
 import ReferFriendBottomSheet from '@/components/shared/ReferFriendBottomSheet';
 import ReferFriendSuccessBottomSheet from '@/components/shared/ReferFriendSuccessBottomSheet';
 import ConfirmationModal from '@/components/shared/ConfirmationModal';
+import { useReferralSettings } from '@/lib/useReferralSettings';
 import {
   TopLinks,
   ProfileOverview,
@@ -23,6 +24,7 @@ import styles from './styles';
 const ProfileScreen = () => {
   const contentRef = useRef<View>(null);
   const shareContentRef = useRef<View>(null);
+  const { refereePts, referrerPts } = useReferralSettings();
   const {
     profile,
     authUser,
@@ -134,6 +136,8 @@ const ProfileScreen = () => {
       <ReferFriendBottomSheet
         bottomSheetRef={referFriendBottomSheetRef}
         referralCode={referralCode}
+        refereePts={refereePts}
+        referrerPts={referrerPts}
         onClose={handleReferFriendClose}
         onReferSuccess={handleReferSuccess}
       />
@@ -141,7 +145,7 @@ const ProfileScreen = () => {
       {/* Refer Friend Success Bottom Sheet */}
       <ReferFriendSuccessBottomSheet
         bottomSheetRef={referFriendSuccessBottomSheetRef}
-        points={100}
+        points={referrerPts ?? undefined}
         onClose={handleReferSuccessClose}
         onViewRewards={handleViewRewardsFromSuccess}
       />

@@ -86,6 +86,12 @@ async function shareImageWithMessage(fileUri: string, message: string): Promise<
             title: message,
           },
         },
+        {
+          placeholderItem: { type: 'text', content: message },
+          item: {
+            default: { type: 'text', content: message },
+          },
+        },
       ],
     });
   } catch {

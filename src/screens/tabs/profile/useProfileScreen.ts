@@ -147,19 +147,8 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
     }
   };
 
-  const handleReferFriendPress = async () => {
-    try {
-      const username = profile?.username || authUser?.name || 'User';
-      const message = referralCode && referralCode !== 'N/A'
-        ? `Join me on SampleFinder! Use my referral code ${referralCode} when signing up and we both get 100 points! Download the app and discover amazing samples near you. 🎁`
-        : `Join me on SampleFinder and discover amazing samples near you! Download the app and start earning rewards today! 🎁`;
-      
-      await Share.share({
-        message,
-      });
-    } catch (error) {
-      console.error('Error sharing referral:', error);
-    }
+  const handleReferFriendPress = () => {
+    referFriendBottomSheetRef.current?.expand();
   };
 
   const handleReferFriendClose = () => {

@@ -20,6 +20,8 @@ import { buildReferralUrl } from '@/lib/deepLink';
 interface ReferFriendBottomSheetProps {
   bottomSheetRef: React.RefObject<BottomSheet | null>;
   referralCode?: string;
+  refereePts?: number | null;
+  referrerPts?: number | null;
   onClose?: () => void;
   onReferSuccess?: () => void;
 }
@@ -27,10 +29,12 @@ interface ReferFriendBottomSheetProps {
 const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
   bottomSheetRef,
   referralCode = 'JNKLOW',
+  refereePts,
+  referrerPts,
   onClose,
   onReferSuccess,
 }) => {
-  const snapPoints = useMemo(() => ['75%'], []);
+  const snapPoints = useMemo(() => ['50%'], []);
 
   const renderBackdrop = useMemo(
     () => (props: ComponentProps<typeof GradientBottomSheetBackdrop>) => (
@@ -59,12 +63,9 @@ const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
   const handleReferFriend = async () => {
     try {
       await Share.share({
-        message: `Join me on SampleFinder! Use my referral link to get 100 bonus points: ${referralUrl}`,
+        message: `Join me on SampleFinder! Use my referral link to get ${refereePts ?? ''} bonus points: ${referralUrl}`,
       });
       bottomSheetRef.current?.close();
-      setTimeout(() => {
-        onReferSuccess?.();
-      }, 300);
     } catch (error) {
       console.error('Failed to share referral link:', error);
     }
@@ -106,8 +107,8 @@ const ReferFriendBottomSheet: React.FC<ReferFriendBottomSheetProps> = ({
 
         {/* Points Info */}
         <View style={styles.pointsInfo}>
-          <Text style={styles.pointsText}>Send 100 Points</Text>
-          <Text style={styles.pointsText}>Earn 100 Points</Text>
+          <Text style={styles.pointsText}>Send {refereePts ?? '...'} Points</Text>
+          <Text style={styles.pointsText}>Earn {referrerPts ?? '...'} Points</Text>
         </View>
 
         {/* Refer Button */}
