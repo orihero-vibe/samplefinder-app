@@ -49,13 +49,11 @@ export default function App() {
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
   const triviaShownRef = useRef(false);
   const prevQueueLengthRef = useRef(0);
-  const currentTriviaRef = useRef<TriviaQuestion | null>(null);
   const triviaQueueRef = useRef(triviaQueue);
   /** Client-side set of trivia IDs already answered/skipped this session; prevents re-showing before backend propagates */
   const processedTriviaIdsRef = useRef<Set<string>>(new Set());
   triviaQueueRef.current = triviaQueue;
   const currentQuestion = triviaQueue[0] ?? null;
-  currentTriviaRef.current = currentQuestion;
 
   const filterProcessedTrivia = useCallback((questions: TriviaQuestion[]) =>
     questions.filter((q) => !processedTriviaIdsRef.current.has(q.$id)), []);
@@ -200,6 +198,7 @@ export default function App() {
         if (cancelled || !user) return;
         const profile = await getUserProfile(user.$id);
         if (cancelled || !profile) return;
+        setUserProfileId(profile.$id);
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         if (cancelled) return;
         if (!isTriviaOfferedToday()) return;
@@ -260,6 +259,8 @@ export default function App() {
         if (!user) return;
         const profile = await getUserProfile(user.$id);
         if (!profile) return;
+
+        setUserProfileId(profile.$id);
 
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(profile.$id));
         const currentQueue = triviaQueueRef.current;
@@ -387,83 +388,107 @@ export default function App() {
   }
 
   const handleTriviaClose = () => {
-    const q = currentTriviaRef.current;
+    const q = triviaQueue[0];
     if (q) {
       processedTriviaIdsRef.current.add(q.$id);
     }
     setTriviaQueue((prev) => prev.slice(1));
   };
 
+  const resolveUserProfileIdForTrivia = async (): Promise<string | null> => {
+    if (userProfileId) return userProfileId;
+    try {
+      const user = useAuthStore.getState().user;
+      if (!user) return null;
+      const profile = await getUserProfile(user.$id);
+      if (!profile) return null;
+      setUserProfileId(profile.$id);
+      return profile.$id;
+    } catch {
+      return null;
+    }
+  };
+
   const handleSubmitAnswer = async (answerIndex: number) => {
-    const question = currentTriviaRef.current;
-    if (!userProfileId || !question) {
+    const question = triviaQueue[0] ?? null;
+    const profileId = await resolveUserProfileIdForTrivia();
+    if (!profileId) {
       return {
         success: false,
-        error: 'User profile or trivia question not available',
+        error: 'Please sign in to submit trivia answers.',
+      };
+    }
+    if (!question?.$id) {
+      return {
+        success: false,
+        error: 'Trivia question not available. Please try again.',
       };
     }
 
-    return submitTriviaAnswer(userProfileId, question.$id, answerIndex);
+    return submitTriviaAnswer(profileId, question.$id, answerIndex);
   };
 
   const handleAnswerResult = async (isCorrect: boolean, pointsAwarded: number) => {
     // Check for tier completion after earning points from trivia
-    if (isCorrect && pointsAwarded > 0 && userProfileId) {
-      try {
-        const [profile, tiers] = await Promise.all([
-          getUserProfile(userProfileId),
-          fetchTiers(),
-        ]);
+    if (!isCorrect || pointsAwarded <= 0) return;
 
-        if (!profile || !tiers.length) return;
+    const profileId = userProfileId ?? (await resolveUserProfileIdForTrivia());
+    if (!profileId) return;
 
-        const newTotalPoints = profile.totalPoints || 0;
-        const oldTotalPoints = newTotalPoints - pointsAwarded;
+    try {
+      const [profile, tiers] = await Promise.all([
+        getUserProfile(profileId),
+        fetchTiers(),
+      ]);
 
-        const oldTier = getUserCurrentTier(tiers, oldTotalPoints);
-        const newTier = getUserCurrentTier(tiers, newTotalPoints);
+      if (!profile || !tiers.length) return;
 
-        // If tier changed, show the achievement modal and add to notifications
-        if (newTier && oldTier && newTier.$id !== oldTier.$id) {
-          const cleanImageURL = newTier.imageURL?.replace('&mode=admin', '') ?? null;
-          const tierForModal: Tier = {
-            id: newTier.$id,
-            name: newTier.name,
-            currentPoints: Math.min(newTotalPoints, newTier.requiredPoints),
-            requiredPoints: newTier.requiredPoints,
-            badgeEarned: newTotalPoints >= newTier.requiredPoints,
-            imageURL: cleanImageURL,
-            order: newTier.order,
-          };
+      const newTotalPoints = profile.totalPoints || 0;
+      const oldTotalPoints = newTotalPoints - pointsAwarded;
 
-          useTierCompletionStore.getState().setTierCompleted(
-            tierForModal,
-            pointsAwarded,
-            'trivia'
-          );
+      const oldTier = getUserCurrentTier(tiers, oldTotalPoints);
+      const newTier = getUserCurrentTier(tiers, newTotalPoints);
 
-          try {
-            const user = useAuthStore.getState().user;
-            if (user) {
-              await createUserNotification({
-                userId: user.$id,
-                type: 'tierChanged',
-                title: `Tier Earned: ${newTier.name}!`,
-                message: `Congratulations, you've reached the ${newTier.name} tier! Keep earning points to level up!`,
-                data: {
-                  oldTierId: oldTier.$id,
-                  newTierId: newTier.$id,
-                  newTierName: newTier.name,
-                },
-              });
-            }
-          } catch (notifErr) {
-            console.warn('[App] Failed to create tier notification:', notifErr);
+      // If tier changed, show the achievement modal and add to notifications
+      if (newTier && oldTier && newTier.$id !== oldTier.$id) {
+        const cleanImageURL = newTier.imageURL?.replace('&mode=admin', '') ?? null;
+        const tierForModal: Tier = {
+          id: newTier.$id,
+          name: newTier.name,
+          currentPoints: Math.min(newTotalPoints, newTier.requiredPoints),
+          requiredPoints: newTier.requiredPoints,
+          badgeEarned: newTotalPoints >= newTier.requiredPoints,
+          imageURL: cleanImageURL,
+          order: newTier.order,
+        };
+
+        useTierCompletionStore.getState().setTierCompleted(
+          tierForModal,
+          pointsAwarded,
+          'trivia'
+        );
+
+        try {
+          const user = useAuthStore.getState().user;
+          if (user) {
+            await createUserNotification({
+              userId: user.$id,
+              type: 'tierChanged',
+              title: `Tier Earned: ${newTier.name}!`,
+              message: `Congratulations, you've reached the ${newTier.name} tier! Keep earning points to level up!`,
+              data: {
+                oldTierId: oldTier.$id,
+                newTierId: newTier.$id,
+                newTierName: newTier.name,
+              },
+            });
           }
+        } catch (notifErr) {
+          console.warn('[App] Failed to create tier notification:', notifErr);
         }
-      } catch (error) {
-        console.error('[App] Failed to check tier completion after trivia:', error);
       }
+    } catch (error) {
+      console.error('[App] Failed to check tier completion after trivia:', error);
     }
   };
 
@@ -482,10 +507,12 @@ export default function App() {
               onClose={handleTriviaClose}
               onSubmitAnswer={handleSubmitAnswer}
               onAnswerResult={handleAnswerResult}
-              onSkipped={() => {
-                const q = currentTriviaRef.current;
-                if (userProfileId && q) {
-                  dismissTrivia(userProfileId, q.$id);
+              onSkipped={async () => {
+                const q = triviaQueue[0];
+                if (!q) return;
+                const profileId = await resolveUserProfileIdForTrivia();
+                if (profileId) {
+                  dismissTrivia(profileId, q.$id);
                 }
               }}
             />
