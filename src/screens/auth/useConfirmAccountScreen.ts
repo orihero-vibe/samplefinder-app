@@ -69,6 +69,7 @@ export const useConfirmAccountScreen = () => {
           console.warn('[ConfirmAccount] Error deleting session (may not exist):', logoutError?.message);
           // Continue anyway
         }
+        useAuthStore.getState().clearUser();
 
         // Step 3: Send Email OTP using createEmailToken
         await sendEmailOTP(userUserId, userEmail);
@@ -136,6 +137,8 @@ export const useConfirmAccountScreen = () => {
         console.warn('[ConfirmAccount] Failed to initialize push notifications:', error);
         // Don't block navigation - push notifications are not critical
       });
+
+      await useAuthStore.getState().fetchUser();
 
       // After successful verification, go straight into the app.
       // Notifications should only be accessed from the Profile section.
