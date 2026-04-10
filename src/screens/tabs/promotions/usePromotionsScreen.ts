@@ -5,16 +5,19 @@ import { captureAndShareView } from '@/utils/captureAndShare';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Badge, Tier, HistoryItemData } from './components';
 import { useAuthStore } from '@/stores/authStore';
-import { 
+import { Query } from 'react-native-appwrite';
+import {
   getUserCheckIns,
   getUserReviews,
   fetchEventById,
   getUserProfile,
   fetchTiers,
+  getSetting,
   CheckInRow,
   ReviewRow,
   TierRow,
 } from '@/lib/database';
+import { tablesDB, DATABASE_ID, USER_PROFILES_TABLE_ID } from '@/lib/database/config';
 
 export type TabType = 'inProgress' | 'earned';
 
@@ -163,7 +166,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
       setReviewsCount(reviews.length);
 
       // Build history items (now optimized with parallel event fetching)
-      const history = await buildHistoryItems(checkIns, reviews);
+      const history = await buildHistoryItems(checkIns, reviews, userProfile);
       setHistoryItems(history);
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -178,14 +181,115 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     loadUserData(true);
   };
 
-  const buildHistoryItems = async (
-    checkIns: CheckInRow[],
-    reviews: ReviewRow[]
-  ): Promise<HistoryItemData[]> => {
-    if (checkIns.length === 0 && reviews.length === 0) {
-      return [];
+  const formatDate = (iso: string): string =>
+    new Date(iso).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+  /**
+   * Fetch system-awarded history entries that are derivable from
+   * the user profile and Settings table (no extra collection needed).
+   */
+  const buildSystemHistoryItems = async (
+    profile: { $id: string; $createdAt: string; referralCode?: string | null; usedReferralCode?: string | null }
+  ): Promise<{ item: HistoryItemData; timestamp: number }[]> => {
+    const items: { item: HistoryItemData; timestamp: number }[] = [];
+
+    // --- Join bonus (every user starts with points at sign-up) ---
+    const joinBonusSetting = await getSetting('join_bonus_points').catch(() => null);
+    const joinBonusPts = joinBonusSetting?.value ? parseInt(joinBonusSetting.value, 10) : 100;
+    const signupTimestamp = new Date(profile.$createdAt).getTime();
+
+    items.push({
+      item: {
+        id: `system-join-${profile.$id}`,
+        eventId: '',
+        brandProduct: 'Welcome Bonus',
+        storeName: 'Joined SampleFinder',
+        date: formatDate(profile.$createdAt),
+        points: isNaN(joinBonusPts) ? 100 : joinBonusPts,
+        brandPhotoURL: null,
+      },
+      timestamp: signupTimestamp,
+    });
+
+    // --- Referral received (this user signed up with someone's code) ---
+    if (profile.usedReferralCode) {
+      const refereeSetting = await getSetting('referral_points_referee').catch(() => null);
+      const refereePts = refereeSetting?.value ? parseInt(refereeSetting.value, 10) : 0;
+
+      if (refereePts > 0) {
+        items.push({
+          item: {
+            id: `system-referral-received-${profile.$id}`,
+            eventId: '',
+            brandProduct: 'Referral Bonus',
+            storeName: 'Signed up with a referral code',
+            date: formatDate(profile.$createdAt),
+            points: refereePts,
+            brandPhotoURL: null,
+          },
+          timestamp: signupTimestamp + 1, // slightly after join bonus
+        });
+      }
     }
 
+    // --- Referral earned (other users signed up with this user's code) ---
+    if (profile.referralCode) {
+      try {
+        const referralsResult = await tablesDB.listRows({
+          databaseId: DATABASE_ID,
+          tableId: USER_PROFILES_TABLE_ID,
+          queries: [
+            Query.equal('usedReferralCode', profile.referralCode),
+            Query.orderDesc('$createdAt'),
+            Query.limit(100),
+          ],
+        });
+
+        if (referralsResult.rows && referralsResult.rows.length > 0) {
+          const referrerSetting = await getSetting('referral_points_referrer').catch(() => null);
+          const referrerPts = referrerSetting?.value ? parseInt(referrerSetting.value, 10) : 0;
+
+          if (referrerPts > 0) {
+            for (const referred of referralsResult.rows) {
+              const referredProfile = referred as any;
+              const referredName = [referredProfile.firstname, referredProfile.lastname]
+                .filter(Boolean)
+                .join(' ')
+                .trim() || 'A friend';
+              const referredTimestamp = new Date(referredProfile.$createdAt).getTime();
+
+              items.push({
+                item: {
+                  id: `system-referral-earned-${referredProfile.$id}`,
+                  eventId: '',
+                  brandProduct: 'Referral Reward',
+                  storeName: `${referredName} joined with your code`,
+                  date: formatDate(referredProfile.$createdAt),
+                  points: referrerPts,
+                  brandPhotoURL: null,
+                },
+                timestamp: referredTimestamp,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[buildSystemHistoryItems] Failed to fetch referral earns:', err);
+      }
+    }
+
+    return items;
+  };
+
+  const buildHistoryItems = async (
+    checkIns: CheckInRow[],
+    reviews: ReviewRow[],
+    profile: { $id: string; $createdAt: string; referralCode?: string | null; usedReferralCode?: string | null }
+  ): Promise<HistoryItemData[]> => {
     // Extract unique event IDs from both sources so we can render history
     // even if a user only reviewed (or if check-ins and reviews are out of sync).
     const uniqueEventIds = [
@@ -196,14 +300,17 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     ];
 
     // Fetch all events in parallel instead of sequentially
-    const eventPromises = uniqueEventIds.map(eventId => 
+    const eventPromises = uniqueEventIds.map(eventId =>
       fetchEventById(eventId).catch(error => {
         console.error(`Error fetching event ${eventId}:`, error);
         return null;
       })
     );
 
-    const events = await Promise.all(eventPromises);
+    const [events, systemItems] = await Promise.all([
+      Promise.all(eventPromises),
+      buildSystemHistoryItems(profile),
+    ]);
 
     // Create a map for quick event lookup
     const eventMap = new Map(
@@ -227,8 +334,8 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     // Build history items using the event map.
     // Important: if the event no longer exists (deleted from admin),
     // we still show the history row with a fallback label.
-    const items: { item: HistoryItemData; timestamp: number }[] = [];
-    
+    const items: { item: HistoryItemData; timestamp: number }[] = [...systemItems];
+
     for (const checkIn of checkIns) {
       const event = eventMap.get(checkIn.eventID);
 
@@ -242,11 +349,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
           eventId: checkIn.eventID,
           brandProduct: event?.client?.name || 'Deleted event',
           storeName: event?.name || 'Deleted event',
-          date: new Date(checkIn.$createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          }),
+          date: formatDate(checkIn.$createdAt),
           points: checkIn.pointsEarned + (reviewForEvent?.pointsEarned || 0),
           review: reviewForEvent?.review,
           brandPhotoURL: event?.client?.logoURL || null,
@@ -271,11 +374,7 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
           eventId,
           brandProduct: event?.client?.name || 'Deleted event',
           storeName: event?.name || 'Deleted event',
-          date: new Date(review.$createdAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          }),
+          date: formatDate(review.$createdAt),
           points: review.pointsEarned || 0,
           review: review.review,
           brandPhotoURL: event?.client?.logoURL || null,
