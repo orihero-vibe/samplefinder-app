@@ -3,31 +3,97 @@ import { NavigationContainerRef } from '@react-navigation/native';
 import type { NotificationData } from './types';
 import { useAuthStore } from '@/stores/authStore';
 import { createUserNotification } from '@/lib/database';
+import type { NotificationType } from '@/lib/database/types';
 
 let navigationRef: NavigationContainerRef<any> | null = null;
+const persistedNotificationIds = new Set<string>();
+const MAX_TRACKED_NOTIFICATIONS = 250;
+const trackedNotificationQueue: string[] = [];
+
+const KNOWN_NOTIFICATION_TYPES: NotificationType[] = [
+  'checkIn',
+  'review',
+  'tierChanged',
+  'badgeEarned',
+  'eventAdded',
+  'eventReminder',
+  'favoriteBrandUpdate',
+];
+
+const normalizeNotificationType = (rawType: unknown): NotificationType => {
+  if (typeof rawType !== 'string') {
+    return 'eventAdded';
+  }
+
+  if (rawType === 'event_reminder') {
+    return 'eventReminder';
+  }
+
+  if (KNOWN_NOTIFICATION_TYPES.includes(rawType as NotificationType)) {
+    return rawType as NotificationType;
+  }
+
+  return 'eventAdded';
+};
+
+const markNotificationPersisted = (notificationId: string) => {
+  if (persistedNotificationIds.has(notificationId)) {
+    return;
+  }
+
+  persistedNotificationIds.add(notificationId);
+  trackedNotificationQueue.push(notificationId);
+
+  if (trackedNotificationQueue.length > MAX_TRACKED_NOTIFICATIONS) {
+    const oldestId = trackedNotificationQueue.shift();
+    if (oldestId) {
+      persistedNotificationIds.delete(oldestId);
+    }
+  }
+};
 
 /**
- * Add an event reminder to the user's in-app notifications list (e.g. "Sampling Today").
- * Used when a local event reminder is received or tapped so it appears in the Notifications screen.
+ * Add any push notification to the user's in-app notifications list.
+ * Deduplicates by notification request identifier to avoid saving the same push twice
+ * when both "received" and "response" listeners fire.
  */
-const addEventReminderToNotifications = async (notification: Notifications.Notification) => {
-  const data = notification.request.content.data as NotificationData & { type?: string; eventId?: string; reminderType?: string };
-  if (data?.type !== 'event_reminder' || !data?.eventId) return;
+const addPushToInAppNotifications = async (notification: Notifications.Notification) => {
+  const notificationId = notification.request.identifier;
+  if (notificationId && persistedNotificationIds.has(notificationId)) {
+    return;
+  }
+
   try {
     const user = useAuthStore.getState().user;
     if (!user) return;
+
+    const data = (notification.request.content.data || {}) as NotificationData & {
+      type?: string;
+      eventId?: string;
+      reminderType?: string;
+    };
     const title = notification.request.content.title || 'Sampling Today';
     const body = notification.request.content.body || 'Event reminder';
+
+    const payloadData: Record<string, unknown> = {};
+    Object.entries(data || {}).forEach(([key, value]) => {
+      payloadData[key] = value;
+    });
+
     await createUserNotification({
       userId: user.$id,
-      type: 'eventReminder',
+      type: normalizeNotificationType(data?.type),
       title,
       message: body,
-      data: { eventId: data.eventId, reminderType: data.reminderType },
+      data: payloadData,
       skipPush: true,
     });
+
+    if (notificationId) {
+      markNotificationPersisted(notificationId);
+    }
   } catch (err) {
-    console.warn('[notifications] Failed to add event reminder to list:', err);
+    console.warn('[notifications] Failed to add push notification to in-app list:', err);
   }
 };
 
@@ -141,13 +207,13 @@ export const setupNotificationHandlers = () => {
   // Handle notifications received while app is in foreground
   Notifications.addNotificationReceivedListener((notification) => {
     console.log('[notifications] Notification received (foreground):', notification);
-    addEventReminderToNotifications(notification);
+    addPushToInAppNotifications(notification);
   });
   
-  // Handle notification taps (add to in-app list when user taps event reminder)
+  // Handle notification taps (also persist if not already saved)
   Notifications.addNotificationResponseReceivedListener((response) => {
     console.log('[notifications] Notification response received:', response);
-    addEventReminderToNotifications(response.notification);
+    addPushToInAppNotifications(response.notification);
     handleNotificationTap(response.notification);
   });
   
@@ -162,7 +228,7 @@ export const getLastNotificationResponse = async (): Promise<Notifications.Notif
     const response = await Notifications.getLastNotificationResponseAsync();
     if (response) {
       console.log('[notifications] Last notification response found:', response);
-      addEventReminderToNotifications(response.notification);
+      addPushToInAppNotifications(response.notification);
       // Handle the notification after a short delay to ensure navigation is ready
       setTimeout(() => {
         handleNotificationTap(response.notification);
