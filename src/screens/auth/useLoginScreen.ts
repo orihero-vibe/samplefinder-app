@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { login } from '@/lib/auth';
 import { initializePushNotifications } from '@/lib/notifications';
+import { useAuthStore } from '@/stores/authStore';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -119,6 +120,9 @@ export const useLoginScreen = () => {
         email: email.trim(),
         password: password,
       });
+
+      // Sync Zustand with the new Appwrite session (logout/login does not run AppNavigator's initial fetchUser)
+      await useAuthStore.getState().fetchUser();
 
       // Check if email is already verified
       if (user.emailVerification) {

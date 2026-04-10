@@ -176,6 +176,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
     try {
       setIsLoggingOut(true);
       await logout();
+      useAuthStore.getState().clearUser();
       // Navigate to Login screen and reset navigation stack
       // Get root navigator by traversing up the navigation tree
       const rootNavigation = navigation.getParent()?.getParent() || navigation.getParent() || navigation;

@@ -45,6 +45,13 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
   // Subtitle should show event name
   const displayEventName = event.name?.trim() || 'Event';
 
+  // Location is often populated with the same client/store name as brandName; skip that duplicate line.
+  const locationTrimmed = (event.location || '').trim();
+  const brandTrimmed = (event.brandName || '').trim();
+  const showLocationLine =
+    locationTrimmed.length > 0 &&
+    locationTrimmed.toLowerCase() !== brandTrimmed.toLowerCase();
+
   return (
     <TouchableOpacity
       onPress={() => onPress(event)}
@@ -91,15 +98,17 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
             >
               {displayEventName}
             </Text>
-            <Text
-              style={styles.locationText}
-              {...(event.location.trim().split(/\s+/).length === 1 && {
-                numberOfLines: 1,
-                ellipsizeMode: 'tail' as const,
-              })}
-            >
-              {event.location}
-            </Text>
+            {showLocationLine ? (
+              <Text
+                style={styles.locationText}
+                {...(locationTrimmed.split(/\s+/).length === 1 && {
+                  numberOfLines: 1,
+                  ellipsizeMode: 'tail' as const,
+                })}
+              >
+                {locationTrimmed}
+              </Text>
+            ) : null}
             <Text style={styles.distanceText}>{event.distance}</Text>
           </View>
         </View>

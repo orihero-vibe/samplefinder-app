@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { login, sendPasswordRecoveryOTP, verifyEmailAndResetPassword } from '@/lib/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 
 type PasswordResetScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PasswordReset'>;
@@ -231,6 +232,7 @@ export const usePasswordResetScreen = () => {
 
       try {
         await login({ email, password });
+        await useAuthStore.getState().fetchUser();
         setUserId(undefined);
         navigation.reset({
           index: 0,

@@ -12,6 +12,9 @@ import { useTier1ModalStore } from '@/stores/tier1ModalStore';
 
 type ConfirmAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ConfirmAccount'>;
 
+/** Matches password reset; reduces consecutive API calls and rate-limit errors. */
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export const useConfirmAccountScreen = () => {
   const navigation = useNavigation<ConfirmAccountScreenNavigationProp>();
   const [code, setCode] = useState('');
@@ -20,7 +23,24 @@ export const useConfirmAccountScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
+  const [canResend, setCanResend] = useState(false);
   const codeInputRef = useRef<CodeInputRef>(null);
+
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const interval = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [resendTimer]);
 
   useEffect(() => {
     // Get current user, delete session, and send OTP
@@ -49,13 +69,16 @@ export const useConfirmAccountScreen = () => {
           console.warn('[ConfirmAccount] Error deleting session (may not exist):', logoutError?.message);
           // Continue anyway
         }
+        useAuthStore.getState().clearUser();
 
         // Step 3: Send Email OTP using createEmailToken
         await sendEmailOTP(userUserId, userEmail);
 
-        // Set state
+        // Set state and cooldown (initial OTP was just sent)
         setEmail(userEmail);
         setUserId(userUserId);
+        setResendTimer(RESEND_COOLDOWN_SECONDS);
+        setCanResend(false);
       } catch (error: any) {
         console.error('[ConfirmAccount] Error initializing OTP:', error);
         const errorMsg = error?.message || 'Failed to send verification code. Please try again.';
@@ -115,6 +138,8 @@ export const useConfirmAccountScreen = () => {
         // Don't block navigation - push notifications are not critical
       });
 
+      await useAuthStore.getState().fetchUser();
+
       // After successful verification, go straight into the app.
       // Notifications should only be accessed from the Profile section.
       navigation.reset({
@@ -138,6 +163,10 @@ export const useConfirmAccountScreen = () => {
       return;
     }
 
+    if (!canResend) {
+      return;
+    }
+
     setIsResending(true);
     setError('');
     setCode(''); // Clear current code
@@ -145,7 +174,8 @@ export const useConfirmAccountScreen = () => {
     try {
       await resendVerificationEmail(userId, email);
       setError(''); // Clear any previous errors
-      // Success message could be shown, but we'll just clear errors
+      setResendTimer(RESEND_COOLDOWN_SECONDS);
+      setCanResend(false);
     } catch (error: any) {
       console.error('[ConfirmAccount] Resend error:', error);
       const errorMsg = error?.message || 'Failed to resend verification code. Please try again.';
@@ -170,6 +200,8 @@ export const useConfirmAccountScreen = () => {
     userId,
     isLoading,
     isResending,
+    resendTimer,
+    canResend,
     error,
     codeInputRef,
     handleCodeChange,
