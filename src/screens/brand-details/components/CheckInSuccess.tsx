@@ -1,11 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Modal,
+  Platform,
+  useWindowDimensions,
+  Pressable,
+} from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { Monicon } from '@monicon/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PointsBadge from './PointsBadge';
-
-// Maroon/burgundy color for the badge
-const BADGE_COLOR = '#8B1538';
 
 interface CheckInSuccessProps {
   onLeaveReview?: () => void;
@@ -22,6 +30,16 @@ const CheckInSuccess: React.FC<CheckInSuccessProps> = ({
   discount,
   discountImageURL,
 }) => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [barcodeFullscreenVisible, setBarcodeFullscreenVisible] = useState(false);
+
+  const fullscreenBarcodeSize = {
+    width: windowWidth - 32,
+    // RN network Images need explicit width + height; maxHeight-only layouts often render empty.
+    height: windowHeight * 0.55,
+  };
+
   // Only show discount section if there's a discount or discount image
   const hasDiscount = discount != null || discountImageURL;
 
@@ -37,13 +55,19 @@ const CheckInSuccess: React.FC<CheckInSuccessProps> = ({
               </Text>
             )}
             {discountImageURL ? (
-              <View style={styles.barcodeContainer}>
+              <TouchableOpacity
+                style={styles.barcodeContainer}
+                onPress={() => setBarcodeFullscreenVisible(true)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="View barcode full screen"
+              >
                 <Image
                   source={{ uri: discountImageURL }}
                   style={styles.discountImage}
                   resizeMode="contain"
                 />
-              </View>
+              </TouchableOpacity>
             ) : (
               <View style={styles.barcodeContainer}>
                 {/* Fallback barcode representation */}
@@ -66,6 +90,47 @@ const CheckInSuccess: React.FC<CheckInSuccessProps> = ({
           </View>
         </View>
       )}
+
+      {discountImageURL ? (
+        <Modal
+          visible={barcodeFullscreenVisible}
+          animationType="fade"
+          presentationStyle={Platform.OS === 'ios' ? 'fullScreen' : undefined}
+          onRequestClose={() => setBarcodeFullscreenVisible(false)}
+        >
+          <View style={styles.barcodeModalRoot}>
+            <View style={[styles.barcodeModalHeader, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+              <Pressable
+                onPress={() => setBarcodeFullscreenVisible(false)}
+                style={styles.barcodeModalClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close barcode"
+              >
+                <Monicon name="mdi:close" size={28} color={Colors.blueColorMode} />
+              </Pressable>
+            </View>
+            <View style={styles.barcodeModalBodyWrap}>
+              <TouchableOpacity
+                style={[StyleSheet.absoluteFillObject, styles.barcodeModalDismissHit]}
+                activeOpacity={1}
+                onPress={() => setBarcodeFullscreenVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss barcode"
+              />
+              <View
+                pointerEvents="box-none"
+                style={styles.barcodeModalImageLayer}
+              >
+                <Image
+                  source={{ uri: discountImageURL }}
+                  style={fullscreenBarcodeSize}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
 
       {/* Points Earned Badge */}
       <PointsBadge points={pointsEarned} />
@@ -109,18 +174,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 20,
     width: '100%',
-    paddingHorizontal: 10,
   },
   barcodeText: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Quicksand_700Bold',
-    color: BADGE_COLOR,
-    lineHeight: 22,
+    color: Colors.blueColorMode,
+    lineHeight: 24,
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   barcodeContainer: {
     alignItems: 'center',
+    flexShrink: 0,
   },
   barcode: {
     flexDirection: 'row',
@@ -140,9 +208,34 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   discountImage: {
-    width: 150,
-    height: 60,
+    width: 168,
+    height: 68,
     backgroundColor: Colors.white,
+  },
+  barcodeModalRoot: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  barcodeModalHeader: {
+    paddingHorizontal: 16,
+    alignItems: 'flex-end',
+  },
+  barcodeModalClose: {
+    padding: 8,
+  },
+  barcodeModalBodyWrap: {
+    flex: 1,
+    position: 'relative',
+  },
+  barcodeModalDismissHit: {
+    zIndex: 0,
+  },
+  barcodeModalImageLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    zIndex: 1,
   },
   reviewButton: {
     backgroundColor: Colors.blueColorMode,

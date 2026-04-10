@@ -14,6 +14,9 @@ import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 let hasAutoShownZipModalThisSession = false;
 const MAX_EVENT_RADIUS_MILES = 50;
 const METERS_PER_MILE = 1609.34;
+/** Tight zoom so adjacent venues are visually separated before opening the store modal */
+const MARKER_FOCUS_DELTA = 0.003;
+const MAP_ANIMATION_DURATION_MS = 500;
 
 export const useHomeScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>(null);
@@ -804,8 +807,32 @@ export const useHomeScreen = () => {
     setSelectedFilter(null);
   };
 
+  const focusMapOnMarker = useCallback(
+    (latitude: number, longitude: number) =>
+      new Promise<void>((resolve) => {
+        const map = mapRef.current as { animateToRegion?: (r: object, duration?: number) => void } | null;
+        if (map?.animateToRegion) {
+          map.animateToRegion(
+            {
+              latitude,
+              longitude,
+              latitudeDelta: MARKER_FOCUS_DELTA,
+              longitudeDelta: MARKER_FOCUS_DELTA,
+            },
+            MAP_ANIMATION_DURATION_MS
+          );
+          setTimeout(resolve, MAP_ANIMATION_DURATION_MS + 50);
+        } else {
+          resolve();
+        }
+      }),
+    []
+  );
+
   const handleMarkerPress = async (marker: MapMarkerData) => {
     if (marker.address) {
+      await focusMapOnMarker(marker.latitude, marker.longitude);
+
       // Find the location by marker ID
       const location = allLocations.find(loc => loc.$id === marker.id);
       
