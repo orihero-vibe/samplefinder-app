@@ -632,11 +632,11 @@ export const useHomeScreen = () => {
             const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
             const clientObj = clientId ? clientsMap.get(clientId) : (typeof event.client === 'object' ? event.client : null);
             const location = clientObj?.name || clientObj?.title || event.city || 'Location';
-            const brandName = event.name || 'Brand';
-            const productName = event.products || event.name || 'Product';
+            const brandName = clientObj?.name || clientObj?.title || 'Brand';
+            const eventName = event.name || 'Event';
             return {
               id: event.$id,
-              name: productName,
+              name: eventName,
               brandName: brandName,
               location,
               distance: formattedDistance,
@@ -884,8 +884,8 @@ export const useHomeScreen = () => {
           // Look up client from allClients
           const clientId = typeof event.client === 'string' ? event.client : event.client?.$id;
           const clientObj = clientId ? allClients.find(c => c.$id === clientId) : (typeof event.client === 'object' ? event.client : null);
-          const brandName = event.name || 'Brand';
-          const productName = event.products || event.name || 'Product';
+          const brandName = clientObj?.name || clientObj?.title || 'Brand';
+          const eventName = event.name || 'Event';
           
           // Calculate distance from user location to event
           const formattedDistance = userLocation && event.location
@@ -900,7 +900,7 @@ export const useHomeScreen = () => {
           
           return {
             id: event.$id,
-            name: productName,
+            name: eventName,
             brandName: brandName,
             location: clientObj?.name || clientObj?.title || event.city || 'Location',
             distance: formattedDistance,

@@ -139,10 +139,10 @@ export const useDiscoverEventsScreen = () => {
             }
           }
 
-          // Brand name comes from event.name (event title/brand)
-          const brandName = event.name || 'Brand';
-          // Product/event name for display reference
-          const eventName = event.products || event.name || 'Event';
+          // Brand name should come from client
+          const brandName = client?.name || client?.title || 'Brand';
+          // Event name should come from event.name
+          const eventName = event.name || 'Event';
           // Location comes from client name or event address/city
           const location = client?.name || client?.title || event.city || event.address || 'Location TBD';
 

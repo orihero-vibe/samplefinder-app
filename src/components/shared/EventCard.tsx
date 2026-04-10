@@ -10,7 +10,7 @@ const locationPin = require('@/assets/locationImage.png');
  */
 export interface UnifiedEvent {
   id: string;
-  name?: string; // For CalendarEventDetail
+  name?: string; // Event name/title
   product?: string; // For EventData (home screen)
   brandName?: string;
   location: string;
@@ -40,8 +40,10 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
     formattedDate = event.date;
   }
   
-  // Use brandName for display, fallback to eventName if no brand
+  // Title should always prefer brand name
   const displayBrandName = event.brandName || 'Brand';
+  // Subtitle should show event name
+  const displayEventName = event.name?.trim() || 'Event';
 
   return (
     <TouchableOpacity
@@ -81,6 +83,13 @@ const EventCard: React.FC<EventCardProps> = ({ event, onPress, showDate = true }
               ellipsizeMode="tail"
             >
               {displayBrandName}
+            </Text>
+            <Text
+              style={styles.eventName}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {displayEventName}
             </Text>
             <Text
               style={styles.locationText}
@@ -142,8 +151,8 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   eventName: {
-    fontSize: 14,
-    fontFamily: 'Quicksand_500Medium',
+    fontSize: 15,
+    fontFamily: 'Quicksand_600SemiBold',
     color: Colors.brandBlueBright,
   },
   brandName: {
