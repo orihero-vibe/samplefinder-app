@@ -22,6 +22,7 @@ export { default as CountdownIcon } from './CountdownIcon';
 export { default as WrongAnswerIcon } from './WrongAnswerIcon';
 export { default as QuestionMarkIcon } from './QuestionMarkIcon';
 export { default as QuestionIcon } from './QuestionIcon';
+export { default as OutlinedQuestionIcon } from './OutlinedQuestionIcon';
 export { default as MapIcon } from './MapIcon';
 export { default as SampleFinderIcon } from './SampleFinderIcon';
 export { default as ViewStarIcon } from './ViewStarIcon';

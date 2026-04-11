@@ -1,16 +1,16 @@
 import { StyleSheet } from 'react-native';
+import { AUTH_WHITE_CONTENT_TOP_PADDING } from '@/constants/authLayout';
 
 const styles = StyleSheet.create({
   wrapperContent: {
+    paddingVertical: 0,
     paddingHorizontal: 30,
-    paddingVertical: 20,
+    paddingTop: AUTH_WHITE_CONTENT_TOP_PADDING,
     paddingBottom: 30,
   },
   contentContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
     flex: 1,
-    paddingTop: 40,
+    width: '100%',
   },
   title: {
     fontSize: 28,

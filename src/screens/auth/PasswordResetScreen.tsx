@@ -14,6 +14,7 @@ import CustomInput from '@/components/shared/CustomInput';
 import CodeInput from '@/components/shared/CodeInput';
 import { usePasswordResetScreen } from './usePasswordResetScreen';
 import styles from './password-reset/styles';
+import { Colors } from '@/constants/Colors';
 
 const PasswordResetScreen = () => {
   const {
@@ -42,6 +43,7 @@ const PasswordResetScreen = () => {
     <ScreenWrapper
       contentBackgroundColor="#fff"
       contentContainerStyle={styles.wrapperContent}
+      expandMainContent
       headerLeft={
         <TouchableOpacity
           onPress={handleBack}
@@ -141,12 +143,15 @@ const PasswordResetScreen = () => {
             <View style={styles.formContainer}>
               <CustomInput
                 label="Create Password"
+                type="password"
                 value={password}
                 onChangeText={handlePasswordChange}
                 placeholder=""
-                secureTextEntry={true}
                 showPasswordToggle={true}
+                inputStyleVariant="underline"
                 labelColor="#666"
+                inputBorderColor={Colors.gray}
+                inputTextColor={Colors.grayText}
                 editable={!isLoading}
               />
 

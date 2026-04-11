@@ -15,6 +15,14 @@ import styles from './signup/styles';
 import { Colors } from '@/constants/Colors';
 import { Monicon } from '@monicon/native';
 
+const signUpFieldProps = {
+  labelColor: Colors.pinBlueBlack,
+  inputBorderColor: Colors.brandBlueBright,
+  inputTextColor: Colors.blueColorMode,
+  placeholderTextColor: Colors.grayText,
+  inputBorderWidth: 2,
+} as const;
+
 const SignUpScreen = () => {
   const {
     firstName,
@@ -60,6 +68,7 @@ const SignUpScreen = () => {
 
   return (
     <ScreenWrapper
+      contentBackgroundColor={Colors.white}
       contentContainerStyle={styles.contentContainer}
       footerPaddingBottom={40}
       headerLeft={
@@ -83,9 +92,7 @@ const SignUpScreen = () => {
             value={firstName}
             onChangeText={setFirstName}
             type="text"
-            labelColor="white"
-            inputBorderColor={Colors.blueColorMode}
-            inputBorderWidth={3}
+            {...signUpFieldProps}
             error={!!fieldErrors.firstName}
             containerStyle={styles.nameInput}
           />
@@ -95,9 +102,7 @@ const SignUpScreen = () => {
             value={lastName}
             onChangeText={setLastName}
             type="text"
-            labelColor="white"
-            inputBorderColor={Colors.blueColorMode}
-            inputBorderWidth={3}
+            {...signUpFieldProps}
             error={!!fieldErrors.lastName}
             containerStyle={styles.nameInput}
           />
@@ -108,9 +113,7 @@ const SignUpScreen = () => {
           value={phoneNumber}
           onChangeText={setPhoneNumber}
           type="phone"
-          labelColor="white"
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={3}
+          {...signUpFieldProps}
           error={!!fieldErrors.phoneNumber}
           errorMessage={fieldErrors.phoneNumber}
         />
@@ -120,10 +123,9 @@ const SignUpScreen = () => {
           value={dateOfBirth}
           onChangeText={setDateOfBirth}
           type="date"
-          labelColor="white"
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={3}
+          {...signUpFieldProps}
           helpIcon={true}
+          helpIconVariant="outlined"
           onHelpPress={() => setShowAgeVerificationModal(true)}
           error={!!fieldErrors.dateOfBirth}
   
@@ -134,9 +136,7 @@ const SignUpScreen = () => {
           value={username}
           onChangeText={setUsername}
           type="text"
-          labelColor="white"
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={3}
+          {...signUpFieldProps}
           error={!!fieldErrors.username}
           errorMessage={fieldErrors.username}
         />
@@ -146,11 +146,9 @@ const SignUpScreen = () => {
           value={zipCode}
           onChangeText={setZipCode}
           type="numeric"
-          labelColor="white"
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={3}
+          {...signUpFieldProps}
           error={!!fieldErrors.zipCode}
-          placeholder="12345"
+          placeholder="#####"
           maxLength={5}
           containerStyle={styles.zipCodeContainer}
         />
@@ -160,9 +158,7 @@ const SignUpScreen = () => {
           value={email}
           onChangeText={setEmail}
           type="email"
-          labelColor="white"
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={3}
+          {...signUpFieldProps}
           error={!!fieldErrors.email}
         />
 
@@ -171,9 +167,7 @@ const SignUpScreen = () => {
           value={password}
           onChangeText={setPassword}
           type="password"
-          labelColor="white"
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={3}
+          {...signUpFieldProps}
           error={!!fieldErrors.password}
           errorMessage={fieldErrors.password}
         />
@@ -183,9 +177,7 @@ const SignUpScreen = () => {
           value={referralCode}
           onChangeText={setReferralCode}
           type="text"
-          labelColor="white"
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={3}
+          {...signUpFieldProps}
           error={!!fieldErrors.referralCode}
           errorMessage={fieldErrors.referralCode}
           placeholder="6 characters"

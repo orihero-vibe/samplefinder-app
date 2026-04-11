@@ -1,9 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { login, sendPasswordRecoveryOTP, verifyEmailAndResetPassword } from '@/lib/auth';
+import {
+  login,
+  logout,
+  sendPasswordRecoveryOTP,
+  updatePassword,
+  verifyEmailAndResetPassword,
+} from '@/lib/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 
@@ -30,6 +36,30 @@ const maskEmail = (email: string): string => {
   return `${maskedLocal}@${maskedDomain}`;
 };
 
+/** Random password satisfying the same rules as `validatePassword` (for OTP-only backend call). */
+const generateStagingPassword = (): string => {
+  const pick = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const special = '!@#$%&*';
+  const pool = upper + lower + digits + special;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    let pwd = pick(upper) + pick(lower) + pick(digits) + pick(special);
+    for (let i = 0; i < 18; i++) pwd += pick(pool);
+    if (
+      pwd.length >= 8 &&
+      /[A-Z]/.test(pwd) &&
+      /[a-z]/.test(pwd) &&
+      /[0-9]/.test(pwd) &&
+      /[^A-Za-z0-9]/.test(pwd)
+    ) {
+      return pwd;
+    }
+  }
+  return 'Zq9!mPx7vLw2nRt4';
+};
+
 export const usePasswordResetScreen = () => {
   const navigation = useNavigation<PasswordResetScreenNavigationProp>();
   const route = useRoute<PasswordResetScreenRouteProp>();
@@ -50,6 +80,8 @@ export const usePasswordResetScreen = () => {
   const [resendTimer, setResendTimer] = useState(60); // 60 seconds countdown
   const [canResend, setCanResend] = useState(false);
   const codeInputRef = useRef<CodeInputRef>(null);
+  /** Set after successful OTP + staging reset; used only for `updatePassword` on step 2 (never shown in UI). */
+  const stagingPasswordRef = useRef<string | null>(null);
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -91,7 +123,7 @@ export const usePasswordResetScreen = () => {
   }, [resendTimer, step]);
 
   // Password validation
-  const validatePassword = (pwd: string): string | null => {
+  const validatePassword = useCallback((pwd: string): string | null => {
     if (pwd.length < 8) {
       return 'Password must be at least 8 characters long';
     }
@@ -108,12 +140,11 @@ export const usePasswordResetScreen = () => {
       return 'Password must include at least 1 special character';
     }
     return null;
-  };
+  }, []);
 
   const handleVerifyCode = async (codeToVerify?: string) => {
-    // Use the provided code or fall back to state
     const verificationCode = codeToVerify || code;
-    
+
     if (verificationCode.length !== 6) {
       setError('Please enter the complete 6-digit code');
       return;
@@ -140,15 +171,51 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
-    // For password reset, we don't need to create a session when verifying the OTP.
-    // The actual OTP verification happens in verifyEmailAndResetPassword when the user submits a new password.
-    // Here we only validate the code format and move to the password step.
-    setIsLoading(false);
+    // Backend requires userId + otp + newPassword together. We set a random staging password, verify OTP,
+    // then sign in with staging so step 2 can call `updatePassword` to the user's real password.
+    setIsLoading(true);
     setError('');
-    console.log(
-      '[PasswordReset] Code validated locally, proceeding to password step. OTP will be verified during password reset.'
-    );
+    stagingPasswordRef.current = null;
+
+    const staging = generateStagingPassword();
+    let otpVerified = false;
+
+    try {
+      await verifyEmailAndResetPassword(effectiveUserId, verificationCode, staging);
+      otpVerified = true;
+      await login({ email, password: staging });
+    } catch (err: any) {
+      console.error('[PasswordReset] Verify / login error:', err);
+      stagingPasswordRef.current = null;
+      if (!otpVerified) {
+        setError(
+          err?.message ||
+            'Invalid or expired code. Please check your email and try again.',
+        );
+      } else {
+        try {
+          await logout();
+        } catch {
+          // ignore
+        }
+        useAuthStore.getState().clearUser();
+        setError(
+          'Verification succeeded, but sign-in failed. Request a new code below, or start Forgot password again from the login screen.',
+        );
+        setStep('code');
+        setCode('');
+      }
+      return;
+    } finally {
+      setIsLoading(false);
+    }
+
+    stagingPasswordRef.current = staging;
     setStep('password');
+    setCode('');
+    useAuthStore.getState().fetchUser().catch(() => {
+      /* non-blocking */
+    });
   };
 
   const handleResendCode = async () => {
@@ -164,6 +231,7 @@ export const usePasswordResetScreen = () => {
     setIsResending(true);
     setError('');
     setCode('');
+    stagingPasswordRef.current = null;
 
     try {
       console.log('[PasswordReset] Resending recovery email...');
@@ -196,12 +264,6 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
-    if (code.length !== 6) {
-      setError('Please enter the 6-digit code sent to your email.');
-      setStep('code');
-      return;
-    }
-
     if (!email) {
       setError('Email address is missing. Please start over.');
       setTimeout(() => {
@@ -218,40 +280,29 @@ export const usePasswordResetScreen = () => {
       return;
     }
 
+    const staging = stagingPasswordRef.current;
+    if (!staging) {
+      setError('Please verify your code first.');
+      setStep('code');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
     try {
-      console.log('[PasswordReset] Verifying OTP and resetting password via backend...');
-      console.log('[PasswordReset] UserId:', effectiveUserId);
-      console.log('[PasswordReset] Code length:', code.length);
-
-      // Backend validates the OTP (including expiry) and updates the password atomically
-      await verifyEmailAndResetPassword(effectiveUserId, code, password);
-      console.log('[PasswordReset] Password reset successfully');
-
-      try {
-        await login({ email, password });
-        await useAuthStore.getState().fetchUser();
-        setUserId(undefined);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        });
-      } catch {
-        navigation.replace('Login', undefined);
-      }
+      await updatePassword(staging, password, password);
+      stagingPasswordRef.current = null;
+      await useAuthStore.getState().fetchUser();
+      setUserId(undefined);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
     } catch (error: any) {
       console.error('[PasswordReset] Password update error:', error);
       const errorMsg = error?.message || 'Failed to reset password. Please try again.';
       setError(errorMsg);
-      
-      // If the code is invalid/expired, go back to code step
-      if (errorMsg.includes('Invalid') || errorMsg.includes('expired') || errorMsg.includes('token')) {
-        setStep('code');
-        setCode('');
-        setPassword('');
-      }
     } finally {
       setIsLoading(false);
     }
@@ -275,9 +326,17 @@ export const usePasswordResetScreen = () => {
     setError(''); // Clear error when user types
   };
 
-  const handleBackToCode = () => {
+  const handleBackToCode = async () => {
+    stagingPasswordRef.current = null;
+    try {
+      await logout();
+    } catch {
+      // ignore
+    }
+    useAuthStore.getState().clearUser();
     setStep('code');
     setPassword('');
+    setCode('');
     setError('');
   };
 

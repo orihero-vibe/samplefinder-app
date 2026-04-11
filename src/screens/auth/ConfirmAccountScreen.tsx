@@ -29,9 +29,10 @@ const ConfirmAccountScreen = () => {
   } = useConfirmAccountScreen();
 
   return (
-    <ScreenWrapper 
+    <ScreenWrapper
       contentBackgroundColor="#fff"
       contentContainerStyle={styles.wrapperContent}
+      expandMainContent
     >
       <StatusBar style="light" />
       <View style={styles.contentContainer}>
