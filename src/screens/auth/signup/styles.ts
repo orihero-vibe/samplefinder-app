@@ -1,3 +1,4 @@
+import { Colors } from '@/constants';
 import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
@@ -7,12 +8,12 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 30,
-    paddingVertical: 0,
+    paddingVertical: 20,
   },
   title: {
     fontSize: 28,
     fontFamily: 'Quicksand_700Bold',
-    color: '#fff',
+    color: Colors.blueColorMode,
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 30,
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   buttonContainer: {
-    marginTop: 54,
+    marginTop: 20,
     marginBottom: 20,
     position: 'relative',
   },
@@ -58,12 +59,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   signInPrompt: {
-    color: '#fff',
+    color: Colors.grayText,
     fontSize: 16,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Quicksand_500Medium',
   },
   signInLink: {
-    color: '#fff',
+    color: Colors.grayText,
     fontSize: 16,
     fontFamily: 'Quicksand_700Bold',
   },
@@ -72,18 +73,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 32,
     paddingHorizontal: 10,
   },
   termsText: {
-    color: '#fff',
+    color: Colors.grayText,
     fontSize: 12,
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: 'Quicksand_300Light',
     textAlign: 'center',
     lineHeight: 18,
   },
   termsLinkText: {
     textDecorationLine: 'underline',
+    fontFamily: 'Quicksand_500Medium',
   },
   legalButtonsContainer: {
     flexDirection: 'row',

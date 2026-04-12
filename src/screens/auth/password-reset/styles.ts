@@ -1,4 +1,6 @@
 import { StyleSheet } from 'react-native';
+import { AUTH_WHITE_CONTENT_TOP_PADDING } from '@/constants/authLayout';
+import { Colors } from '@/constants';
 
 const styles = StyleSheet.create({
   headerBackButton: {
@@ -6,13 +8,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   wrapperContent: {
+    paddingVertical: 0,
     paddingHorizontal: 30,
-    paddingVertical: 20,
+    paddingTop: AUTH_WHITE_CONTENT_TOP_PADDING,
     paddingBottom: 30,
   },
   contentContainer: {
     flex: 1,
-    paddingTop: 40,
+    width: '100%',
   },
   title: {
     fontSize: 28,
@@ -45,7 +48,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Quicksand_400Regular',
     color: '#999',
-    marginBottom: 8,
+    marginBottom: 2,
     lineHeight: 20,
   },
   buttonContainer: {
@@ -80,7 +83,7 @@ const styles = StyleSheet.create({
   didntGetCodeTitle: {
     fontSize: 16,
     fontFamily: 'Quicksand_500Medium',
-    color: '#333',
+    color: Colors.grayText,
     textAlign: 'center',
     marginBottom: 8,
   },
