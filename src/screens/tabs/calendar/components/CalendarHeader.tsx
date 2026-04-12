@@ -35,7 +35,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
       <View style={styles.content}>
         {showNavigation ? (
           <TouchableOpacity onPress={onPreviousMonth} style={styles.iconButton}>
-            <Monicon name="mdi:chevron-left" size={24} color={Colors.white} />
+            <Monicon name="mdi:arrow-left" size={24} color={Colors.white} />
           </TouchableOpacity>
         ) : (
           <View style={styles.sideSlot} />
@@ -45,7 +45,9 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
         </Text>
         {showNavigation ? (
           <TouchableOpacity onPress={onNextMonth} style={styles.iconButton}>
-            <Monicon name="mdi:chevron-right" size={24} color={Colors.white} />
+            <View style={styles.arrowRightMirror}>
+              <Monicon name="mdi:arrow-left" size={24} color={Colors.white} />
+            </View>
           </TouchableOpacity>
         ) : (
           <View style={styles.sideSlot} />
@@ -77,9 +79,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  arrowRightMirror: {
+    transform: [{ scaleX: -1 }],
+  },
   monthYear: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 24,
     fontFamily: 'Quicksand_700Bold',
     color: Colors.white,
     textAlign: 'center',
