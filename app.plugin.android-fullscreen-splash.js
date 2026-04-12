@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { withPlugins, withDangerousMod, withAndroidStyles } = require('@expo/config-plugins');
+const { withPlugins, withDangerousMod, withAndroidStyles, withStringsXml } = require('@expo/config-plugins');
 
 const SPLASH_SOURCE = 'src/assets/splash.png';
 const DRAWABLE_XML_NAME = 'splash_fullscreen.xml';
@@ -41,6 +41,38 @@ function copyFullscreenSplashAssets(config) {
 </layer-list>
 `;
       await fs.promises.writeFile(path.join(drawable, DRAWABLE_XML_NAME), layerList);
+
+      // Transparent icon drawable so Android 12+ system splash shows no centered icon
+      const transparentIcon = `<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+  android:shape="rectangle">
+  <size android:width="1dp" android:height="1dp" />
+  <solid android:color="@android:color/transparent" />
+</shape>
+`;
+      await fs.promises.writeFile(
+        path.join(drawable, 'splash_icon_transparent.xml'),
+        transparentIcon
+      );
+
+      // Android 12+ (API 31+) theme override to suppress centered icon splash
+      const v31 = path.join(res, 'values-v31');
+      await fs.promises.mkdir(v31, { recursive: true });
+      const v31Styles = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="Theme.App.SplashScreen" parent="Theme.AppCompat.Light.NoActionBar">
+    <item name="android:windowSplashScreenBackground">@color/splashscreen_background</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_transparent</item>
+    <item name="android:windowBackground">@drawable/splash_fullscreen</item>
+    <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    <item name="android:statusBarColor">@android:color/transparent</item>
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+    <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+  </style>
+</resources>
+`;
+      await fs.promises.writeFile(path.join(v31, 'styles.xml'), v31Styles);
+
       return config;
     },
   ]);
@@ -80,6 +112,10 @@ function replaceSplashThemeWithFullscreenBackground(config) {
           $: { name: 'android:navigationBarColor' },
           _: '@android:color/transparent',
         },
+        {
+          $: { name: 'android:windowLayoutInDisplayCutoutMode' },
+          _: 'shortEdges',
+        },
       ],
     };
 
@@ -87,6 +123,28 @@ function replaceSplashThemeWithFullscreenBackground(config) {
   });
 }
 
+function setStatusBarTranslucent(config) {
+  return withStringsXml(config, (config) => {
+    const strings = config.modResults?.resources?.string;
+    if (!Array.isArray(strings)) {
+      return config;
+    }
+
+    const idx = strings.findIndex(
+      (s) => s.$?.name === 'expo_splash_screen_status_bar_translucent'
+    );
+    if (idx !== -1) {
+      strings[idx]._ = 'true';
+    }
+
+    return config;
+  });
+}
+
 module.exports = function withAndroidFullscreenSplash(config) {
-  return withPlugins(config, [copyFullscreenSplashAssets, replaceSplashThemeWithFullscreenBackground]);
+  return withPlugins(config, [
+    copyFullscreenSplashAssets,
+    replaceSplashThemeWithFullscreenBackground,
+    setStatusBarTranslucent,
+  ]);
 };

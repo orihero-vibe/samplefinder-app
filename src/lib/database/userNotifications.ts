@@ -15,6 +15,9 @@ import { sendPushNotification } from '../pushNotifications';
 
 const MAX_NOTIFICATIONS = 50; // Keep last 50 notifications per user
 
+// Dedup window: ignore duplicate notifications created within this period
+const DEDUP_WINDOW_MS = 30_000;
+
 /**
  * Helper: Deserialize notifications from database format (JSON strings) to objects
  */
@@ -94,7 +97,8 @@ export const createUserNotification = async (
   }
 
   try {
-    console.log('[notifications] Creating notification:', notificationData);
+    const traceId = `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    console.log(`[notifications][${traceId}] Creating notification:`, notificationData.type, notificationData.title);
 
     // Get user profile
     const profile = await getUserProfile(notificationData.userId);
@@ -105,6 +109,30 @@ export const createUserNotification = async (
     // Get existing notifications or initialize empty array
     const existingNotificationsRaw = (profile as any).notifications || [];
     const existingNotifications = deserializeNotifications(existingNotificationsRaw);
+
+    // Idempotency check: reject if an identical notification was created recently
+    const now = new Date();
+    const isDuplicate = existingNotifications.some((existing) => {
+      if (existing.type !== notificationData.type || existing.title !== notificationData.title) {
+        return false;
+      }
+      const createdAt = new Date(existing.createdAt);
+      return now.getTime() - createdAt.getTime() < DEDUP_WINDOW_MS;
+    });
+
+    if (isDuplicate) {
+      console.log(`[notifications][${traceId}] Skipped duplicate (type=${notificationData.type}, title="${notificationData.title}")`);
+      // Return a stub so callers don't break
+      return {
+        id: 'dedup-skipped',
+        type: notificationData.type,
+        title: notificationData.title,
+        message: notificationData.message,
+        isRead: true,
+        createdAt: now.toISOString(),
+        data: notificationData.data || {},
+      };
+    }
 
     // Create new notification
     const newNotification: UserNotification = {
@@ -138,7 +166,7 @@ export const createUserNotification = async (
       },
     });
 
-    console.log('[notifications] Notification created successfully');
+    console.log(`[notifications][${traceId}] Notification created successfully (id=${newNotification.id})`);
 
     // Send push notification (respects user preferences) unless skipPush
     if (notificationData.skipPush) {
@@ -162,7 +190,7 @@ export const createUserNotification = async (
       }
 
       if (pushEnabled) {
-        console.log('[notifications] Sending push notification to user:', notificationData.userId);
+        console.log(`[notifications][${traceId}] Sending push notification to user:`, notificationData.userId);
         
         // Convert data to string-only record for push notification
         const stringData: Record<string, string> = {};

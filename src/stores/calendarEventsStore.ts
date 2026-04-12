@@ -7,10 +7,11 @@ import {
   getUserSavedEventIds 
 } from '@/lib/database';
 import { useAuthStore } from '@/stores/authStore';
-import { 
-  scheduleEventReminders, 
-  getEventReminders, 
-  cancelEventReminders 
+import * as Notifications from 'expo-notifications';
+import {
+  scheduleEventReminders,
+  getEventReminders,
+  cancelEventReminders
 } from '@/lib/notifications/eventReminders';
 
 interface SavedCalendarEvent {
@@ -122,18 +123,28 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
           set({ savedEvents, isInitialized: true });
           console.log('[calendarEventsStore] Synced events from user profile:', savedEvents.length);
 
-          // Schedule reminders for saved events that don't have reminders yet
-          // This ensures reminders work across devices
+          // Schedule reminders for saved events that don't have reminders yet.
+          // Cross-check AsyncStorage IDs against actual OS-scheduled notifications
+          // to catch stale entries (e.g., reminders that already fired).
+          const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+          const scheduledIds = new Set(scheduledNotifications.map((n) => n.identifier));
+
           for (const savedEvent of savedEvents) {
             try {
-              // Check if reminders already exist for this event
               const existingReminders = await getEventReminders(savedEvent.eventId);
-              if (existingReminders && (existingReminders.reminder24h || existingReminders.reminder1h)) {
-                // Reminders already scheduled, skip
-                continue;
+
+              // Verify that stored reminder IDs still exist in the OS scheduler.
+              // If they do, the reminders are genuinely still pending — skip.
+              if (existingReminders) {
+                const has24h = existingReminders.reminder24h && scheduledIds.has(existingReminders.reminder24h);
+                const has1h = existingReminders.reminder1h && scheduledIds.has(existingReminders.reminder1h);
+                if (has24h || has1h) {
+                  continue;
+                }
+                // Stale entries — the stored IDs no longer exist in the OS.
+                // Fall through to re-evaluate whether we should reschedule.
               }
 
-              // Fetch event details to get start time
               const eventData = await fetchEventById(savedEvent.eventId);
               if (!eventData || !eventData.startTime) {
                 continue;
@@ -142,22 +153,20 @@ export const useCalendarEventsStore = create<CalendarEventsState>()(
               const eventStartDate = new Date(eventData.startTime);
               const now = new Date();
 
-              // Only schedule if event is in the future
               if (eventStartDate > now) {
                 const eventTitle = eventData.name || 'Event';
                 const eventLocation = eventData.city ? `${eventData.address}, ${eventData.city}` : undefined;
 
-                await scheduleEventReminders(
+                const scheduled = await scheduleEventReminders(
                   savedEvent.eventId,
                   eventStartDate,
                   eventTitle,
                   eventLocation
                 );
-                console.log('[calendarEventsStore] Scheduled reminders for event:', savedEvent.eventId);
+                console.log('[calendarEventsStore] Scheduled reminders for event:', savedEvent.eventId, scheduled);
               }
             } catch (reminderError) {
               console.warn('[calendarEventsStore] Failed to schedule reminder for event:', savedEvent.eventId, reminderError);
-              // Continue with other events even if one fails
             }
           }
         } catch (error) {

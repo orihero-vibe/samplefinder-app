@@ -114,10 +114,14 @@ const AppNavigator = () => {
 
   useEffect(() => {
     checkAuthSession();
-    setupNotificationHandlers();
+    const cleanupHandlers = setupNotificationHandlers();
 
     // Check for notification that opened the app
     getLastNotificationResponse();
+
+    return () => {
+      cleanupHandlers();
+    };
   }, []);
 
   // Handle deep links when user is already authenticated (warm start)
