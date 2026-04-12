@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/stores/authStore';
-import { createUserNotification, getUserProfile, updateUserProfile } from '@/lib/database';
+import {
+  createUserNotification,
+  getUserProfile,
+  updateUserProfile,
+  getUnreadNotifications,
+} from '@/lib/database';
 import type { UserNotification } from '@/lib/database';
 
 type SpecialBadgeType = 'ambassador' | 'influencer';
@@ -27,7 +32,6 @@ type SpecialBadgeState = Record<SpecialBadgeType, boolean>;
 const DEFAULT_BADGE_STATE: SpecialBadgeState = { ambassador: false, influencer: false };
 const SPECIAL_BADGE_POINTS = 100;
 const getBadgeStateStorageKey = (authId: string) => `specialBadgeState:${authId}`;
-const getShownSpecialBadgesStorageKey = (authId: string) => `shownSpecialBadges:${authId}`;
 
 const toBoolean = (value: unknown): boolean => {
   if (value === true || value === 1 || value === '1') return true;
@@ -89,24 +93,6 @@ const hasSpecialBadgeNotification = (
   });
 };
 
-const shouldResetShownBadge = (
-  badgeType: SpecialBadgeType,
-  currentBadgeState: SpecialBadgeState,
-  lastBadgeState: SpecialBadgeState,
-  shownSpecialBadges: SpecialBadgeState
-): boolean => {
-  if (!shownSpecialBadges[badgeType]) {
-    return false;
-  }
-
-  // Admin toggled badge off after previously being on.
-  if (!currentBadgeState[badgeType] && lastBadgeState[badgeType]) {
-    return true;
-  }
-
-  return false;
-};
-
 const readLastBadgeState = async (authId: string): Promise<SpecialBadgeState> => {
   try {
     const raw = await AsyncStorage.getItem(getBadgeStateStorageKey(authId));
@@ -126,94 +112,81 @@ const writeBadgeState = async (authId: string, state: SpecialBadgeState): Promis
   }
 };
 
-const readShownSpecialBadges = async (authId: string): Promise<SpecialBadgeState> => {
-  try {
-    const raw = await AsyncStorage.getItem(getShownSpecialBadgesStorageKey(authId));
-    if (!raw) return DEFAULT_BADGE_STATE;
-    const parsed = JSON.parse(raw) as Partial<SpecialBadgeState>;
-    return parseBadgeState(parsed);
-  } catch {
-    return DEFAULT_BADGE_STATE;
+const parseSpecialBadgeType = (raw: unknown): SpecialBadgeType | null => {
+  if (raw === 'ambassador' || raw === 'influencer') {
+    return raw;
   }
-};
-
-const writeShownSpecialBadges = async (authId: string, state: SpecialBadgeState): Promise<void> => {
-  try {
-    await AsyncStorage.setItem(getShownSpecialBadgesStorageKey(authId), JSON.stringify(state));
-  } catch {
-    // Non-critical: do not block badge flow if local cache fails.
-  }
+  return null;
 };
 
 /**
- * Persist that the user dismissed the identifier-badge popup (backup if sync storage failed).
+ * Each unread ambassador / influencer badge notification should show the earned modal once
+ * (same pattern as tier awards). Supports repeated admin grants while the profile flag stays on.
  */
-export const markSpecialBadgePopupSeen = async (
-  authId: string,
-  badgeType: SpecialBadgeType
-): Promise<void> => {
-  const shown = await readShownSpecialBadges(authId);
-  shown[badgeType] = true;
-  await writeShownSpecialBadges(authId, shown);
+const awardsFromUnreadSpecialBadgeNotifications = (
+  unreadNotifications: UserNotification[]
+): AwardedSpecialBadge[] => {
+  const out: AwardedSpecialBadge[] = [];
+  for (const notification of unreadNotifications) {
+    if (notification.type !== 'badgeEarned' || notification.isRead) {
+      continue;
+    }
+    const badgeType = parseSpecialBadgeType(notification.data?.badgeType);
+    if (!badgeType) {
+      continue;
+    }
+    out.push({
+      type: badgeType,
+      title: notification.title,
+      message: notification.message,
+      notificationId: notification.id,
+    });
+  }
+  return out;
 };
 
+/**
+ * Sync identifier-badge (ambassador / influencer) awards.
+ *
+ * - Surfaces every **unread** `badgeEarned` notification for those types so the modal can repeat
+ *   whenever admin (or the client) issues a new notification.
+ * - Still creates points + a notification on the client when the profile flag transitions
+ *   disabled → enabled, or when the badge is enabled but no historical notification exists yet.
+ */
 export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> => {
   const user = useAuthStore.getState().user;
   if (!user) {
     return [];
   }
 
-  const profile = await getUserProfile(user.$id);
+  const [profile, unreadNotifications] = await Promise.all([
+    getUserProfile(user.$id),
+    getUnreadNotifications(user.$id, 50),
+  ]);
   if (!profile) {
     return [];
   }
 
   const existingNotifications = parseNotifications((profile as any).notifications);
   const lastBadgeState = await readLastBadgeState(user.$id);
-  const shownSpecialBadges = await readShownSpecialBadges(user.$id);
   const currentBadgeState: SpecialBadgeState = {
     ambassador: toBoolean(profile.isAmbassador),
     influencer: toBoolean(profile.isInfluencer),
   };
 
-  if (
-    shouldResetShownBadge('ambassador', currentBadgeState, lastBadgeState, shownSpecialBadges)
-  ) {
-    shownSpecialBadges.ambassador = false;
-  }
-  if (
-    shouldResetShownBadge('influencer', currentBadgeState, lastBadgeState, shownSpecialBadges)
-  ) {
-    shownSpecialBadges.influencer = false;
-  }
+  const unreadAwards = awardsFromUnreadSpecialBadgeNotifications(unreadNotifications);
 
   let updatedTotalPoints = Number(profile.totalPoints || 0);
-  const newlyAwardedBadges: AwardedSpecialBadge[] = [];
+  const clientCreatedAwards: AwardedSpecialBadge[] = [];
 
   const maybeAwardBadge = async (badgeType: SpecialBadgeType, isEnabled: boolean) => {
     if (!isEnabled) {
       return;
     }
 
-    if (shownSpecialBadges[badgeType]) {
-      return;
-    }
-
-    // Already synced this badge as enabled in a prior session — do not re-award or re-popup
-    // when notification history is missing or unparsable (fixes repeat popups on login).
-    if (lastBadgeState[badgeType] && currentBadgeState[badgeType]) {
-      shownSpecialBadges[badgeType] = true;
-      return;
-    }
-
-    if (hasSpecialBadgeNotification(existingNotifications, badgeType)) {
-      shownSpecialBadges[badgeType] = true;
-      return;
-    }
-
     // Primary trigger: badge flag changed from disabled -> enabled.
     const transitionedToEnabled = !lastBadgeState[badgeType] && currentBadgeState[badgeType];
-    // Backfill safety: badge is enabled but historical special notification is missing.
+    // Backfill: badge is enabled but no historical special notification exists yet.
     const missingHistoricalNotification = !hasSpecialBadgeNotification(existingNotifications, badgeType);
     if (!transitionedToEnabled && !missingHistoricalNotification) {
       return;
@@ -239,19 +212,27 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
       },
     });
 
-    newlyAwardedBadges.push({
+    clientCreatedAwards.push({
       type: badgeType,
       title: content.title,
       message: content.message,
       notificationId: createdNotification.id,
     });
-    shownSpecialBadges[badgeType] = true;
   };
 
   await maybeAwardBadge('ambassador', currentBadgeState.ambassador);
   await maybeAwardBadge('influencer', currentBadgeState.influencer);
   await writeBadgeState(user.$id, currentBadgeState);
-  await writeShownSpecialBadges(user.$id, shownSpecialBadges);
 
-  return newlyAwardedBadges;
+  const seenIds = new Set<string>();
+  const merged: AwardedSpecialBadge[] = [];
+  for (const award of [...unreadAwards, ...clientCreatedAwards]) {
+    if (seenIds.has(award.notificationId)) {
+      continue;
+    }
+    seenIds.add(award.notificationId);
+    merged.push(award);
+  }
+
+  return merged;
 };

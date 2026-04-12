@@ -17,11 +17,7 @@ import { subscribeToDeepLinks, handleIncomingReferralLink } from '@/lib/deepLink
 import { DEEP_LINK_DOMAIN, CUSTOM_SCHEME } from '@/lib/deepLink.constants';
 import { CustomSplashScreen } from '@/components';
 import BadgeEarnedModal, { type BadgeType } from '@/components/shared/BadgeEarnedModal';
-import {
-  markSpecialBadgePopupSeen,
-  syncSpecialBadgeAwards,
-  type AwardedSpecialBadge,
-} from '@/lib/specialBadgeAwards';
+import { syncSpecialBadgeAwards, type AwardedSpecialBadge } from '@/lib/specialBadgeAwards';
 import TierEarnedModal from '@/screens/tabs/promotions/components/TierEarnedModal';
 import { syncTierAwards, type AwardedTier } from '@/lib/tierAwards';
 
@@ -148,16 +144,21 @@ const AppNavigator = () => {
 
         if (newlyAwardedBadges.length > 0) {
           setPendingSpecialBadgeAwards((current) => {
-            const queuedTypes = new Set(current.map((badge) => badge.type));
-            const activeType = activeSpecialBadgeAwardRef.current?.type;
+            const queuedIds = new Set(
+              current.map((badge) => badge.notificationId).filter(Boolean)
+            );
+            const activeNotificationId = activeSpecialBadgeAwardRef.current?.notificationId;
             const filteredNewBadges = newlyAwardedBadges.filter((badge) => {
-              if (activeType && badge.type === activeType) {
+              const nid = badge.notificationId;
+              if (nid && activeNotificationId && nid === activeNotificationId) {
                 return false;
               }
-              if (queuedTypes.has(badge.type)) {
+              if (nid && queuedIds.has(nid)) {
                 return false;
               }
-              queuedTypes.add(badge.type);
+              if (nid) {
+                queuedIds.add(nid);
+              }
               return true;
             });
 
@@ -269,9 +270,6 @@ const AppNavigator = () => {
       const user = useAuthStore.getState().user;
       if (!user) {
         return;
-      }
-      if (award?.type) {
-        await markSpecialBadgePopupSeen(user.$id, award.type);
       }
       if (notificationId) {
         await markNotificationAsRead(user.$id, notificationId);
