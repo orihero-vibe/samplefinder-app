@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Colors } from '@/constants';
 
 interface AgeVerificationModalProps {
   visible: boolean;
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
   ageModalTitle: {
     fontSize: 20,
     fontFamily: 'Quicksand_700Bold',
-    color: '#1E3A8A',
+    color: Colors.blueColorMode,
   },
   closeButton: {
     width: 32,

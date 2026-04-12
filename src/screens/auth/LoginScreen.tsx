@@ -18,6 +18,14 @@ import { Colors } from '@/constants/Colors';
 const { height: screenHeight } = Dimensions.get('window');
 const isSmallDevice = screenHeight < 700;
 
+const loginFieldProps = {
+  labelColor: Colors.white,
+  inputBorderColor: Colors.brandBlueBright,
+  inputTextColor: Colors.brandBlueBright,
+  placeholderTextColor: Colors.grayText,
+  inputBorderWidth: 2,
+} as const;
+
 const LoginScreen = () => {
   const {
     email,
@@ -47,34 +55,29 @@ const LoginScreen = () => {
       <View style={styles.formContainer}>
         <CustomInput
           label="Email:"
+          type="email"
           value={email}
           onChangeText={handleEmailChange}
-          placeholder="Enter email"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          labelColor='white'
           editable={!isLoading}
           error={!!emailError || !!authError}
           errorMessage={emailError}
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={2}
+          {...loginFieldProps}
         />
 
         <CustomInput
           label="Password:"
+          type="password"
           value={password}
           onChangeText={handlePasswordChange}
-          placeholder="Enter password"
-          secureTextEntry={false}
           autoCapitalize="none"
           autoCorrect={false}
-          labelColor='white'
           editable={!isLoading}
-          error={!!passwordError || !!authError}
+          error={!!passwordError}
           errorMessage={passwordError}
-          inputBorderColor={Colors.blueColorMode}
-          inputBorderWidth={2}
+          {...loginFieldProps}
         />
 
         <View style={styles.optionsContainer}>
@@ -86,7 +89,7 @@ const LoginScreen = () => {
           >
             <View style={styles.checkbox}>
               {rememberMe && (
-                <MaterialIcons name="check" size={isSmallDevice ? 16 : 18} color="#fff" />
+                <MaterialIcons name="check" size={isSmallDevice ? 16 : 18} color={Colors.white} />
               )}
             </View>
             <Text style={styles.rememberMeText}>Remember Me</Text>
@@ -99,6 +102,7 @@ const LoginScreen = () => {
             <View style={styles.forgotPasswordContainer}>
               <QuestionIcon
                 size={isSmallDevice ? 18 : 20}
+                color={Colors.white}
               />
               <Text style={styles.forgotPasswordText}>
                 Forgot Password?

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Monicon } from '@monicon/native';
 import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
@@ -8,8 +8,6 @@ import CustomButton from '@/components/shared/CustomButton';
 import { useForgotPasswordScreen } from './useForgotPasswordScreen';
 import styles from './forgot-password/styles';
 import { Colors } from '@/constants';
-
-const { height: screenHeight } = Dimensions.get('window');
 
 const ForgotPasswordScreen = () => {
   const {
@@ -24,7 +22,8 @@ const ForgotPasswordScreen = () => {
   return (
     <ScreenWrapper
       contentBackgroundColor="#fff"
-      contentContainerStyle={{ minHeight: screenHeight - 120 }}
+      contentContainerStyle={styles.screenContent}
+      expandMainContent
       headerLeft={
         <TouchableOpacity
           onPress={handleBack}
@@ -52,13 +51,14 @@ const ForgotPasswordScreen = () => {
             placeholder="name@gmail.com"
             type='email'
             keyboardType="email-address"
-            labelColor="#333"
-            inputBorderColor="#2D1B69"
+            labelColor={Colors.pinBlueBlack}
+            inputBorderColor={Colors.brandBlueBright}
+            inputBorderWidth={2}
             inputTextColor={Colors.brandBlueBright}
             editable={!isLoading}
             error={!!error}
             errorMessage={error}
-          />
+       />
 
           <View style={styles.buttonContainer}>
             <CustomButton

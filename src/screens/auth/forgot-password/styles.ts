@@ -1,17 +1,20 @@
-import { StyleSheet, Dimensions } from 'react-native';
-
-const { height: screenHeight } = Dimensions.get('window');
+import { StyleSheet } from 'react-native';
+import { AUTH_WHITE_CONTENT_TOP_PADDING } from '@/constants/authLayout';
 
 const styles = StyleSheet.create({
   headerBackButton: {
     paddingVertical: 6,
     paddingHorizontal: 4,
   },
+  screenContent: {
+    paddingVertical: 0,
+    paddingHorizontal: 30,
+    paddingTop: AUTH_WHITE_CONTENT_TOP_PADDING,
+    paddingBottom: 30,
+  },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    paddingVertical: 40,
-    minHeight: screenHeight * 0.6,
+    width: '100%',
   },
   title: {
     fontSize: 24,

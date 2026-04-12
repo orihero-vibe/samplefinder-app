@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { formatPhoneNumber, formatDate } from '@/utils/formatters';
-import { QuestionIcon, QuestionMarkIcon } from '@/icons';
+import { QuestionIcon, OutlinedQuestionIcon } from '@/icons';
 import { Colors } from '@/constants';
 
 export type InputType = 
@@ -34,10 +34,15 @@ interface CustomInputProps extends Omit<TextInputProps, 'style'> {
   errorMessage?: string;
   showPasswordToggle?: boolean;
   helpIcon?: boolean;
+  /** Use filled-circle DOB-style asset instead of stroke-only QuestionIcon */
+  helpIconVariant?: 'default' | 'outlined';
   onHelpPress?: () => void;
   containerStyle?: object;
   autoFormat?: boolean; // Enable automatic formatting for phone/date
   inputTextColor?: string;
+  placeholderTextColor?: string;
+  /** Full rounded border vs bottom border only (e.g. password reset) */
+  inputStyleVariant?: 'boxed' | 'underline';
 }
 
 const CustomInput: React.FC<CustomInputProps> = ({
@@ -54,9 +59,12 @@ const CustomInput: React.FC<CustomInputProps> = ({
   errorMessage,
   showPasswordToggle,
   helpIcon = false,
+  helpIconVariant = 'default',
   onHelpPress,
   containerStyle,
   autoFormat = true,
+  placeholderTextColor: placeholderTextColorProp,
+  inputStyleVariant = 'boxed',
   keyboardType,
   secureTextEntry,
   ...textInputProps
@@ -102,7 +110,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
 
   // Get placeholder based on type
   const getPlaceholder = (): string => {
-    if (placeholder) return placeholder;
+    if (placeholder !== undefined) return placeholder;
     switch (type) {
       case 'email':
         return 'name@gmail.com';
@@ -124,8 +132,29 @@ const CustomInput: React.FC<CustomInputProps> = ({
     return '#2D1B69';
   };
 
+  const fieldAccentColor = error ? '#F51616' : getBorderColor();
+  const placeholderColor = placeholderTextColorProp ?? '#999';
+  const resolvedInputTextColor = error ? '#F51616' : inputTextColor;
+  const isUnderline = inputStyleVariant === 'underline';
+  const bottomBorderWidth = inputBorderWidth ?? (isUnderline ? 1 : undefined);
+
   // Determine if password should be visible
   const shouldShowPassword = isPassword && !isPasswordVisible;
+
+  const inputDynamicStyle = isUnderline
+    ? {
+        borderWidth: 0,
+        borderBottomWidth: bottomBorderWidth ?? 1,
+        borderBottomColor: getBorderColor(),
+        borderRadius: 0,
+        backgroundColor: 'transparent',
+        color: resolvedInputTextColor,
+      }
+    : {
+        borderColor: getBorderColor(),
+        ...(inputBorderWidth != null ? { borderWidth: inputBorderWidth } : {}),
+        color: resolvedInputTextColor,
+      };
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -140,7 +169,11 @@ const CustomInput: React.FC<CustomInputProps> = ({
               onPress={onHelpPress}
               activeOpacity={0.7}
             >
-              <QuestionIcon size={20} />
+              {helpIconVariant === 'outlined' ? (
+                <OutlinedQuestionIcon size={20} circleFill={fieldAccentColor} />
+              ) : (
+                <QuestionIcon size={20} color={fieldAccentColor} />
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -150,18 +183,15 @@ const CustomInput: React.FC<CustomInputProps> = ({
           <TextInput
             style={[
               styles.input,
-              {
-                borderColor: getBorderColor(),
-                ...(inputBorderWidth && { borderWidth: inputBorderWidth }),
-                ...(inputTextColor && { color: inputTextColor }),
-              },
-              error && styles.inputError,
+              isUnderline && styles.inputUnderline,
+              inputDynamicStyle,
+              !isUnderline && error && styles.inputError,
               shouldShowPasswordToggle && styles.inputWithIcon,
             ]}
             value={value}
             onChangeText={handleTextChange}
             placeholder={getPlaceholder()}
-            placeholderTextColor="#999"
+            placeholderTextColor={placeholderColor}
             secureTextEntry={shouldShowPassword}
             keyboardType={getKeyboardType()}
             autoCapitalize={type === 'email' || type === 'password' ? 'none' : 'sentences'}
@@ -177,7 +207,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
               <MaterialIcons
                 name={isPasswordVisible ? 'visibility-off' : 'visibility'}
                 size={24}
-                color="#666"
+                color={error ? fieldAccentColor : inputBorderColor ?? '#666'}
               />
             </TouchableOpacity>
           )}
@@ -231,6 +261,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand_700Bold',
     borderWidth: 1,
     borderColor: '#1D0A74',
+  },
+  inputUnderline: {
+    borderRadius: 0,
+    paddingHorizontal: 4,
+    paddingVertical: isSmallDevice ? 10 : 12,
   },
   inputWithIcon: {
     paddingRight: 55,
