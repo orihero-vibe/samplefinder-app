@@ -1,0 +1,29 @@
+---
+description: Conventions for screens, hooks, and Appwrite database layer
+globs:
+  - src/screens/**/*.ts
+  - src/screens/**/*.tsx
+  - src/lib/database/**/*.ts
+  - src/lib/database/**/*.tsx
+alwaysApply: false
+---
+
+# Screens and database
+
+## Screens (`src/screens/`)
+
+- Keep screen containers thin; put data/effects in **`use*Screen.ts`** next to the screen when that pattern exists in the folder.
+- Colocate **`styles.ts`** and **`components/`** with the screen when neighboring files already use that layout.
+- Use `@/` imports; avoid deep relative `../../../` when an alias fits.
+
+## Database (`src/lib/database/`)
+
+- One concern per module (e.g. `users.ts`, `checkIns.ts`); aggregate exports in **`index.ts`** for shared entrypoints.
+- Reuse **`types.ts`** and existing ID/session patterns; do not bypass auth/session assumptions without an explicit product reason.
+
+```typescript
+// Prefer
+import { something } from '@/lib/database';
+
+// Avoid duplicating raw client setup outside `appwrite.ts` / established patterns
+```
