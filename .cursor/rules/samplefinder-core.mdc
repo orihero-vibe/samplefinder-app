@@ -1,0 +1,23 @@
+---
+description: SampleFinder stack, commands, and repo map for all agent work
+alwaysApply: true
+---
+
+# SampleFinder — core context
+
+- Expo SDK 54, React Native 0.81, TypeScript **strict**, path alias `@/` → `src/`.
+- Appwrite **client** (mobile): `src/lib/appwrite.ts`; env via `import … from '@env'` and root `.env`.
+- Appwrite **server** (collections, rules, Functions): companion repo `samplefinder-admin` → `appwrite/` (e.g. `../samplefinder-admin/appwrite` next to this repo).
+- After substantive TypeScript edits, run **`npm run typecheck`** (project script).
+
+## Where to change things
+
+- Navigation: `src/navigation/`. Shared UI: `src/components/`. Global app shell: `App.tsx`.
+- API / persistence: `src/lib/database/` (export via `index.ts` when the codebase already does).
+- Client state: `src/stores/`.
+
+## Rules of thumb
+
+- Match existing folder patterns in the nearest screen or feature (e.g. `use*Screen.ts`, `styles.ts`, `components/`).
+- Prefer extending existing helpers over duplicating Appwrite calls.
+- Do not add server-only Appwrite secrets to the mobile app.
