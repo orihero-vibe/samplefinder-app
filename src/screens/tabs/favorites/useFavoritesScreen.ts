@@ -5,7 +5,7 @@ import { NewBrandData } from './components';
 import { fetchClients, fetchAllEvents, getUserProfile, addFavoriteBrand, removeFavoriteBrand, fetchCategories, CategoryData } from '@/lib/database';
 import { convertClientsToBrands, filterEventsByAdultCategories, extractClientFromEvent } from '@/utils/brandUtils';
 import { ClientData, EventRow } from '@/lib/database';
-import { formatEventDate, formatEventTime, isEventTodayOrLater } from '@/utils/formatters';
+import { formatEventDate, formatEventTime, isEventTodayOrLater, abbreviateState } from '@/utils/formatters';
 import type { EventData } from './components/BrandUpcomingEvents';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -164,7 +164,7 @@ export const useFavoritesScreen = () => {
           
           // Get city and state from event
           const city = event.city || eventClient?.city || '';
-          const state = event.state || eventClient?.state || '';
+          const state = abbreviateState(event.state || eventClient?.state || '');
           
           return {
             id: event.$id,

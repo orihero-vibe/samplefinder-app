@@ -7,7 +7,7 @@ import * as Location from 'expo-location';
 import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile, fetchLocations, LocationRow } from '@/lib/database';
 import { useAuthStore } from '@/stores/authStore';
 import { MapMarkerData, FilterType, EventData, StoreData, FilterButtonLayout, MeasureCallback } from './components';
-import { formatEventDate, formatEventTime, formatEventDistance, isEventUpcoming, calculateDistance } from '@/utils/formatters';
+import { formatEventDate, formatEventTime, formatEventDistance, isEventUpcoming, calculateDistance, abbreviateState } from '@/utils/formatters';
 import { geocodeLocation, isValidLocationInput } from '@/utils/geocoding';
 import { filterEventsByAdultCategories } from '@/utils/brandUtils';
 
@@ -407,7 +407,7 @@ export const useHomeScreen = () => {
           address: {
             street: location.address || '',
             city: location.city || '',
-            state: location.state || '',
+            state: abbreviateState(location.state || ''),
             zip: location.zipCode || '',
           },
           events: eventsAtLocation.map(e => e.$id), // Store event IDs for lookup

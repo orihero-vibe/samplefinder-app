@@ -8,6 +8,7 @@ import {
   formatEventDistance,
   isEventTodayOrLater,
   getEventCalendarAnchorDate,
+  abbreviateState,
 } from './formatters';
 import { Colors } from '@/constants/Colors';
 import { NewBrandData } from '@/screens/tabs/favorites/components';
@@ -120,7 +121,7 @@ export const convertEventToBrandDetails = (
   const address = {
     street: event.address || client?.street || '',
     city: event.city || client?.city || '',
-    state: event.state || client?.state || '',
+    state: abbreviateState(event.state || client?.state || ''),
     zip: event.zipCode || client?.zip || client?.zipCode || '',
   };
   
