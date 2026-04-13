@@ -1,0 +1,43 @@
+---
+description: Agentic workflow for Jira-to-PR development loop
+alwaysApply: true
+---
+
+# Agentic Workflow
+
+This project has a full agent loop: **Pick Task → Plan → Implement → PR**.
+
+## Jira (SAM)
+
+- **Site:** `buildbolder.atlassian.net`
+- **Board:** [SAM board](https://buildbolder.atlassian.net/jira/software/projects/SAM/boards/424)
+- **Pick work from statuses:** Blocked, Reopen, Ready for Dev
+- **When starting implementation:** transition issue to **In Development**
+- **After PR is created:** transition issue to **Committed**
+
+If JQL status names do not match (exact strings vary by workflow), adjust to match the SAM board columns.
+
+## Skills available in `.cursor/skills/`
+
+| Skill | Trigger phrases | What it does |
+|-------|----------------|--------------|
+| `pick-task` | "pick task", "next task" | Fetches SAM issues (shows comment counts when available), loads full **comments** with the issue, then transitions to **In Development** |
+| `plan-task` | "plan task", "plan this" | Explores codebase, produces step-by-step implementation plan |
+| `implement-task` | "implement", "build it" | Executes the plan, creates/edits files, runs typecheck |
+| `create-pr` | "create PR", "open PR" | Commits, pushes, creates GitHub PR, transitions Jira to **Committed** |
+| `agent-loop` | "agent loop", "full loop", "work on next task" | Runs all four skills end-to-end with user checkpoints |
+
+## Model selection rules
+
+- **Planning complex tasks**: Recommend Opus 4.6 (more capable model)
+- **Planning simple tasks**: Use auto (default)
+- **Implementation**: Always use auto; delegate complex sub-steps to Task subagents
+- **PR creation**: Use auto
+
+## Jira integration
+
+All Jira calls go through the `plugin-atlassian-atlassian` MCP server. Always call `getAccessibleAtlassianResources` first to get the `cloudId`, then use it in all subsequent calls.
+
+## Checkpoints
+
+Never skip user confirmation between phases. Always show a summary and ask before proceeding.
