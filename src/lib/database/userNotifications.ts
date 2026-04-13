@@ -34,6 +34,39 @@ const deserializeNotifications = (notificationsRaw: any[]): UserNotification[] =
   }).filter((n: any) => n !== null);
 };
 
+/** Same visible row = same type, title, and body (list is newest-first; keep first = newest). */
+const notificationDisplayFingerprint = (n: UserNotification): string =>
+  `${n.type}\0${n.title}\0${n.message}`;
+
+/**
+ * Drop duplicate rows: repeated ids, or same type/title/message with different ids (legacy duplicates).
+ */
+const dedupeStoredNotificationsForDisplay = (
+  notifications: UserNotification[]
+): UserNotification[] => {
+  const seenIds = new Set<string>();
+  const seenFingerprints = new Set<string>();
+  const out: UserNotification[] = [];
+
+  for (const n of notifications) {
+    if (!n?.id) {
+      continue;
+    }
+    if (seenIds.has(n.id)) {
+      continue;
+    }
+    const fp = notificationDisplayFingerprint(n);
+    if (seenFingerprints.has(fp)) {
+      continue;
+    }
+    seenIds.add(n.id);
+    seenFingerprints.add(fp);
+    out.push(n);
+  }
+
+  return out;
+};
+
 /**
  * Helper: Serialize notifications to database format (JSON strings)
  */
@@ -113,7 +146,11 @@ export const createUserNotification = async (
     // Idempotency check: reject if an identical notification was created recently
     const now = new Date();
     const isDuplicate = existingNotifications.some((existing) => {
-      if (existing.type !== notificationData.type || existing.title !== notificationData.title) {
+      if (
+        existing.type !== notificationData.type ||
+        existing.title !== notificationData.title ||
+        existing.message !== notificationData.message
+      ) {
         return false;
       }
       const createdAt = new Date(existing.createdAt);
@@ -121,7 +158,9 @@ export const createUserNotification = async (
     });
 
     if (isDuplicate) {
-      console.log(`[notifications][${traceId}] Skipped duplicate (type=${notificationData.type}, title="${notificationData.title}")`);
+      console.log(
+        `[notifications][${traceId}] Skipped duplicate (type=${notificationData.type}, title="${notificationData.title}")`
+      );
       // Return a stub so callers don't break
       return {
         id: 'dedup-skipped',
@@ -238,8 +277,10 @@ export const getUserNotifications = async (
     }
 
     const notificationsRaw = (profile as any).notifications || [];
-    const notifications = deserializeNotifications(notificationsRaw);
-    
+    const notifications = dedupeStoredNotificationsForDisplay(
+      deserializeNotifications(notificationsRaw)
+    );
+
     // Return limited number
     return notifications.slice(0, limit);
   } catch (error: any) {
