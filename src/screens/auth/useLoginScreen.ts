@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { login } from '@/lib/auth';
 import { initializePushNotifications } from '@/lib/notifications';
 import { useAuthStore } from '@/stores/authStore';
+import { getRememberedEmail, saveRememberedEmail, clearRememberedEmail } from '@/lib/rememberedLogin';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -17,6 +18,15 @@ export const useLoginScreen = () => {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [authError, setAuthError] = useState('');
+
+  useEffect(() => {
+    getRememberedEmail().then((savedEmail) => {
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    });
+  }, []);
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -120,6 +130,13 @@ export const useLoginScreen = () => {
         email: email.trim(),
         password: password,
       });
+
+      // Persist or clear remembered email based on checkbox
+      if (rememberMe) {
+        await saveRememberedEmail(email.trim());
+      } else {
+        await clearRememberedEmail();
+      }
 
       // Sync Zustand with the new Appwrite session (logout/login does not run AppNavigator's initial fetchUser)
       await useAuthStore.getState().fetchUser();
