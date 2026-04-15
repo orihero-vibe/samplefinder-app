@@ -55,6 +55,7 @@ export {
   fetchAllUpcomingEvents,
   fetchEventById,
   fetchEventsByLocation,
+  fetchEventsForLocationId,
 } from './events';
 
 // Re-export category functions
@@ -144,7 +145,7 @@ import { fetchEventsByClient } from './events';
 import { fetchAllEvents } from './events';
 import { fetchAllUpcomingEvents } from './events';
 import { fetchEventById } from './events';
-import { fetchEventsByLocation } from './events';
+import { fetchEventsByLocation, fetchEventsForLocationId } from './events';
 import { fetchCategories } from './categories';
 import { getUserStatistics } from './statistics';
 import { calculateTierStatus } from './statistics';
@@ -163,6 +164,7 @@ export default {
   fetchAllUpcomingEvents,
   fetchEventById,
   fetchEventsByLocation,
+  fetchEventsForLocationId,
   fetchCategories,
   getUserStatistics,
   calculateTierStatus,

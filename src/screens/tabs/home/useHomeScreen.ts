@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import * as Location from 'expo-location';
-import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile, fetchLocations, LocationRow } from '@/lib/database';
+import { fetchClients, fetchClientsWithFilters, ClientData, EventRow, fetchCategories, CategoryData, fetchAllUpcomingEvents, getUserProfile, fetchLocations, LocationRow, fetchEventsForLocationId } from '@/lib/database';
 import { useAuthStore } from '@/stores/authStore';
 import { MapMarkerData, FilterType, EventData, StoreData, FilterButtonLayout, MeasureCallback } from './components';
 import { formatEventDate, formatEventTime, formatEventDistance, isEventUpcoming, calculateDistance, abbreviateState } from '@/utils/formatters';
@@ -15,7 +15,7 @@ let hasAutoShownZipModalThisSession = false;
 const MAX_EVENT_RADIUS_MILES = 50;
 const METERS_PER_MILE = 1609.34;
 /** Tight zoom so adjacent venues are visually separated before opening the store modal */
-const MARKER_FOCUS_DELTA = 0.003;
+const MARKER_FOCUS_DELTA = 0.001;
 const MAP_ANIMATION_DURATION_MS = 500;
 
 export const useHomeScreen = () => {
@@ -51,6 +51,8 @@ export const useHomeScreen = () => {
   const [userIsAdult, setUserIsAdult] = useState<boolean>(false);
   const bottomSheetRef = useRef<any>(null);
   const mapRef = useRef<ClusteredMapView>(null);
+  /** Supersedes stale async work when the user taps another pin before zoom/fetch finishes */
+  const markerPressGenerationRef = useRef(0);
 
   const showZipModalOncePerSession = useCallback(() => {
     if (hasAutoShownZipModalThisSession) return;
@@ -331,6 +333,20 @@ export const useHomeScreen = () => {
   // State for all locations
   const [allLocations, setAllLocations] = useState<LocationRow[]>([]);
 
+  /** Prefer event.location; if missing, resolve from locations table via event.locationId (for distance / radius). */
+  const getEventMapCoordinates = useCallback((event: EventRow): { latitude: number; longitude: number } | null => {
+    if (event.location && event.location.length >= 2) {
+      return { latitude: event.location[1], longitude: event.location[0] };
+    }
+    const lid = event.locationId?.trim();
+    if (!lid) return null;
+    const loc = allLocations.find((l) => l.$id === lid);
+    if (loc?.location && loc.location.length >= 2) {
+      return { latitude: loc.location[1], longitude: loc.location[0] };
+    }
+    return null;
+  }, [allLocations]);
+
   // Fetch all locations for map markers (refetch on focus/refresh so new locations appear without app restart)
   useEffect(() => {
     const loadLocations = async () => {
@@ -393,7 +409,7 @@ export const useHomeScreen = () => {
         );
       })
       .map((location) => {
-        // Count upcoming events at this location by matching location name or coordinates
+        // Count upcoming events linked to this location row via event.locationId
         const eventsAtLocation = allUpcomingEvents.filter((event) =>
           isEventAtLocation(event, location)
         );
@@ -567,7 +583,7 @@ export const useHomeScreen = () => {
           }
         }
 
-        // Apply radius filter using event.location (only when we have a user location)
+        // Apply radius filter using event geo or locationId-resolved coords
         if (hasRadiusFilter && radiusValues.length > 0 && userLocation) {
           const maxRadiusMiles = Math.min(
             Math.max(...radiusValues.map(v => parseFloat(v))),
@@ -576,16 +592,14 @@ export const useHomeScreen = () => {
           const maxRadiusMeters = maxRadiusMiles * METERS_PER_MILE;
           
           filteredEvents = filteredEvents.filter((event) => {
-            if (!event.location) return false;
-            
-            // Calculate distance from user to event location
+            const coords = getEventMapCoordinates(event);
+            if (!coords) return false;
             const distance = calculateDistance(
               userLocation.latitude,
               userLocation.longitude,
-              event.location[1], // latitude
-              event.location[0]  // longitude
+              coords.latitude,
+              coords.longitude
             );
-            
             return distance <= maxRadiusMeters;
           });
         }
@@ -615,13 +629,15 @@ export const useHomeScreen = () => {
             if (distanceStr.includes('ft')) return numericValue / 5280;
             return numericValue;
           };
-          const distanceForRow = (ev: EventRow): string =>
-            userLocation && ev.location
+          const distanceForRow = (ev: EventRow): string => {
+            const coords = getEventMapCoordinates(ev);
+            return userLocation && coords
               ? formatEventDistance({
                   userLocation,
-                  eventCoordinates: { latitude: ev.location[1], longitude: ev.location[0] },
+                  eventCoordinates: coords,
                 })
               : 'Distance unknown';
+          };
 
           const sortedRows = [...rows].sort((a, b) => {
             const dateA = new Date(a.startTime || a.date).getTime();
@@ -664,12 +680,13 @@ export const useHomeScreen = () => {
         const eventsInAreaForFallback: EventRow[] =
           userLocation != null
             ? eventsActiveNow.filter((event) => {
-                if (!event.location) return false;
+                const coords = getEventMapCoordinates(event);
+                if (!coords) return false;
                 const distance = calculateDistance(
                   userLocation.latitude,
                   userLocation.longitude,
-                  event.location[1],
-                  event.location[0]
+                  coords.latitude,
+                  coords.longitude
                 );
                 return distance <= MAX_EVENT_RADIUS_MILES * METERS_PER_MILE;
               })
@@ -694,32 +711,12 @@ export const useHomeScreen = () => {
     };
 
     loadEvents();
-  }, [userLocation, datesValues, categoriesValues, radiusValues, categories, allCategoriesForFilter, isLoadingClients, refreshEventsTrigger, userIsAdult]);
+  }, [userLocation, datesValues, categoriesValues, radiusValues, categories, allCategoriesForFilter, isLoadingClients, refreshEventsTrigger, userIsAdult, getEventMapCoordinates]);
 
-  // Helper: match event to location by name or coordinates (fallback when locationName not set)
+  /** Map pins only include events linked via `locationId` (same locations row). No name or geo matching. */
   const isEventAtLocation = (event: EventRow, location: LocationRow): boolean => {
-    // 1. Match by locationName if available
-    const eventLocationName = event.locationName?.toLowerCase().trim();
-    const locationName = location.name.toLowerCase().trim();
-    if (eventLocationName && locationName && eventLocationName === locationName) {
-      return true;
-    }
-    // 2. Fallback: match by coordinates (event.location filled from location when created)
-    if (
-      event.location &&
-      location.location &&
-      event.location.length >= 2 &&
-      location.location.length >= 2
-    ) {
-      const distMeters = calculateDistance(
-        event.location[1],
-        event.location[0],
-        location.location[1],
-        location.location[0]
-      );
-      return distMeters < 50; // Within 50m = same location
-    }
-    return false;
+    const linkedId = event.locationId?.trim();
+    return !!linkedId && linkedId === location.$id;
   };
 
   const initialRegion = useMemo(() => {
@@ -830,21 +827,49 @@ export const useHomeScreen = () => {
   );
 
   const handleMarkerPress = async (marker: MapMarkerData) => {
-    if (marker.address) {
+    if (!marker.address) {
+      return;
+    }
+
+    const generation = ++markerPressGenerationRef.current;
+    setIsLoadingEvents(true);
+
+    try {
       await focusMapOnMarker(marker.latitude, marker.longitude);
+      if (generation !== markerPressGenerationRef.current) {
+        return;
+      }
 
       // Find the location by marker ID
-      const location = allLocations.find(loc => loc.$id === marker.id);
-      
+      const location = allLocations.find((loc) => loc.$id === marker.id);
+
       if (!location) {
         console.log('[handleMarkerPress] Location not found for marker:', marker.id);
         return;
       }
 
-      // Filter events by location name or coordinates
-      let locationEvents = allUpcomingEvents.filter((event) =>
-        isEventAtLocation(event, location)
-      );
+      // Prefer server-side list by locationId (POST /get-events-for-location-id); fallback to local cache
+      let locationEvents: EventRow[] = [];
+      try {
+        const fromApi = await fetchEventsForLocationId(location.$id);
+        if (generation !== markerPressGenerationRef.current) {
+          return;
+        }
+        const categoriesForAdult = allCategoriesForFilter ?? [];
+        locationEvents = filterEventsByAdultCategories(fromApi, categoriesForAdult, userIsAdult).filter(
+          isEventUpcoming
+        );
+      } catch (err) {
+        console.warn('[handleMarkerPress] fetchEventsForLocationId failed, using cached events:', err);
+        if (generation !== markerPressGenerationRef.current) {
+          return;
+        }
+        locationEvents = allUpcomingEvents.filter((event) => isEventAtLocation(event, location));
+      }
+
+      if (generation !== markerPressGenerationRef.current) {
+        return;
+      }
 
       // Apply date filter if active
       if (datesValues.length > 0) {
@@ -874,16 +899,14 @@ export const useHomeScreen = () => {
           const maxRadiusMeters = maxRadiusMiles * METERS_PER_MILE;
         
         locationEvents = locationEvents.filter((event) => {
-          if (!event.location) return false;
-          
-          // Calculate distance from user to event location
+          const coords = getEventMapCoordinates(event);
+          if (!coords) return false;
           const distance = calculateDistance(
             userLocation.latitude,
             userLocation.longitude,
-            event.location[1], // latitude
-            event.location[0]  // longitude
+            coords.latitude,
+            coords.longitude
           );
-          
           return distance <= maxRadiusMeters;
         });
       }
@@ -921,13 +944,14 @@ export const useHomeScreen = () => {
           const brandName = clientObj?.name || clientObj?.title || 'Brand';
           const eventName = event.name || 'Event';
           
-          // Calculate distance from user location to event
-          const formattedDistance = userLocation && event.location
-            ? formatEventDistance({
-                userLocation,
-                eventCoordinates: { latitude: event.location[1], longitude: event.location[0] }
-              })
-            : 'Distance unknown';
+          const coords = getEventMapCoordinates(event);
+          const formattedDistance =
+            userLocation && coords
+              ? formatEventDistance({
+                  userLocation,
+                  eventCoordinates: coords,
+                })
+              : 'Distance unknown';
 
           // Get product types from client
           const productTypes = clientObj?.productType || [];
@@ -954,7 +978,6 @@ export const useHomeScreen = () => {
 
         setSelectedStore(storeData);
         setIsModalVisible(true);
-        setIsLoadingEvents(false);
       } else {
         // Show modal with no events message
         const storeData: StoreData = {
@@ -966,6 +989,9 @@ export const useHomeScreen = () => {
 
         setSelectedStore(storeData);
         setIsModalVisible(true);
+      }
+    } finally {
+      if (generation === markerPressGenerationRef.current) {
         setIsLoadingEvents(false);
       }
     }

@@ -130,6 +130,8 @@ export interface EventRow {
   brandDescription?: string | null; // Brand description text field
   categories?: string[]; // Array of category IDs
   location?: [number, number]; // Point type: [longitude, latitude]
+  /** Locations table row id (relationship in Appwrite); authoritative for map pin association */
+  locationId?: string | null;
   locationName?: string; // Location name from locations table
   /** IANA timezone id for event-local display (e.g. America/Chicago); optional in Appwrite */
   timezone?: string | null;
