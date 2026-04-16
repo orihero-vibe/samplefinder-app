@@ -163,6 +163,7 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
             badgeThreshold: newBadgeThreshold,
             achievementCount: newEventCount,
           },
+          skipPush: true,
         });
 
         await sendNewBadgePushNotification('checkIn', newBadgeThreshold);

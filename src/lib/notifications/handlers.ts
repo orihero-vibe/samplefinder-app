@@ -130,6 +130,17 @@ const addPushToInAppNotifications = async (
       eventId?: string;
       reminderType?: string;
     };
+
+    // Badge-earned notifications are already persisted by their dedicated code paths
+    // (createCheckIn, createReview, syncSpecialBadgeAwards). Persisting them again
+    // from a delayed FCM push would create duplicate unread entries that re-trigger
+    // the badge modal on the next sync cycle.
+    const normalizedType = normalizeNotificationType(data?.type);
+    if (normalizedType === 'badgeEarned') {
+      console.log(`[notifications][${traceId}] Skipped badge-earned push persistence (source=${source}, handled by dedicated path)`);
+      return;
+    }
+
     const title = notification.request.content.title || 'Sampling Today';
     const body = notification.request.content.body || 'Event reminder';
 
@@ -142,7 +153,7 @@ const addPushToInAppNotifications = async (
 
     await createUserNotification({
       userId: user.$id,
-      type: normalizeNotificationType(data?.type),
+      type: normalizedType,
       title,
       message: body,
       data: payloadData,

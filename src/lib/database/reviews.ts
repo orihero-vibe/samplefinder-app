@@ -159,6 +159,7 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
             badgeThreshold: newBadgeThreshold,
             achievementCount: newReviewCount,
           },
+          skipPush: true,
         });
 
         await sendNewBadgePushNotification('review', newBadgeThreshold);

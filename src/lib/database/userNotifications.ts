@@ -17,6 +17,10 @@ const MAX_NOTIFICATIONS = 50; // Keep last 50 notifications per user
 
 // Dedup window: ignore duplicate notifications created within this period
 const DEDUP_WINDOW_MS = 30_000;
+// Badge notifications use a longer window because FCM push delivery can be delayed
+// by hours (Doze mode, battery optimization) and the push handler must not re-create
+// a notification that already exists.
+const BADGE_DEDUP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * Helper: Deserialize notifications from database format (JSON strings) to objects
@@ -143,8 +147,10 @@ export const createUserNotification = async (
     const existingNotificationsRaw = (profile as any).notifications || [];
     const existingNotifications = deserializeNotifications(existingNotificationsRaw);
 
-    // Idempotency check: reject if an identical notification was created recently
+    // Idempotency check: reject if an identical notification was created recently.
+    // Badge notifications use a much wider window because FCM delivery can be delayed.
     const now = new Date();
+    const windowMs = notificationData.type === 'badgeEarned' ? BADGE_DEDUP_WINDOW_MS : DEDUP_WINDOW_MS;
     const isDuplicate = existingNotifications.some((existing) => {
       if (
         existing.type !== notificationData.type ||
@@ -154,7 +160,7 @@ export const createUserNotification = async (
         return false;
       }
       const createdAt = new Date(existing.createdAt);
-      return now.getTime() - createdAt.getTime() < DEDUP_WINDOW_MS;
+      return now.getTime() - createdAt.getTime() < windowMs;
     });
 
     if (isDuplicate) {

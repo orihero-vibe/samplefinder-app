@@ -184,6 +184,12 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
       return;
     }
 
+    // If an unread notification already exists for this badge type (e.g. server-created),
+    // skip creating a client-side duplicate — the unread award will drive the modal.
+    if (unreadAwards.some((a) => a.type === badgeType)) {
+      return;
+    }
+
     // Primary trigger: badge flag changed from disabled -> enabled.
     const transitionedToEnabled = !lastBadgeState[badgeType] && currentBadgeState[badgeType];
     // Backfill: badge is enabled but no historical special notification exists yet.
@@ -210,6 +216,7 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
         pointsEarned: SPECIAL_BADGE_POINTS,
         screen: 'Profile',
       },
+      skipPush: true,
     });
 
     clientCreatedAwards.push({
