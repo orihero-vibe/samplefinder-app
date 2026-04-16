@@ -33,14 +33,16 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
     }
     
     const profile = userProfile as any;
-    const oldTotalPoints = profile.totalPoints || 0;
-    const oldTotalReviews = profile.totalReviews || 0;
-    const newTotalReviews = oldTotalReviews + 1;
+    const oldTotalPoints = Number(profile.totalPoints) || 0;
     const newTotalPoints = oldTotalPoints + (reviewData.pointsEarned || 0);
 
+    // Use actual review row count (same source as Profile / Promotions), not profile.totalReviews.
+    const oldReviewCount = await getUserReviewsCount(reviewData.user);
+    const newReviewCount = oldReviewCount + 1;
+
     // Check if a new badge was earned
-    const oldBadgeThreshold = getLastAchievedBadge(oldTotalReviews);
-    const newBadgeThreshold = getLastAchievedBadge(newTotalReviews);
+    const oldBadgeThreshold = getLastAchievedBadge(oldReviewCount);
+    const newBadgeThreshold = getLastAchievedBadge(newReviewCount);
     const badgeEarned = newBadgeThreshold !== null && newBadgeThreshold !== oldBadgeThreshold;
 
     const authUserID = profile.authID;
@@ -75,7 +77,7 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
       tableId: USER_PROFILES_TABLE_ID,
       rowId: profile.$id,
       data: {
-        totalReviews: newTotalReviews,
+        totalReviews: newReviewCount,
         totalPoints: newTotalPoints,
       },
     });
@@ -155,7 +157,7 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
           data: {
             badgeType: 'reviews',
             badgeThreshold: newBadgeThreshold,
-            achievementCount: newTotalReviews,
+            achievementCount: newReviewCount,
           },
         });
 
@@ -180,7 +182,7 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
       badgeEarned: badgeEarned ? {
         badgeType: 'reviews' as const,
         badgeNumber: newBadgeThreshold!,
-        achievementCount: newTotalReviews,
+        achievementCount: newReviewCount,
       } : undefined,
     };
   } catch (error: any) {

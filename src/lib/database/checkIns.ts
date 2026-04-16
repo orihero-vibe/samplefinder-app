@@ -33,14 +33,17 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
     }
     
     const profile = userProfile as any;
-    const oldTotalPoints = profile.totalPoints || 0;
-    const oldTotalEvents = profile.totalEvents || 0;
-    const newTotalEvents = oldTotalEvents + 1;
+    const oldTotalPoints = Number(profile.totalPoints) || 0;
     const newTotalPoints = oldTotalPoints + checkInData.pointsEarned;
 
+    // Use actual check-in row count (same source as Profile / Promotions), not profile.totalEvents,
+    // so badge popups and pushes stay aligned when totals drift.
+    const oldEventCount = await getUserCheckInsCount(checkInData.userID);
+    const newEventCount = oldEventCount + 1;
+
     // Check if a new badge was earned
-    const oldBadgeThreshold = getLastAchievedBadge(oldTotalEvents);
-    const newBadgeThreshold = getLastAchievedBadge(newTotalEvents);
+    const oldBadgeThreshold = getLastAchievedBadge(oldEventCount);
+    const newBadgeThreshold = getLastAchievedBadge(newEventCount);
     const badgeEarned = newBadgeThreshold !== null && newBadgeThreshold !== oldBadgeThreshold;
 
     const authUserID = profile.authID;
@@ -79,7 +82,7 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
       tableId: USER_PROFILES_TABLE_ID,
       rowId: profile.$id,
       data: {
-        totalEvents: newTotalEvents,
+        totalEvents: newEventCount,
         totalPoints: newTotalPoints,
       },
     });
@@ -158,7 +161,7 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
           data: {
             badgeType: 'events',
             badgeThreshold: newBadgeThreshold,
-            achievementCount: newTotalEvents,
+            achievementCount: newEventCount,
           },
         });
 
@@ -180,7 +183,7 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
       badgeEarned: badgeEarned ? {
         badgeType: 'events' as const,
         badgeNumber: newBadgeThreshold!,
-        achievementCount: newTotalEvents,
+        achievementCount: newEventCount,
       } : undefined,
     };
   } catch (error: any) {
