@@ -1,9 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { NavigatorScreenParams } from '@react-navigation/native';
 import { View, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import HomeStack from '@/navigation/HomeStack';
+import HomeStack, { HomeStackParamList } from '@/navigation/HomeStack';
 import ProfileStack from '@/navigation/ProfileStack';
 import FavoritesScreen from '@/screens/tabs/favorites/FavoritesScreen';
 import CalendarStack from '@/navigation/CalendarStack';
@@ -13,7 +14,7 @@ import { Colors } from '@/constants/Colors';
 import HeartOutlineIcon from '@/icons/HeartOutlineIcon';
 
 export type TabParamList = {
-  Home: undefined;
+  Home: NavigatorScreenParams<HomeStackParamList>;
   Profile: undefined;
   Favorites: undefined;
   Calendar: undefined;
@@ -79,7 +80,17 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
+            if (event.defaultPrevented) {
+              return;
+            }
+
+            // Always show map/list root when opening Home (not the last nested screen).
+            if (route.name === 'Home') {
+              navigation.navigate('Home', { screen: 'HomeMain' });
+              return;
+            }
+
+            if (!isFocused) {
               navigation.navigate(route.name as keyof TabParamList);
             }
           };

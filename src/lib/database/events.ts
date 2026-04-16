@@ -3,6 +3,91 @@ import { tablesDB, functions, DATABASE_ID, EVENTS_TABLE_ID } from './config';
 import { APPWRITE_EVENTS_FUNCTION_ID } from '@env';
 import type { EventRow, EventsByLocationResponse } from './types';
 
+/** Map a document from the Mobile API (get-events-by-location / get-events-for-location-id) to EventRow. */
+function mapMobileApiEventToEventRow(raw: Record<string, unknown>): EventRow {
+  let location: [number, number] | undefined;
+  const loc = raw.location as unknown;
+  if (loc) {
+    if (Array.isArray(loc) && loc.length >= 2) {
+      location = [Number(loc[0]), Number(loc[1])];
+    } else if (
+      typeof loc === 'object' &&
+      loc !== null &&
+      'coordinates' in loc &&
+      Array.isArray((loc as { coordinates: number[] }).coordinates)
+    ) {
+      const c = (loc as { coordinates: number[] }).coordinates;
+      location = [c[0], c[1]];
+    }
+  }
+
+  let categories: string[] | undefined;
+  const cat = raw.categories;
+  if (Array.isArray(cat)) {
+    categories = cat
+      .map((c) => (typeof c === 'string' ? c : (c as { $id?: string })?.$id))
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+  } else if (typeof cat === 'string' && cat) {
+    categories = [cat];
+  } else if (cat && typeof cat === 'object' && '$id' in (cat as object)) {
+    const id = (cat as { $id?: string }).$id;
+    if (id) categories = [id];
+  }
+
+  const productsRaw = raw.products;
+  const products =
+    typeof productsRaw === 'string'
+      ? productsRaw
+      : Array.isArray(productsRaw)
+        ? productsRaw.join(', ')
+        : '';
+
+  return {
+    $id: String(raw.$id ?? ''),
+    name: String(raw.name ?? ''),
+    date: String(raw.date ?? ''),
+    startTime: String(raw.startTime ?? ''),
+    endTime: String(raw.endTime ?? ''),
+    city: String(raw.city ?? ''),
+    address: String(raw.address ?? ''),
+    state: String(raw.state ?? ''),
+    zipCode: String(raw.zipCode ?? ''),
+    products,
+    client: raw.client as EventRow['client'],
+    checkInCode: String(raw.checkInCode ?? ''),
+    checkInPoints: Number(raw.checkInPoints ?? 0),
+    reviewPoints: Number(raw.reviewPoints ?? 0),
+    eventInfo: String(raw.eventInfo ?? ''),
+    discount: raw.discount != null && raw.discount !== '' ? String(raw.discount) : null,
+    discountImageURL: (raw.discountImageURL as string | null) ?? null,
+    brandDescription: (raw.brandDescription as string | null) ?? null,
+    categories,
+    location,
+    locationId: parseLocationIdFromRow(raw),
+    locationName: String(raw.locationName ?? ''),
+    timezone: (raw.timezone as string | null) ?? null,
+    isArchived: Boolean(raw.isArchived),
+    isHidden: Boolean(raw.isHidden),
+    $createdAt: raw.$createdAt as string | undefined,
+    $updatedAt: raw.$updatedAt as string | undefined,
+  };
+}
+
+/** Normalize Appwrite relationship or string id for events.locationId */
+export const parseLocationIdFromRow = (row: Record<string, unknown>): string | null => {
+  const raw = row.locationId as unknown;
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    return t.length > 0 ? t : null;
+  }
+  if (typeof raw === 'object' && raw !== null && '$id' in raw) {
+    const id = (raw as { $id?: string }).$id;
+    return id != null && String(id).trim() !== '' ? String(id) : null;
+  }
+  return null;
+};
+
 /**
  * Fetch events by client ID
  */
@@ -84,6 +169,8 @@ export const fetchEventsByClient = async (clientId: string): Promise<EventRow[]>
           brandDescription: row.brandDescription ?? null,
           categories: row.categories || [], // Include categories for adult filtering
           location,
+          locationId: parseLocationIdFromRow(row),
+          locationName: row.locationName || '',
           timezone: row.timezone ?? null,
           isArchived: row.isArchived || false,
           isHidden: row.isHidden || false,
@@ -180,6 +267,7 @@ export const fetchAllEvents = async (): Promise<EventRow[]> => {
         brandDescription: row.brandDescription ?? null,
         categories: row.categories || [], // Include categories for adult filtering
         location,
+        locationId: parseLocationIdFromRow(row),
         locationName: row.locationName || '',
         timezone: row.timezone ?? null,
         isArchived: row.isArchived || false,
@@ -282,6 +370,7 @@ export const fetchAllUpcomingEvents = async (): Promise<EventRow[]> => {
         brandDescription: row.brandDescription ?? null,
         categories: row.categories || [], // Include categories for adult filtering
         location,
+        locationId: parseLocationIdFromRow(row),
         locationName: row.locationName || '',
         timezone: row.timezone ?? null,
         isArchived: row.isArchived || false,
@@ -374,6 +463,7 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
       brandDescription: result.brandDescription ?? null,
       categories: result.categories || [], // Include categories for adult filtering
       location,
+      locationId: parseLocationIdFromRow(result as Record<string, unknown>),
       locationName: result.locationName || '',
       timezone: result.timezone ?? null,
       isArchived: result.isArchived || false,
@@ -528,5 +618,95 @@ export const fetchEventsByLocation = async (
     
     throw new Error(error.message || 'Failed to fetch events by location');
   }
+};
+
+/**
+ * Upcoming events for a single map pin / store — uses `locationId` only (Mobile API
+ * POST /get-events-for-location-id). Paginates until all pages are loaded.
+ */
+export const fetchEventsForLocationId = async (locationId: string): Promise<EventRow[]> => {
+  const trimmed = locationId?.trim();
+  if (!trimmed) {
+    throw new Error('locationId is required');
+  }
+
+  const functionId = APPWRITE_EVENTS_FUNCTION_ID || '';
+  if (!functionId) {
+    throw new Error('APPWRITE_EVENTS_FUNCTION_ID must be configured. Please check your .env file.');
+  }
+
+  const allRows: EventRow[] = [];
+  let page = 1;
+  const pageSize = 100;
+
+  for (;;) {
+    const requestBody = {
+      locationId: trimmed,
+      page,
+      pageSize,
+    };
+
+    const execution = await functions.createExecution({
+      functionId,
+      body: JSON.stringify(requestBody),
+      method: ExecutionMethod.POST,
+      xpath: '/get-events-for-location-id',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      async: false,
+    });
+
+    if (execution.status === 'failed') {
+      let errorMessage = 'Function execution failed';
+      if (execution.responseBody) {
+        try {
+          const errorResponse = JSON.parse(execution.responseBody);
+          errorMessage = errorResponse.error || errorResponse.message || execution.responseBody;
+        } catch {
+          errorMessage = execution.responseBody;
+        }
+      }
+      throw new Error(`Function execution failed: ${errorMessage}`);
+    }
+
+    if (!execution.responseBody) {
+      throw new Error('Function execution returned empty response body');
+    }
+
+    let result: EventsByLocationResponse;
+    try {
+      result = JSON.parse(execution.responseBody);
+    } catch {
+      throw new Error('Invalid JSON response from function');
+    }
+
+    if (execution.responseStatusCode && execution.responseStatusCode >= 400) {
+      const errorMessage = result.error || execution.responseBody || `HTTP ${execution.responseStatusCode}`;
+      throw new Error(`Function returned error: ${errorMessage}`);
+    }
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch events for location');
+    }
+
+    const docs = result.events || [];
+    for (const ev of docs) {
+      allRows.push(mapMobileApiEventToEventRow(ev as unknown as Record<string, unknown>));
+    }
+
+    const totalPages = result.pagination?.totalPages ?? 1;
+    if (page >= totalPages) {
+      break;
+    }
+    page += 1;
+  }
+
+  console.log('[database.fetchEventsForLocationId] Loaded events:', {
+    locationId: trimmed,
+    count: allRows.length,
+  });
+
+  return allRows;
 };
 
