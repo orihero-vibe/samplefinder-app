@@ -141,8 +141,8 @@ const addPushToInAppNotifications = async (
       return;
     }
 
-    const title = notification.request.content.title || 'Sampling Today';
-    const body = notification.request.content.body || 'Event reminder';
+    const title = notification.request.content.title || 'Notification';
+    const body = notification.request.content.body || 'You have a new notification.';
 
     const payloadData: Record<string, unknown> = {};
     Object.entries(data || {}).forEach(([key, value]) => {
