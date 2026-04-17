@@ -832,6 +832,17 @@ export const useHomeScreen = () => {
     }
 
     const generation = ++markerPressGenerationRef.current;
+    const locationForImmediateModal = allLocations.find((loc) => loc.$id === marker.id);
+    const immediateStoreData: StoreData = {
+      id: marker.id,
+      name: locationForImmediateModal?.name || marker.title || 'Store',
+      address: marker.address,
+      events: [],
+    };
+
+    // Open the modal immediately so taps feel responsive while events load.
+    setSelectedStore(immediateStoreData);
+    setIsModalVisible(true);
     setIsLoadingEvents(true);
 
     try {
@@ -850,21 +861,28 @@ export const useHomeScreen = () => {
 
       // Prefer server-side list by locationId (POST /get-events-for-location-id); fallback to local cache
       let locationEvents: EventRow[] = [];
+      const cachedLocationEvents = allUpcomingEvents.filter((event) => isEventAtLocation(event, location));
       try {
         const fromApi = await fetchEventsForLocationId(location.$id);
         if (generation !== markerPressGenerationRef.current) {
           return;
         }
         const categoriesForAdult = allCategoriesForFilter ?? [];
-        locationEvents = filterEventsByAdultCategories(fromApi, categoriesForAdult, userIsAdult).filter(
+        const filteredApiEvents = filterEventsByAdultCategories(fromApi, categoriesForAdult, userIsAdult).filter(
           isEventUpcoming
         );
+        // Merge API + cached events to avoid partial API responses hiding valid events at this location.
+        const mergedById = new Map<string, EventRow>();
+        [...filteredApiEvents, ...cachedLocationEvents].forEach((event) => {
+          mergedById.set(event.$id, event);
+        });
+        locationEvents = Array.from(mergedById.values());
       } catch (err) {
         console.warn('[handleMarkerPress] fetchEventsForLocationId failed, using cached events:', err);
         if (generation !== markerPressGenerationRef.current) {
           return;
         }
-        locationEvents = allUpcomingEvents.filter((event) => isEventAtLocation(event, location));
+        locationEvents = cachedLocationEvents;
       }
 
       if (generation !== markerPressGenerationRef.current) {
@@ -979,7 +997,7 @@ export const useHomeScreen = () => {
         setSelectedStore(storeData);
         setIsModalVisible(true);
       } else {
-        // Show modal with no events message
+        // Keep modal open and show the empty events state
         const storeData: StoreData = {
           id: marker.id,
           name: location.name,
