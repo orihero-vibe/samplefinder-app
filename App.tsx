@@ -308,7 +308,10 @@ export default function App() {
     let cancelled = false;
     const loadAndShowTier1Modal = async () => {
       try {
-        const user = useAuthStore.getState().user;
+        let user = useAuthStore.getState().user;
+        if (!user) {
+          user = await useAuthStore.getState().fetchUser();
+        }
         if (cancelled || !user) return;
 
         const [profile, tiers] = await Promise.all([

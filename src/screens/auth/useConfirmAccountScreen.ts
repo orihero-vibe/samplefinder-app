@@ -113,32 +113,34 @@ export const useConfirmAccountScreen = () => {
 
       await applyReferralAfterVerification(userId);
 
-      // Create a welcome notification after verification so the user can
-      // access it later from the Profile notifications screen.
+      // Populate auth store before Tier 1 modal logic in App.tsx runs; that effect
+      // reads `user` and only depends on [shouldShowTier1Modal, appIsReady], so it
+      // would otherwise bail once with `user === null` and never retry.
+      await useAuthStore.getState().fetchUser();
+
+      // Register FCM + Appwrite push target before welcome notification: `createUserNotification`
+      // triggers `sendPushNotification`, which needs an existing target for this user.
+      try {
+        await initializePushNotifications();
+      } catch (error) {
+        console.warn('[ConfirmAccount] Push initialization failed (in-app welcome still attempted):', error);
+      }
+
+      // Create a welcome notification (in-app list + optional device push if permitted).
       try {
         await createUserNotification({
           userId,
           type: 'tierChanged',
           title: 'Welcome to SampleFinder!',
           message: "You've joined! Start discovering samples and earning rewards.",
-          data: { source: 'signup' },
-          isRead: true, // User already saw the welcome modal
+          data: { source: 'signup', tierWelcome: 'true' },
         });
       } catch (notifErr) {
         console.warn('[ConfirmAccount] Failed to create welcome notification:', notifErr);
       }
 
-      // Trigger Tier 1 modal for newly signed up users
+      // Trigger Tier 1 modal for newly signed up users (auth user must be set).
       useTier1ModalStore.getState().setShouldShowTier1Modal(true);
-
-      // Initialize push notifications after successful verification
-      // This is the right time because we now have a valid session
-      initializePushNotifications().catch((error) => {
-        console.warn('[ConfirmAccount] Failed to initialize push notifications:', error);
-        // Don't block navigation - push notifications are not critical
-      });
-
-      await useAuthStore.getState().fetchUser();
 
       // After successful verification, go straight into the app.
       // Notifications should only be accessed from the Profile section.
