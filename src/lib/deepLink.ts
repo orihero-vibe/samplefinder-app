@@ -12,8 +12,8 @@ import { useAuthStore } from '@/stores/authStore';
  * Parse a referral deep link URL and extract the referral code.
  *
  * Accepts:
- *   - https://samplefinder.com/refer/JNKLOW
- *   - com.samplefinder.app://refer/JNKLOW
+ *   - https://samplefinder.com/referral/JNKLOW
+ *   - com.samplefinder.app://referral/JNKLOW
  *
  * Returns the 6-char code or null if the URL is not a valid referral link.
  */

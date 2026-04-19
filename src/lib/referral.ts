@@ -2,13 +2,51 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ExecutionMethod, ExecutionStatus } from 'react-native-appwrite';
 import { functions } from './database/config';
 import { APPWRITE_EVENTS_FUNCTION_ID } from '@env';
+import {
+  CUSTOM_SCHEME,
+  DEEP_LINK_DOMAIN,
+  REFERRAL_CODE_PATTERN,
+  REFERRAL_PATH_PREFIX,
+} from './deepLink.constants';
 
 export const PENDING_REFERRAL_STORAGE_KEY = '@samplefinder_pending_referral_code';
 
 const REFERRAL_CODE_REGEX = /^[A-Z2-9]{6}$/;
 
+/**
+ * If the user pasted a full SampleFinder referral URL (or app deep link), return the 6-char code.
+ * Keeps referral.ts independent of deepLink.ts (which imports this module for storage).
+ */
+function referralCodeFromReferralUrl(value: string): string | null {
+  if (!value) return null;
+  try {
+    const normalizedUrl = value.startsWith(`${CUSTOM_SCHEME}://`)
+      ? value.replace(`${CUSTOM_SCHEME}://`, `https://${DEEP_LINK_DOMAIN}/`)
+      : value;
+
+    const parsed = new URL(normalizedUrl);
+    if (parsed.hostname !== DEEP_LINK_DOMAIN) return null;
+
+    const path = parsed.pathname;
+    if (!path.startsWith(REFERRAL_PATH_PREFIX)) return null;
+
+    const code = path
+      .slice(REFERRAL_PATH_PREFIX.length)
+      .replace(/\/$/, '')
+      .toUpperCase();
+    if (!REFERRAL_CODE_PATTERN.test(code)) return null;
+
+    return code;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeReferralCodeInput(value: string): string {
-  return value.trim().toUpperCase().replace(/[^A-Z2-9]/g, '');
+  const trimmed = value.trim();
+  const fromUrl = referralCodeFromReferralUrl(trimmed);
+  const raw = fromUrl ?? trimmed;
+  return raw.toUpperCase().replace(/[^A-Z2-9]/g, '');
 }
 
 /** Optional field: empty ok; 1–5 chars ok while typing; 6 chars must match code charset. */

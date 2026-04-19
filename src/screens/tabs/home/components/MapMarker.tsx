@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { Marker } from 'react-native-maps';
 import { Colors } from '@/constants/Colors';
@@ -26,6 +26,17 @@ interface MapMarkerProps {
 }
 
 const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
+  /**
+   * Android needs an initial true pass for custom marker views to draw; leaving it true
+   * forces constant re-snapshots and blocks the map (empty/slow tiles while zooming).
+   */
+  const [tracksViewChanges, setTracksViewChanges] = useState(Platform.OS === 'android');
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const t = setTimeout(() => setTracksViewChanges(false), 500);
+    return () => clearTimeout(t);
+  }, []);
+
   const handlePress = () => {
     if (onPress) {
       onPress(marker);
@@ -46,7 +57,7 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
         title={marker.title}
         onPress={handlePress}
         anchor={{ x: 0.5, y: ANCHOR_Y }}
-        tracksViewChanges={TRACKS_VIEW_CHANGES}
+        tracksViewChanges={tracksViewChanges}
       >
         <View style={styles.markerWrapper}>
           <View style={styles.pinContainer}>
@@ -72,7 +83,7 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
         title={marker.title}
         onPress={handlePress}
         anchor={{ x: 0.5, y: ANCHOR_Y }}
-        tracksViewChanges={TRACKS_VIEW_CHANGES}
+        tracksViewChanges={tracksViewChanges}
       >
         <View style={styles.markerWrapper}>
           <View style={styles.pinContainer}>
@@ -111,9 +122,6 @@ const EVENT_CIRCLE_TOP = PIN_HEIGHT * CENTER_CIRCLE_Y_RATIO - EVENT_CIRCLE_SIZE 
 
 /** Anchor y so the pin tip (not wrapper bottom) is on the coordinate: tip is at PIN_HEIGHT of (PIN_HEIGHT + BOTTOM_PADDING) */
 const ANCHOR_Y = PIN_HEIGHT / (PIN_HEIGHT + BOTTOM_PADDING);
-
-/** Android needs tracksViewChanges=true for custom marker content to render */
-const TRACKS_VIEW_CHANGES = Platform.OS === 'android';
 
 const styles = StyleSheet.create({
   markerWrapper: {

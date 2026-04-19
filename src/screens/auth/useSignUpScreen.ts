@@ -382,6 +382,16 @@ export const useSignUpScreen = () => {
     loadPendingReferral();
   }, []);
 
+  // Linking params can arrive after the first render; keep the field in sync.
+  useEffect(() => {
+    const paramCode = route.params?.referralCode;
+    if (!paramCode) return;
+    const normalized = normalizeReferralCodeInput(paramCode).slice(0, 6);
+    if (normalized) {
+      setReferralCode(normalized);
+    }
+  }, [route.params?.referralCode]);
+
   // Real-time validation for fields (except username which is debounced)
   const handleFirstNameChange = (text: string) => {
     setFirstName(text);
