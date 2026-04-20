@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { signup } from '@/lib/auth';
 import { isValidEmail, isValidPhoneNumber, isValidDate } from '@/utils/formatters';
@@ -10,7 +9,7 @@ import { checkUsernameExists, checkPhoneNumberExists } from '@/lib/database/user
 import {
   normalizeReferralCodeInput,
   validateOptionalReferralCode,
-  PENDING_REFERRAL_STORAGE_KEY,
+  takePendingReferralCode,
 } from '@/lib/referral';
 import { REFERRAL_CODE_PATTERN } from '@/lib/deepLink.constants';
 
@@ -372,7 +371,7 @@ export const useSignUpScreen = () => {
 
     const loadPendingReferral = async () => {
       try {
-        const pending = await AsyncStorage.getItem(PENDING_REFERRAL_STORAGE_KEY);
+        const pending = await takePendingReferralCode();
         if (pending && REFERRAL_CODE_PATTERN.test(pending)) {
           setReferralCode(pending);
         }
