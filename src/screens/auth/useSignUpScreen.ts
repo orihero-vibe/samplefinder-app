@@ -51,6 +51,7 @@ export const useSignUpScreen = () => {
   const [showPushNotificationModal, setShowPushNotificationModal] = useState(false);
   const [showAgeVerificationModal, setShowAgeVerificationModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -558,6 +559,14 @@ export const useSignUpScreen = () => {
     setShowTermsModal(true);
   };
 
+  const handlePrivacyLinkPress = () => {
+    setShowPrivacyModal(true);
+  };
+
+  const handlePrivacyAccept = () => {
+    setShowPrivacyModal(false);
+  };
+
   const getUserFriendlyErrorMessage = (error: any): string => {
     const errorMessage = error?.message || '';
     
@@ -651,6 +660,7 @@ export const useSignUpScreen = () => {
     showPushNotificationModal,
     showAgeVerificationModal,
     showTermsModal,
+    showPrivacyModal,
     ageVerified,
     isLoading,
     errorMessage,
@@ -667,6 +677,7 @@ export const useSignUpScreen = () => {
     setShowPushNotificationModal,
     setShowAgeVerificationModal,
     setShowTermsModal,
+    setShowPrivacyModal,
     handleSignIn,
     handlePushNotificationEnable,
     handlePushNotificationNotNow,
@@ -674,6 +685,8 @@ export const useSignUpScreen = () => {
     handleAgeVerificationDismiss,
     handleTermsAccept,
     handleTermsLinkPress,
+    handlePrivacyLinkPress,
+    handlePrivacyAccept,
     handleSignUp,
     handleBack,
   };

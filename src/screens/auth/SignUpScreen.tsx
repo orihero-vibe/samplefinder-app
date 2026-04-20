@@ -10,7 +10,7 @@ import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { useSignUpScreen } from './useSignUpScreen';
-import { AgeVerificationModal, TermsModal, PushNotificationModal } from './signup/components';
+import { AgeVerificationModal, TermsModal, PrivacyModal, PushNotificationModal } from './signup/components';
 import styles from './signup/styles';
 import { Colors } from '@/constants/Colors';
 import { Monicon } from '@monicon/native';
@@ -40,6 +40,7 @@ const SignUpScreen = () => {
     showPushNotificationModal,
     showAgeVerificationModal,
     showTermsModal,
+    showPrivacyModal,
     isLoading,
     errorMessage,
     isFormValid,
@@ -55,6 +56,7 @@ const SignUpScreen = () => {
     setShowPushNotificationModal,
     setShowAgeVerificationModal,
     setShowTermsModal,
+    setShowPrivacyModal,
     handleSignIn,
     handlePushNotificationEnable,
     handlePushNotificationNotNow,
@@ -62,6 +64,8 @@ const SignUpScreen = () => {
     handleAgeVerificationDismiss,
     handleTermsAccept,
     handleTermsLinkPress,
+    handlePrivacyLinkPress,
+    handlePrivacyAccept,
     handleSignUp,
     handleBack,
   } = useSignUpScreen();
@@ -228,6 +232,12 @@ const SignUpScreen = () => {
               Terms & Conditions
             </Text>
           </TouchableOpacity>
+          <Text style={styles.termsText}>{' '}and{' '}</Text>
+          <TouchableOpacity onPress={handlePrivacyLinkPress}>
+            <Text style={[styles.termsText, styles.termsLinkText]}>
+              Privacy Policy
+            </Text>
+          </TouchableOpacity>
           <Text style={styles.termsText}>
             {' '}of SampleFinder by Polaris Brand Promotions.
           </Text>
@@ -251,6 +261,12 @@ const SignUpScreen = () => {
         visible={showTermsModal}
         onClose={() => setShowTermsModal(false)}
         onAccept={handleTermsAccept}
+      />
+
+      <PrivacyModal
+        visible={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+        onAccept={handlePrivacyAccept}
       />
     </ScreenWrapper>
   );
