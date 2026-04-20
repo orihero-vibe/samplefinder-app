@@ -21,6 +21,8 @@ const DEDUP_WINDOW_MS = 30_000;
 // by hours (Doze mode, battery optimization) and the push handler must not re-create
 // a notification that already exists.
 const BADGE_DEDUP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+// Welcome notifications use a longer window to prevent duplicates during sign-up
+const WELCOME_DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Helper: Deserialize notifications from database format (JSON strings) to objects
@@ -149,8 +151,14 @@ export const createUserNotification = async (
 
     // Idempotency check: reject if an identical notification was created recently.
     // Badge notifications use a much wider window because FCM delivery can be delayed.
+    // Welcome notifications use a longer window to prevent sign-up duplicates.
     const now = new Date();
-    const windowMs = notificationData.type === 'badgeEarned' ? BADGE_DEDUP_WINDOW_MS : DEDUP_WINDOW_MS;
+    const isWelcomeNotification = notificationData.title === 'Welcome to SampleFinder!';
+    const windowMs = notificationData.type === 'badgeEarned' 
+      ? BADGE_DEDUP_WINDOW_MS 
+      : isWelcomeNotification 
+      ? WELCOME_DEDUP_WINDOW_MS 
+      : DEDUP_WINDOW_MS;
     const isDuplicate = existingNotifications.some((existing) => {
       if (
         existing.type !== notificationData.type ||
@@ -162,6 +170,29 @@ export const createUserNotification = async (
       const createdAt = new Date(existing.createdAt);
       return now.getTime() - createdAt.getTime() < windowMs;
     });
+
+    // Additional check specifically for welcome notifications: prevent any duplicates regardless of timing
+    // This is important because welcome notifications should only be sent once per user during sign-up
+    if (isWelcomeNotification) {
+      const hasAnyWelcomeNotification = existingNotifications.some((existing) => 
+        existing.title === 'Welcome to SampleFinder!' &&
+        existing.data?.source === 'signup'
+      );
+      if (hasAnyWelcomeNotification) {
+        console.log(
+          `[notifications][${traceId}] Skipped welcome notification - user already has one`
+        );
+        return {
+          id: 'welcome-already-exists',
+          type: notificationData.type,
+          title: notificationData.title,
+          message: notificationData.message,
+          isRead: true,
+          createdAt: now.toISOString(),
+          data: notificationData.data || {},
+        };
+      }
+    }
 
     if (isDuplicate) {
       console.log(
