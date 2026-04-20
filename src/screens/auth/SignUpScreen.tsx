@@ -185,7 +185,6 @@ const SignUpScreen = () => {
           error={!!fieldErrors.referralCode}
           errorMessage={fieldErrors.referralCode}
           placeholder="6 characters"
-          maxLength={6}
         />
 
         {showError && !errorMessage && (

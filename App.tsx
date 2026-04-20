@@ -70,6 +70,19 @@ export default function App() {
   const pointsEarned = useTierCompletionStore((s) => s.pointsEarned);
   const clearTierCompletion = useTierCompletionStore((s) => s.clearTierCompletion);
 
+  const authUser = useAuthStore((s) => s.user);
+
+  // Trivia is only for signed-in users; reset when session ends so it cannot appear on Login.
+  useEffect(() => {
+    if (authUser) return;
+    setShowTrivia(false);
+    setTriviaQueue([]);
+    setUserProfileId(null);
+    triviaShownRef.current = false;
+    prevQueueLengthRef.current = 0;
+    processedTriviaIdsRef.current.clear();
+  }, [authUser]);
+
   useEffect(() => {
     async function prepare() {
       try {
@@ -219,12 +232,13 @@ export default function App() {
 
   // When queue is empty, periodically refetch so newly created trivia appears (e.g. admin added while user stayed in app)
   useEffect(() => {
-    if (!appIsReady || !userProfileId || triviaQueue.length > 0) return;
+    if (!appIsReady || !authUser || !userProfileId || triviaQueue.length > 0) return;
 
     let cancelled = false;
     const interval = setInterval(async () => {
       if (cancelled) return;
       try {
+        if (!useAuthStore.getState().user) return;
         const triviaQuestions = filterProcessedTrivia(await getActiveTrivia(userProfileId));
         if (cancelled) return;
         if (!isTriviaOfferedToday()) return;
@@ -241,7 +255,7 @@ export default function App() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [appIsReady, userProfileId, triviaQueue.length]);
+  }, [appIsReady, authUser, userProfileId, triviaQueue.length]);
 
   // Refetch trivia when app comes to foreground so newly created trivia appears without restart
   useEffect(() => {
@@ -308,7 +322,10 @@ export default function App() {
     let cancelled = false;
     const loadAndShowTier1Modal = async () => {
       try {
-        const user = useAuthStore.getState().user;
+        let user = useAuthStore.getState().user;
+        if (!user) {
+          user = await useAuthStore.getState().fetchUser();
+        }
         if (cancelled || !user) return;
 
         const [profile, tiers] = await Promise.all([
@@ -499,10 +516,10 @@ export default function App() {
       <BottomSheetModalProvider>
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
           <AppNavigator />
-          {triviaDayActive && currentQuestion && (
+          {triviaDayActive && authUser && currentQuestion && (
             <TriviaModal
               key={currentQuestion.$id}
-              visible={showTrivia && triviaDayActive}
+              visible={showTrivia && triviaDayActive && Boolean(authUser)}
               question={currentQuestion}
               onClose={handleTriviaClose}
               onSubmitAnswer={handleSubmitAnswer}

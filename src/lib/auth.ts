@@ -333,6 +333,14 @@ export const getCurrentUser = async (): Promise<User | null> => {
  */
 export const logout = async (): Promise<void> => {
   try {
+    // Clear locally scheduled event reminders first, so a new account on the same
+    // device does not inherit reminder notifications from the previous user.
+    const { cancelAllEventReminders } = await import('./notifications/eventReminders');
+    await cancelAllEventReminders().catch((error) => {
+      console.warn('[auth.logout] Failed to cancel local event reminders:', error);
+      // Don't throw - continue with logout cleanup even if reminder cancellation fails
+    });
+
     // Delete push target before logging out
     const { deletePushTarget } = await import('./notifications');
     await deletePushTarget().catch((error) => {

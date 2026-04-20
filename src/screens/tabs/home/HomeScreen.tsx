@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useRef } from 'react';
 import { View, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { PROVIDER_GOOGLE } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
@@ -65,6 +65,21 @@ const HomeScreen = () => {
     handleZipCodeChange,
     handleZipCodeDismiss,
   } = useHomeScreen();
+
+  /** Stable marker elements so ClusteredMapView does not rebuild SuperCluster on every parent re-render */
+  const handleMarkerPressRef = useRef(handleMarkerPress);
+  handleMarkerPressRef.current = handleMarkerPress;
+  const mapMarkerElements = useMemo(
+    () =>
+      markers.map((marker) => (
+        <MapMarker
+          key={marker.id}
+          marker={marker}
+          onPress={(m) => handleMarkerPressRef.current(m)}
+        />
+      )),
+    [markers]
+  );
 
   const renderFilterModal = () => {
     const isVisible = selectedFilter !== null && selectedFilter !== 'reset';
@@ -138,15 +153,14 @@ const HomeScreen = () => {
           clusterTextColor={Colors.white}
           radius={100}
           minZoom={10}
-          maxZoom={30}
+          maxZoom={20}
           extent={512}
           nodeSize={64}
+          animationEnabled={false}
           renderCluster={renderClusterComponent}
           onPress={handleMapPress}
         >
-          {markers.map((marker) => (
-            <MapMarker key={marker.id} marker={marker} onPress={handleMarkerPress} />
-          ))}
+          {mapMarkerElements}
         </ClusteredMapView>
         {isLoadingClients && (
           <View style={styles.loadingOverlay}>

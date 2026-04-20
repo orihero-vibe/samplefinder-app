@@ -66,26 +66,32 @@ const AppNavigator = () => {
       },
     },
     async getInitialURL() {
-      // Let notification-based navigation take priority
-      const lastNotification = await Notifications.getLastNotificationResponseAsync();
-      if (lastNotification) return null;
-
+      // Always read the cold-start URL first. Previously we bailed out when
+      // getLastNotificationResponseAsync() was truthy, which skipped calling
+      // Linking.getInitialURL() entirely — so referral links (e.g. WhatsApp)
+      // were never stored and SignUp did not open with the code.
       const url = await Linking.getInitialURL();
+      const lastNotification = await Notifications.getLastNotificationResponseAsync();
+
+      if (url) {
+        await handleIncomingReferralLink(url);
+      }
+
+      // Notification tap: prefer in-app navigation for this launch; do not also
+      // route React Navigation to SignUp from the same URL.
+      if (lastNotification) {
+        return null;
+      }
+
       if (!url) return null;
 
-      // If user is signed in, don't route to SignUp — show alert instead
       try {
         const user = useAuthStore.getState().user;
-        if (user) {
-          await handleIncomingReferralLink(url);
-          return null;
-        }
+        if (user) return null;
       } catch {
         // not signed in — let the linking config route to SignUp
       }
 
-      // Store referral code for the signup flow
-      await handleIncomingReferralLink(url);
       return url;
     },
     subscribe(listener) {
@@ -101,6 +107,8 @@ const AppNavigator = () => {
         } catch {
           // not signed in
         }
+        // Persist referral before React Navigation navigates so SignUp can read storage on mount.
+        await handleIncomingReferralLink(url);
         listener(url);
       });
 
