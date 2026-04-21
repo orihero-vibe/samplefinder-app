@@ -46,16 +46,16 @@ const notificationDisplayFingerprint = (n: UserNotification): string =>
 
 /**
  * Drop duplicate rows: repeated ids, same type/title/message with different ids,
- * or multiple badge notifications for the same badgeType (keep newest, i.e. first
- * in the newest-first list). This handles legacy 'Engagement'-type entries that
- * were created before the backend switched to 'badgeEarned'.
+ * or repeated badge notifications for the exact same badge achievement
+ * (badgeType + badgeThreshold, with legacy fallbacks). This still allows distinct
+ * milestones (e.g. review level 10, 25, 50, 100) to all appear in the list.
  */
 const dedupeStoredNotificationsForDisplay = (
   notifications: UserNotification[]
 ): UserNotification[] => {
   const seenIds = new Set<string>();
   const seenFingerprints = new Set<string>();
-  const seenBadgeTypes = new Set<string>();
+  const seenBadgeAchievements = new Set<string>();
   const out: UserNotification[] = [];
 
   for (const n of notifications) {
@@ -69,12 +69,35 @@ const dedupeStoredNotificationsForDisplay = (
     if (seenFingerprints.has(fp)) {
       continue;
     }
+
     const badgeType = typeof n.data?.badgeType === 'string' ? n.data.badgeType : null;
-    if (badgeType) {
-      if (seenBadgeTypes.has(badgeType)) {
+    const badgeThresholdRaw = n.data?.badgeThreshold;
+    const badgeThreshold =
+      typeof badgeThresholdRaw === 'number'
+        ? badgeThresholdRaw
+        : typeof badgeThresholdRaw === 'string'
+        ? Number.parseInt(badgeThresholdRaw, 10)
+        : null;
+    const legacyAchievementCountRaw = n.data?.achievementCount;
+    const legacyAchievementCount =
+      typeof legacyAchievementCountRaw === 'number'
+        ? legacyAchievementCountRaw
+        : typeof legacyAchievementCountRaw === 'string'
+        ? Number.parseInt(legacyAchievementCountRaw, 10)
+        : null;
+
+    if (badgeType && n.type === 'badgeEarned') {
+      const achievementKeyPart = Number.isFinite(badgeThreshold as number)
+        ? `threshold:${badgeThreshold}`
+        : Number.isFinite(legacyAchievementCount as number)
+        ? `count:${legacyAchievementCount}`
+        : `title:${n.title}`;
+      const achievementKey = `${badgeType}|${achievementKeyPart}`;
+
+      if (seenBadgeAchievements.has(achievementKey)) {
         continue;
       }
-      seenBadgeTypes.add(badgeType);
+      seenBadgeAchievements.add(achievementKey);
     }
     seenIds.add(n.id);
     seenFingerprints.add(fp);
@@ -165,11 +188,21 @@ export const createUserNotification = async (
     // Welcome notifications use a longer window to prevent sign-up duplicates.
     const now = new Date();
     const isWelcomeNotification = notificationData.title === 'Welcome to SampleFinder!';
-    const windowMs = notificationData.type === 'badgeEarned' 
+    
+    // For badge notifications (ambassador/influencer), use a shorter dedup window
+    // to allow re-granting badges after they've been removed
+    const isBadgeToggleNotification = notificationData.type === 'badgeEarned' && 
+      notificationData.data?.badgeType && 
+      (notificationData.data.badgeType === 'ambassador' || notificationData.data.badgeType === 'influencer');
+    
+    const windowMs = isBadgeToggleNotification
+      ? 60_000 // 1 minute for ambassador/influencer badge toggles
+      : notificationData.type === 'badgeEarned' 
       ? BADGE_DEDUP_WINDOW_MS 
       : isWelcomeNotification 
       ? WELCOME_DEDUP_WINDOW_MS 
       : DEDUP_WINDOW_MS;
+    
     const isDuplicate = existingNotifications.some((existing) => {
       if (
         existing.type !== notificationData.type ||
