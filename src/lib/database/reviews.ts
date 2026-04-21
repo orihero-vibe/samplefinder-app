@@ -10,6 +10,7 @@ import { sendNewTierPushNotification, sendNewBadgePushNotification } from '@/lib
 import type { Tier } from '@/screens/tabs/promotions/components';
 
 export const REVIEWS_TABLE_ID = process.env.APPWRITE_REVIEWS_TABLE_ID || 'reviews';
+const REVIEWS_PAGE_SIZE = 100;
 
 export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> => {
   if (!DATABASE_ID || !REVIEWS_TABLE_ID || !USER_PROFILES_TABLE_ID) {
@@ -197,17 +198,34 @@ export const getUserReviews = async (userID: string): Promise<ReviewRow[]> => {
   }
 
   try {
-    const result = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: REVIEWS_TABLE_ID,
-      queries: [Query.equal('user', userID)],
-    });
+    const allRows: any[] = [];
+    let cursorAfter: string | null = null;
 
-    if (!result.rows || result.rows.length === 0) {
-      return [];
+    while (true) {
+      const queries = [Query.equal('user', userID), Query.limit(REVIEWS_PAGE_SIZE)];
+      if (cursorAfter) {
+        queries.push(Query.cursorAfter(cursorAfter));
+      }
+
+      const result = await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: REVIEWS_TABLE_ID,
+        queries,
+      });
+
+      if (!result.rows || result.rows.length === 0) {
+        break;
+      }
+
+      allRows.push(...result.rows);
+      cursorAfter = result.rows[result.rows.length - 1].$id;
+
+      if (result.rows.length < REVIEWS_PAGE_SIZE) {
+        break;
+      }
     }
 
-    return result.rows.map((row: any) => ({
+    return allRows.map((row: any) => ({
       $id: row.$id,
       user: row.user,
       event: row.event,

@@ -10,6 +10,7 @@ import { sendNewTierPushNotification, sendNewBadgePushNotification } from '@/lib
 import type { Tier } from '@/screens/tabs/promotions/components';
 
 export const CHECK_INS_TABLE_ID = process.env.APPWRITE_CHECK_INS_TABLE_ID || 'checkins';
+const CHECK_INS_PAGE_SIZE = 100;
 
 export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRow> => {
   if (!DATABASE_ID || !CHECK_INS_TABLE_ID || !USER_PROFILES_TABLE_ID) {
@@ -198,17 +199,34 @@ export const getUserCheckIns = async (userID: string): Promise<CheckInRow[]> => 
   }
 
   try {
-    const result = await tablesDB.listRows({
-      databaseId: DATABASE_ID,
-      tableId: CHECK_INS_TABLE_ID,
-      queries: [Query.equal('user', userID)],
-    });
+    const allRows: any[] = [];
+    let cursorAfter: string | null = null;
 
-    if (!result.rows || result.rows.length === 0) {
-      return [];
+    while (true) {
+      const queries = [Query.equal('user', userID), Query.limit(CHECK_INS_PAGE_SIZE)];
+      if (cursorAfter) {
+        queries.push(Query.cursorAfter(cursorAfter));
+      }
+
+      const result = await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: CHECK_INS_TABLE_ID,
+        queries,
+      });
+
+      if (!result.rows || result.rows.length === 0) {
+        break;
+      }
+
+      allRows.push(...result.rows);
+      cursorAfter = result.rows[result.rows.length - 1].$id;
+
+      if (result.rows.length < CHECK_INS_PAGE_SIZE) {
+        break;
+      }
     }
 
-    return result.rows.map((row: any) => ({
+    return allRows.map((row: any) => ({
       $id: row.$id,
       userID: typeof row.user === 'string' ? row.user : row.user?.$id ?? '',
       eventID: typeof row.event === 'string' ? row.event : row.event?.$id ?? '',
