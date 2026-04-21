@@ -127,6 +127,7 @@ const awardsFromUnreadSpecialBadgeNotifications = (
   unreadNotifications: UserNotification[]
 ): AwardedSpecialBadge[] => {
   const out: AwardedSpecialBadge[] = [];
+  const seenBadgeTypes = new Set<string>();
   for (const notification of unreadNotifications) {
     if (notification.type !== 'badgeEarned' || notification.isRead) {
       continue;
@@ -135,6 +136,13 @@ const awardsFromUnreadSpecialBadgeNotifications = (
     if (!badgeType) {
       continue;
     }
+    // Only surface the first (newest) notification per badge type. Old orphaned
+    // unread entries from prior grant cycles share the same type and are cleared
+    // when the active award is dismissed via markBadgeTypeNotificationsAsRead.
+    if (seenBadgeTypes.has(badgeType)) {
+      continue;
+    }
+    seenBadgeTypes.add(badgeType);
     out.push({
       type: badgeType,
       title: notification.title,
@@ -192,12 +200,15 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
       return;
     }
 
-    // Always award points once per transition / backfill case, even when a server-issued
-    // badge notification already exists (the server does not award points itself).
-    updatedTotalPoints += SPECIAL_BADGE_POINTS;
-    await updateUserProfile(profile.$id, {
-      totalPoints: updatedTotalPoints,
-    });
+    // Award points on transition only (not backfill) to avoid double-awarding.
+    // The backfill path is triggered when the flag was already enabled on a prior run
+    // but the notification was never stored, so points were already awarded then.
+    if (transitionedToEnabled) {
+      updatedTotalPoints += SPECIAL_BADGE_POINTS;
+      await updateUserProfile(profile.$id, {
+        totalPoints: updatedTotalPoints,
+      });
+    }
 
     // If the admin portal already issued a matching `badgeEarned` notification, use it
     // to drive the modal instead of creating a client-side duplicate.
@@ -205,6 +216,16 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
       return;
     }
 
+    // On a fresh transition the admin panel sets the profile flag BEFORE the Appwrite
+    // function creates the server notification. Skip creating a client notification here
+    // so the server notification (arriving within seconds) is the single source of truth.
+    // If the server notification never arrives, the next sync cycle will hit
+    // missingHistoricalNotification=true and fall through to the backfill path below.
+    if (transitionedToEnabled) {
+      return;
+    }
+
+    // Backfill only: badge is enabled but no notification was ever recorded.
     const content = SPECIAL_BADGE_CONTENT[badgeType];
     const createdNotification = await createUserNotification({
       userId: user.$id,

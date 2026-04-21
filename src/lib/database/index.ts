@@ -121,6 +121,7 @@ export {
   markNotificationAsRead,
   markNotificationsAsRead,
   markAllNotificationsAsRead,
+  markBadgeTypeNotificationsAsRead,
   deleteUserNotification,
   getUnreadNotificationCount,
   clearAllNotifications,

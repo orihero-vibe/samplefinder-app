@@ -11,7 +11,7 @@ import ForgotPasswordScreen from '@/screens/auth/ForgotPasswordScreen';
 import PasswordResetScreen from '@/screens/auth/PasswordResetScreen';
 import TabNavigator from '@/navigation/TabNavigator';
 import { useAuthStore } from '@/stores/authStore';
-import { markNotificationAsRead } from '@/lib/database';
+import { markNotificationAsRead, markBadgeTypeNotificationsAsRead } from '@/lib/database';
 import { setNavigationRef, setupNotificationHandlers, getLastNotificationResponse } from '@/lib/notifications/handlers';
 import { subscribeToDeepLinks, handleIncomingReferralLink } from '@/lib/deepLink';
 import { DEEP_LINK_DOMAIN, CUSTOM_SCHEME } from '@/lib/deepLink.constants';
@@ -238,6 +238,16 @@ const AppNavigator = () => {
     const [nextBadgeAward, ...rest] = pendingSpecialBadgeAwards;
     setActiveSpecialBadgeAward(nextBadgeAward);
     setPendingSpecialBadgeAwards(rest);
+
+    // Mark as read immediately so the polling loop won't re-queue this notification
+    // while the modal is still open, and clears any old orphaned unread entries
+    // for the same badge type so they never resurface as duplicate popups.
+    const user = useAuthStore.getState().user;
+    if (user) {
+      markBadgeTypeNotificationsAsRead(user.$id, nextBadgeAward.type).catch((err) => {
+        console.warn('[AppNavigator] Failed to pre-mark badge notifications as read:', err);
+      });
+    }
   }, [activeSpecialBadgeAward, pendingSpecialBadgeAwards]);
 
   useEffect(() => {
@@ -273,22 +283,8 @@ const AppNavigator = () => {
   }
 
   const activeSpecialBadgeType: BadgeType = activeSpecialBadgeAward?.type ?? 'events';
-  const handleCloseSpecialBadgeModal = async () => {
-    const award = activeSpecialBadgeAward;
-    const notificationId = award?.notificationId;
+  const handleCloseSpecialBadgeModal = () => {
     setActiveSpecialBadgeAward(null);
-
-    try {
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        return;
-      }
-      if (notificationId) {
-        await markNotificationAsRead(user.$id, notificationId);
-      }
-    } catch (error) {
-      console.warn('[AppNavigator] Failed to finalize special badge modal close:', error);
-    }
   };
 
   const handleCloseTierModal = async () => {

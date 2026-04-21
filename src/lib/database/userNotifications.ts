@@ -38,18 +38,22 @@ const deserializeNotifications = (notificationsRaw: any[]): UserNotification[] =
   }).filter((n: any) => n !== null);
 };
 
-/** Same visible row = same type, title, and body (list is newest-first; keep first = newest). */
+/** Same visible row = same title and body, regardless of type (handles legacy 'Engagement' entries). */
 const notificationDisplayFingerprint = (n: UserNotification): string =>
-  `${n.type}\0${n.title}\0${n.message}`;
+  `${n.title}\0${n.message}`;
 
 /**
- * Drop duplicate rows: repeated ids, or same type/title/message with different ids (legacy duplicates).
+ * Drop duplicate rows: repeated ids, same type/title/message with different ids,
+ * or multiple badge notifications for the same badgeType (keep newest, i.e. first
+ * in the newest-first list). This handles legacy 'Engagement'-type entries that
+ * were created before the backend switched to 'badgeEarned'.
  */
 const dedupeStoredNotificationsForDisplay = (
   notifications: UserNotification[]
 ): UserNotification[] => {
   const seenIds = new Set<string>();
   const seenFingerprints = new Set<string>();
+  const seenBadgeTypes = new Set<string>();
   const out: UserNotification[] = [];
 
   for (const n of notifications) {
@@ -62,6 +66,13 @@ const dedupeStoredNotificationsForDisplay = (
     const fp = notificationDisplayFingerprint(n);
     if (seenFingerprints.has(fp)) {
       continue;
+    }
+    const badgeType = typeof n.data?.badgeType === 'string' ? n.data.badgeType : null;
+    if (badgeType) {
+      if (seenBadgeTypes.has(badgeType)) {
+        continue;
+      }
+      seenBadgeTypes.add(badgeType);
     }
     seenIds.add(n.id);
     seenFingerprints.add(fp);
@@ -357,6 +368,31 @@ export const markNotificationsAsRead = async (
   } catch (error: any) {
     console.error('[notifications] Error marking notifications as read:', error);
     throw new Error(error.message || 'Failed to mark notifications as read');
+  }
+};
+
+/**
+ * Mark all unread badgeEarned notifications for a specific badge type as read.
+ * Prevents duplicate popups when old orphaned notifications for the same badge
+ * type accumulate across multiple grant cycles.
+ */
+export const markBadgeTypeNotificationsAsRead = async (
+  userId: string,
+  badgeType: string
+): Promise<void> => {
+  try {
+    await updateStoredNotifications(userId, (notifications) =>
+      notifications.map((notif: UserNotification) => {
+        if (notif.isRead) return notif;
+        // Match on data.badgeType only — covers both current 'badgeEarned' entries
+        // and legacy 'Engagement'-type entries created before the backend was fixed.
+        if (notif.data?.badgeType !== badgeType) return notif;
+        return { ...notif, isRead: true };
+      })
+    );
+  } catch (error: any) {
+    console.error('[notifications] Error marking badge-type notifications as read:', error);
+    throw new Error(error.message || 'Failed to mark badge notifications as read');
   }
 };
 
