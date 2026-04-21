@@ -1,6 +1,7 @@
-import { ID, Query } from 'react-native-appwrite';
+import { ID, Query, ExecutionMethod } from 'react-native-appwrite';
 import { USERNAME_TOO_LONG_MESSAGE } from '@/constants/Profile';
-import { tablesDB, DATABASE_ID, USER_PROFILES_TABLE_ID } from './config';
+import { APPWRITE_EVENTS_FUNCTION_ID } from '@env';
+import { tablesDB, functions, DATABASE_ID, USER_PROFILES_TABLE_ID } from './config';
 import type { UserProfileData, UserProfileRow } from './types';
 import type { NotificationPreferences } from '../notifications/types';
 
@@ -84,6 +85,73 @@ const parseSavedEventIds = (savedEventIds: any): Array<{ eventId: string; addedA
  */
 const getPhoneDigits = (phone: string): string => {
   return phone.replace(/\D/g, '');
+};
+
+/**
+ * Username/phone duplicate checks can run before authentication on signup.
+ * Treat auth/permission failures as expected and non-blocking.
+ */
+const isNonBlockingPreSignupCheckError = (error: any): boolean => {
+  if (!error) return false;
+
+  const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+  const code = error?.code;
+
+  return (
+    code === 401 ||
+    code === 403 ||
+    message.includes('not authorized') ||
+    message.includes('unauthorized') ||
+    message.includes('permission')
+  );
+};
+
+const runPublicSignupAvailabilityCheck = async (payload: {
+  username?: string;
+  phoneNumber?: string;
+}): Promise<{ usernameExists?: boolean; phoneExists?: boolean } | null> => {
+  if (!APPWRITE_EVENTS_FUNCTION_ID) {
+    return null;
+  }
+
+  try {
+    const execution = await functions.createExecution({
+      functionId: APPWRITE_EVENTS_FUNCTION_ID,
+      body: JSON.stringify(payload),
+      method: ExecutionMethod.POST,
+      xpath: '/check-username-phone-availability',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      async: false,
+    });
+
+    if (execution.status !== 'completed' || !execution.responseBody) {
+      return null;
+    }
+
+    const response = JSON.parse(execution.responseBody) as {
+      success?: boolean;
+      usernameExists?: boolean;
+      phoneExists?: boolean;
+    };
+
+    if (!response.success) {
+      return null;
+    }
+
+    return {
+      usernameExists:
+        typeof response.usernameExists === 'boolean' ? response.usernameExists : undefined,
+      phoneExists: typeof response.phoneExists === 'boolean' ? response.phoneExists : undefined,
+    };
+  } catch (error: any) {
+    console.warn(
+      '[database.runPublicSignupAvailabilityCheck] Public availability check failed, falling back to direct query:',
+      error?.message || error
+    );
+    return null;
+  }
 };
 
 /**
@@ -450,6 +518,13 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
   const lowerUsername = trimmedUsername.toLowerCase();
 
   try {
+    const functionCheck = await runPublicSignupAvailabilityCheck({
+      username: trimmedUsername,
+    });
+    if (typeof functionCheck?.usernameExists === 'boolean') {
+      return functionCheck.usernameExists;
+    }
+
     // Query for profiles - we'll check both exact match and case-insensitive
     // First try exact match (most common case)
     let exactResult;
@@ -532,8 +607,15 @@ export const checkUsernameExists = async (username: string): Promise<boolean> =>
     console.log('[database.checkUsernameExists] Username does not exist');
     return false;
   } catch (error: any) {
-    console.error('[database.checkUsernameExists] Error checking username:', error);
-    console.error('[database.checkUsernameExists] Error message:', error?.message);
+    if (isNonBlockingPreSignupCheckError(error)) {
+      console.warn(
+        '[database.checkUsernameExists] Username check skipped due to auth/permission constraints before signup:',
+        error?.message
+      );
+      return false;
+    }
+
+    console.warn('[database.checkUsernameExists] Error checking username:', error?.message || error);
     // If there's an error, return false to avoid blocking signup
     // The actual signup will fail if username is truly duplicate during profile creation
     // This prevents blocking legitimate signups due to transient errors
@@ -565,6 +647,13 @@ export const checkPhoneNumberExists = async (phoneNumber: string): Promise<boole
   }
 
   try {
+    const functionCheck = await runPublicSignupAvailabilityCheck({
+      phoneNumber: trimmedPhone,
+    });
+    if (typeof functionCheck?.phoneExists === 'boolean') {
+      return functionCheck.phoneExists;
+    }
+
     // Fetch a reasonable batch of profiles and compare by digits
     const result = await tablesDB.listRows({
       databaseId: DATABASE_ID,
@@ -582,8 +671,15 @@ export const checkPhoneNumberExists = async (phoneNumber: string): Promise<boole
     console.log('[database.checkPhoneNumberExists] Phone number exists (normalized):', exists);
     return exists;
   } catch (error: any) {
-    console.error('[database.checkPhoneNumberExists] Error checking phone number:', error);
-    console.error('[database.checkPhoneNumberExists] Error message:', error?.message);
+    if (isNonBlockingPreSignupCheckError(error)) {
+      console.warn(
+        '[database.checkPhoneNumberExists] Phone check skipped due to auth/permission constraints before signup:',
+        error?.message
+      );
+      return false;
+    }
+
+    console.warn('[database.checkPhoneNumberExists] Error checking phone number:', error?.message || error);
     // Do not block signup on transient errors – let backend enforce any hard constraints
     console.warn('[database.checkPhoneNumberExists] Error occurred, allowing signup (backend will fail if duplicate).');
     return false;

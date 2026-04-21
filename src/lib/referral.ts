@@ -70,7 +70,7 @@ export async function storePendingReferralCode(code: string | undefined | null):
   await AsyncStorage.setItem(PENDING_REFERRAL_STORAGE_KEY, normalized);
 }
 
-async function takePendingReferralCode(): Promise<string | null> {
+export async function takePendingReferralCode(): Promise<string | null> {
   const v = await AsyncStorage.getItem(PENDING_REFERRAL_STORAGE_KEY);
   if (v) {
     await AsyncStorage.removeItem(PENDING_REFERRAL_STORAGE_KEY);

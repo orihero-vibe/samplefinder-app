@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { signup } from '@/lib/auth';
 import { isValidEmail, isValidPhoneNumber, isValidDate } from '@/utils/formatters';
@@ -10,7 +9,7 @@ import { checkUsernameExists, checkPhoneNumberExists } from '@/lib/database/user
 import {
   normalizeReferralCodeInput,
   validateOptionalReferralCode,
-  PENDING_REFERRAL_STORAGE_KEY,
+  takePendingReferralCode,
 } from '@/lib/referral';
 import { REFERRAL_CODE_PATTERN } from '@/lib/deepLink.constants';
 
@@ -67,6 +66,7 @@ export const useSignUpScreen = () => {
   
   // Debounce timer for username checking
   const usernameCheckTimer = useRef<NodeJS.Timeout | null>(null);
+  const phoneCheckTimer = useRef<NodeJS.Timeout | null>(null);
   
   // Store original signup data to allow re-submission with same credentials
   // This is set after initial signup attempt and cleared on unmount
@@ -209,6 +209,36 @@ export const useSignUpScreen = () => {
     return undefined;
   };
 
+  const validatePhoneUniqueness = async (value: string): Promise<string | undefined> => {
+    if (!value.trim() || !isValidPhoneNumber(value)) {
+      return undefined;
+    }
+
+    try {
+      const trimmedPhone = value.trim();
+
+      // Only skip the "already exists" check if ALL key fields match the original signup
+      // (username + email + phone). This allows re-submission with same credentials,
+      // but prevents creating duplicate accounts with the same phone number.
+      const isExactOriginalSignup =
+        originalSignupData.current?.username === username.trim() &&
+        originalSignupData.current?.email === email.trim() &&
+        originalSignupData.current?.phoneNumber === trimmedPhone;
+
+      if (!isExactOriginalSignup) {
+        const phoneExists = await checkPhoneNumberExists(trimmedPhone);
+        if (phoneExists) {
+          return 'Phone number already exists.';
+        }
+      }
+    } catch (error) {
+      console.error('Error checking phone number:', error);
+      // Do not block signup if phone uniqueness check fails.
+    }
+
+    return undefined;
+  };
+
   // Update field errors
   const updateFieldError = (field: keyof FieldErrors, error: string | undefined) => {
     setFieldErrors(prev => {
@@ -236,28 +266,9 @@ export const useSignUpScreen = () => {
     if (phoneError) {
       errors.phoneNumber = phoneError;
     } else if (phoneNumber.trim()) {
-      // Check if phone number is already in use.
-      try {
-        const trimmedPhone = phoneNumber.trim();
-
-        // Only skip the "already exists" check if ALL key fields match the original signup
-        // (username + email + phone). This allows re-submission with same credentials,
-        // but prevents creating duplicate accounts with the same phone number.
-        const isExactOriginalSignup =
-          originalSignupData.current?.username === username.trim() &&
-          originalSignupData.current?.email === email.trim() &&
-          originalSignupData.current?.phoneNumber === trimmedPhone;
-
-        if (!isExactOriginalSignup) {
-          const phoneExists = await checkPhoneNumberExists(trimmedPhone);
-          if (phoneExists) {
-            errors.phoneNumber =
-              'An account with this phone number already exists. Please use the login page to sign in.';
-          }
-        }
-      } catch (error) {
-        console.error('Error checking phone number:', error);
-        // Do not block signup if phone uniqueness check fails.
+      const phoneUniqueError = await validatePhoneUniqueness(phoneNumber);
+      if (phoneUniqueError) {
+        errors.phoneNumber = phoneUniqueError;
       }
     }
     
@@ -340,6 +351,33 @@ export const useSignUpScreen = () => {
     };
   }, [username]);
 
+  // Debounced phone uniqueness check
+  useEffect(() => {
+    if (phoneCheckTimer.current) {
+      clearTimeout(phoneCheckTimer.current);
+    }
+
+    if (!phoneNumber.trim()) {
+      return;
+    }
+
+    // Run uniqueness check only when format is valid
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return;
+    }
+
+    phoneCheckTimer.current = setTimeout(async () => {
+      const error = await validatePhoneUniqueness(phoneNumber);
+      updateFieldError('phoneNumber', error);
+    }, 500);
+
+    return () => {
+      if (phoneCheckTimer.current) {
+        clearTimeout(phoneCheckTimer.current);
+      }
+    };
+  }, [phoneNumber, username, email]);
+
   const showPushOrAgeModal = useCallback(async () => {
     try {
       const { status } = await Notifications.getPermissionsAsync();
@@ -372,7 +410,7 @@ export const useSignUpScreen = () => {
 
     const loadPendingReferral = async () => {
       try {
-        const pending = await AsyncStorage.getItem(PENDING_REFERRAL_STORAGE_KEY);
+        const pending = await takePendingReferralCode();
         if (pending && REFERRAL_CODE_PATTERN.test(pending)) {
           setReferralCode(pending);
         }

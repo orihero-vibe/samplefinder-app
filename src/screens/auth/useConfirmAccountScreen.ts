@@ -26,6 +26,7 @@ export const useConfirmAccountScreen = () => {
   const [resendTimer, setResendTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
   const codeInputRef = useRef<CodeInputRef>(null);
+  const welcomeNotificationAttempted = useRef(false);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -127,16 +128,22 @@ export const useConfirmAccountScreen = () => {
       }
 
       // Create a welcome notification (in-app list + optional device push if permitted).
-      try {
-        await createUserNotification({
-          userId,
-          type: 'tierChanged',
-          title: 'Welcome to SampleFinder!',
-          message: "You've joined! Start discovering samples and earning rewards.",
-          data: { source: 'signup', tierWelcome: 'true' },
-        });
-      } catch (notifErr) {
-        console.warn('[ConfirmAccount] Failed to create welcome notification:', notifErr);
+      // Only attempt once per verification session to prevent duplicates.
+      if (!welcomeNotificationAttempted.current) {
+        welcomeNotificationAttempted.current = true;
+        try {
+          await createUserNotification({
+            userId,
+            type: 'tierChanged',
+            title: 'Welcome to SampleFinder!',
+            message: "You've joined! Start discovering samples and earning rewards.",
+            data: { source: 'signup', tierWelcome: 'true' },
+          });
+        } catch (notifErr) {
+          console.warn('[ConfirmAccount] Failed to create welcome notification:', notifErr);
+          // Reset flag on error so it can be retried if verification is attempted again
+          welcomeNotificationAttempted.current = false;
+        }
       }
 
       // Trigger Tier 1 modal for newly signed up users (auth user must be set).
