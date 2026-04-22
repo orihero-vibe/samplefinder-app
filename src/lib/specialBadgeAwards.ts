@@ -216,12 +216,31 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
       return;
     }
 
-    // On a fresh transition the admin panel sets the profile flag BEFORE the Appwrite
-    // function creates the server notification. Skip creating a client notification here
-    // so the server notification (arriving within seconds) is the single source of truth.
-    // If the server notification never arrives, the next sync cycle will hit
-    // missingHistoricalNotification=true and fall through to the backfill path below.
+    // Create client notification immediately for fresh transitions to ensure the popup
+    // appears without delay. If a server notification arrives later, it will be
+    // deduplicated by the notification system.
     if (transitionedToEnabled) {
+      const content = SPECIAL_BADGE_CONTENT[badgeType];
+      const createdNotification = await createUserNotification({
+        userId: user.$id,
+        type: 'badgeEarned',
+        title: content.title,
+        message: content.message,
+        data: {
+          badgeType,
+          isSpecialBadge: true,
+          pointsEarned: SPECIAL_BADGE_POINTS,
+          screen: 'Profile',
+        },
+        skipPush: true, // Don't send push since this is for immediate popup
+      });
+
+      clientCreatedAwards.push({
+        type: badgeType,
+        title: content.title,
+        message: content.message,
+        notificationId: createdNotification.id,
+      });
       return;
     }
 
