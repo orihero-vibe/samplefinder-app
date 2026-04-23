@@ -154,6 +154,7 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
     // Create badge earned notification if applicable
     if (badgeEarned && newBadgeThreshold !== null) {
       try {
+        // Create in-app notification (stored in database)
         await createUserNotification({
           userId: authUserID,
           type: 'badgeEarned',
@@ -163,10 +164,11 @@ export const createCheckIn = async (checkInData: CheckInData): Promise<CheckInRo
             badgeType: 'events',
             badgeThreshold: newBadgeThreshold,
             achievementCount: newEventCount,
+            screen: 'Profile',
           },
-          skipPush: true,
         });
 
+        // Send push notification separately
         await sendNewBadgePushNotification('checkIn', newBadgeThreshold);
       } catch (badgeError) {
         console.error('[checkIns] Failed to create badge notification:', badgeError);

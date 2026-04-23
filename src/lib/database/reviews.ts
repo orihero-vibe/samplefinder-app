@@ -150,6 +150,7 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
     // Create badge earned notification if applicable
     if (badgeEarned && newBadgeThreshold !== null) {
       try {
+        // Create in-app notification (stored in database)
         await createUserNotification({
           userId: authUserID,
           type: 'badgeEarned',
@@ -159,10 +160,11 @@ export const createReview = async (reviewData: ReviewData): Promise<ReviewRow> =
             badgeType: 'reviews',
             badgeThreshold: newBadgeThreshold,
             achievementCount: newReviewCount,
+            screen: 'Profile',
           },
-          skipPush: true,
         });
 
+        // Send push notification separately
         await sendNewBadgePushNotification('review', newBadgeThreshold);
       } catch (badgeError) {
         console.error('[reviews] Failed to create badge notification:', badgeError);
