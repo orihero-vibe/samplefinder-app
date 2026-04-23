@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ImageBackground,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +23,11 @@ const NotificationsScreen = () => {
     enablePushNotifications,
     notifications,
     previousNotifications,
+    isRefreshing,
     handleBackPress,
     handlePushNotificationsChange,
     handleNotificationPress,
+    handleRefresh,
   } = useNotificationsScreen();
 
   return (
@@ -51,6 +54,14 @@ const NotificationsScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#6000DA']}
+            tintColor="#6000DA"
+          />
+        }
       >
         {/* Bell Icon and Title */}
         <View style={styles.iconTitleContainer}>

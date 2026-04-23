@@ -10,6 +10,7 @@ import { getUserNotifications, markNotificationsAsRead } from '@/lib/database';
 export const useNotificationsScreen = () => {
   const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Notification settings - synced with system permission
   const [enablePushNotifications, setEnablePushNotifications] = useState(false);
@@ -36,9 +37,13 @@ export const useNotificationsScreen = () => {
     []
   );
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (isRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       const user = useAuthStore.getState().user;
       if (!user) {
         console.warn('[notifications] No user logged in');
@@ -55,6 +60,7 @@ export const useNotificationsScreen = () => {
       console.error('[notifications] Error loading notifications:', error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [mapNotificationToItem]);
 
@@ -269,16 +275,22 @@ export const useNotificationsScreen = () => {
     void flushPendingReadNotifications();
   };
 
+  const handleRefresh = useCallback(() => {
+    loadNotifications(true);
+  }, [loadNotifications]);
+
   return {
     enablePushNotifications,
     notifications,
     previousNotifications,
     notificationSettings,
     isLoading,
+    isRefreshing,
     handleBackPress,
     handleNotificationToggle,
     handlePushNotificationsChange,
     handleNotificationPress,
+    handleRefresh,
   };
 };
 
