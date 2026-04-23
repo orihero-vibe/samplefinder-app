@@ -131,14 +131,19 @@ const addPushToInAppNotifications = async (
       reminderType?: string;
     };
 
-    // Badge-earned notifications are already persisted by their dedicated code paths
-    // (createCheckIn, createReview, syncSpecialBadgeAwards). Persisting them again
-    // from a delayed FCM push would create duplicate unread entries that re-trigger
-    // the badge modal on the next sync cycle.
+    // Skip regular badge-earned notifications (events/reviews milestones) as they're already persisted
+    // by their dedicated code paths (createCheckIn, createReview).
+    // BUT allow ambassador/influencer badges through as they may come from admin while app is closed.
     const normalizedType = normalizeNotificationType(data?.type);
     if (normalizedType === 'badgeEarned') {
-      console.log(`[notifications][${traceId}] Skipped badge-earned push persistence (source=${source}, handled by dedicated path)`);
-      return;
+      const badgeType = data?.badgeType as string;
+      // Only skip regular milestone badges (events/reviews), not special badges (ambassador/influencer)
+      if (badgeType === 'events' || badgeType === 'reviews') {
+        console.log(`[notifications][${traceId}] Skipped milestone badge push persistence (source=${source}, type=${badgeType})`);
+        return;
+      }
+      // Allow ambassador/influencer badges to be persisted so popup can show on app launch
+      console.log(`[notifications][${traceId}] Allowing special badge push persistence (source=${source}, type=${badgeType})`);
     }
 
     const title = notification.request.content.title || 'Notification';
