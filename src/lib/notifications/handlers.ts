@@ -154,7 +154,20 @@ const addPushToInAppNotifications = async (
       payloadData[key] = value;
     });
 
-    console.log(`[notifications][${traceId}] Persisting in-app notification (source=${source}, type=${data?.type}, title="${title}")`);
+    // For badge notifications, infer badgeType from title if not explicitly provided
+    if (normalizedType === 'badgeEarned' && !payloadData.badgeType) {
+      if (title.toLowerCase().includes('ambassador')) {
+        payloadData.badgeType = 'ambassador';
+        payloadData.isSpecialBadge = true;
+        payloadData.screen = 'Profile';
+      } else if (title.toLowerCase().includes('influencer')) {
+        payloadData.badgeType = 'influencer';
+        payloadData.isSpecialBadge = true;
+        payloadData.screen = 'Profile';
+      }
+    }
+
+    console.log(`[notifications][${traceId}] Persisting in-app notification (source=${source}, type=${data?.type}, badgeType=${payloadData.badgeType}, title="${title}")`);
 
     await createUserNotification({
       userId: user.$id,
@@ -163,6 +176,7 @@ const addPushToInAppNotifications = async (
       message: body,
       data: payloadData,
       skipPush: true,
+      isRead: false, // Ensure notifications are created as unread for proper display
     });
 
     console.log(`[notifications][${traceId}] Successfully persisted`);
@@ -192,9 +206,21 @@ const handleNotificationTap = (notification: Notifications.Notification) => {
   console.log('[notifications] Notification tapped:', notification);
   
   const data = notification.request.content.data as NotificationData;
+  const title = notification.request.content.title || '';
   
   if (!navigationRef || !data) {
     console.warn('[notifications] No navigation ref or data available');
+    return;
+  }
+  
+  // For special badge notifications (ambassador/influencer), don't navigate immediately
+  // Let the badge sync system show the popup modal first
+  const isSpecialBadgeNotification = data.type === 'badgeEarned' && 
+    (data.badgeType === 'ambassador' || data.badgeType === 'influencer' ||
+     title.toLowerCase().includes('ambassador') || title.toLowerCase().includes('influencer'));
+  
+  if (isSpecialBadgeNotification) {
+    console.log('[notifications] Special badge notification - skipping navigation to let popup show');
     return;
   }
   
