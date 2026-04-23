@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, ScrollView, ActivityIndicator, Text } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, RefreshControl } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { Colors } from '@/constants/Colors';
@@ -31,6 +31,7 @@ const ProfileScreen = () => {
     statistics,
     tierStatus,
     isLoading,
+    isRefreshing,
     error,
     isLoggingOut,
     showLogoutModal,
@@ -52,6 +53,7 @@ const ProfileScreen = () => {
     handleViewRewardsPress,
     handleNotificationsPress,
     handleApplyHerePress,
+    handleRefresh,
     hasUnreadNotifications,
   } = useProfileScreen({ contentRef, shareContentRef });
 
@@ -89,6 +91,14 @@ const ProfileScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[Colors.brandPurpleDeep]}
+            tintColor={Colors.brandPurpleDeep}
+          />
+        }
       >
         <View
           ref={shareContentRef}

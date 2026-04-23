@@ -36,10 +36,15 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
   });
   const [tierStatus, setTierStatus] = useState<string>('NewbieSampler');
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (isRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError('');
       
       const user = useAuthStore.getState().user;
@@ -103,6 +108,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
       setError(err?.message || 'Failed to load profile');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -112,6 +118,10 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
       loadProfile();
     }, [loadProfile])
   );
+
+  const handleRefresh = useCallback(() => {
+    loadProfile(true);
+  }, [loadProfile]);
 
   const handleBackPress = () => {
     // Navigate back to Home tab
@@ -247,6 +257,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
     tierStatus,
     hasUnreadNotifications,
     isLoading,
+    isRefreshing,
     error,
     isLoggingOut,
     showLogoutModal,
@@ -268,6 +279,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
     handleViewRewardsPress,
     handleNotificationsPress,
     handleApplyHerePress,
+    handleRefresh,
   };
 };
 
