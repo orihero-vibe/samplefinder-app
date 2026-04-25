@@ -9,7 +9,7 @@ import { Query } from 'react-native-appwrite';
 import {
   getUserCheckIns,
   getUserReviews,
-  fetchEventById,
+  fetchEventByIdForHistory,
   getUserProfile,
   fetchTiers,
   getSetting,
@@ -300,9 +300,10 @@ export const usePromotionsScreen = (options: UsePromotionsScreenOptions = {}) =>
     ];
 
     // Fetch all events in parallel instead of sequentially
+    // Use fetchEventByIdForHistory to include archived/hidden events for history display
     const eventPromises = uniqueEventIds.map(eventId =>
-      fetchEventById(eventId).catch(error => {
-        console.error(`Error fetching event ${eventId}:`, error);
+      fetchEventByIdForHistory(eventId).catch(error => {
+        console.error(`Error fetching event ${eventId} for history:`, error);
         return null;
       })
     );

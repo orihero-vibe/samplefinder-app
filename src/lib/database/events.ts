@@ -484,6 +484,95 @@ export const fetchEventById = async (eventId: string): Promise<EventRow | null> 
 };
 
 /**
+ * Fetch a single event by ID for history display (includes archived/hidden events)
+ * This function is specifically for displaying historical data and will return
+ * event information even if the event is archived or hidden.
+ */
+export const fetchEventByIdForHistory = async (eventId: string): Promise<EventRow | null> => {
+  console.log('[database.fetchEventByIdForHistory] Fetching event for history:', eventId);
+
+  // Validate environment variables
+  if (!DATABASE_ID || !EVENTS_TABLE_ID) {
+    const errorMsg = 'Database ID or Events Table ID not configured. Please check your .env file.';
+    console.error('[database.fetchEventByIdForHistory]', errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    const result = await tablesDB.getRow({
+      databaseId: DATABASE_ID,
+      tableId: EVENTS_TABLE_ID,
+      rowId: eventId,
+    });
+
+    if (!result) {
+      console.log('[database.fetchEventByIdForHistory] Event not found:', eventId);
+      return null;
+    }
+
+    // For history, we DON'T filter out archived or hidden events
+    // We want to show the user's historical activities
+
+    // Fetch full client data if client is just an ID string
+    let clientData = result.client;
+    if (typeof result.client === 'string') {
+      console.log('[database.fetchEventByIdForHistory] Client is ID string, fetching full client data:', result.client);
+      const { fetchClientById } = await import('./clients');
+      clientData = await fetchClientById(result.client);
+    }
+
+    // Extract location from point field - format: [longitude, latitude]
+    let location: [number, number] | undefined;
+    if (result.location) {
+      if (Array.isArray(result.location) && result.location.length >= 2) {
+        location = [result.location[0], result.location[1]];
+      } else if (result.location?.coordinates && Array.isArray(result.location.coordinates)) {
+        location = [result.location.coordinates[0], result.location.coordinates[1]];
+      }
+    }
+
+    const event: EventRow = {
+      $id: result.$id,
+      name: result.name || '',
+      date: result.date || '',
+      startTime: result.startTime || '',
+      endTime: result.endTime || '',
+      city: result.city || '',
+      address: result.address || '',
+      state: result.state || '',
+      zipCode: result.zipCode || '',
+      products: result.products || '',
+      client: clientData,
+      checkInCode: result.checkInCode || '',
+      checkInPoints: result.checkInPoints || 0,
+      reviewPoints: result.reviewPoints || 0,
+      eventInfo: result.eventInfo || '',
+      discount: result.discount ?? null,
+      discountImageURL: result.discountImageURL || null,
+      brandDescription: result.brandDescription ?? null,
+      categories: result.categories || [],
+      location,
+      locationId: parseLocationIdFromRow(result as Record<string, unknown>),
+      locationName: result.locationName || '',
+      timezone: result.timezone ?? null,
+      isArchived: result.isArchived || false,
+      isHidden: result.isHidden || false,
+      $createdAt: result.$createdAt,
+      $updatedAt: result.$updatedAt,
+    };
+
+    console.log('[database.fetchEventByIdForHistory] Event fetched successfully (including archived/hidden):', event.$id);
+    return event;
+  } catch (error: any) {
+    console.error('[database.fetchEventByIdForHistory] Error fetching event:', error);
+    console.error('[database.fetchEventByIdForHistory] Error message:', error?.message);
+    console.error('[database.fetchEventByIdForHistory] Error code:', error?.code);
+    // Return null instead of throwing for history display
+    return null;
+  }
+};
+
+/**
  * Fetch events by location using the Appwrite Cloud Function
  * Uses the Appwrite Functions service to execute the get-events-by-location function
  */
