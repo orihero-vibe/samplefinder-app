@@ -114,6 +114,9 @@ export const useConfirmAccountScreen = () => {
 
       await applyReferralAfterVerification(userId);
 
+      // Small delay to ensure backend has updated the profile with usedReferralCode
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Populate auth store before Tier 1 modal logic in App.tsx runs; that effect
       // reads `user` and only depends on [shouldShowTier1Modal, appIsReady], so it
       // would otherwise bail once with `user === null` and never retry.

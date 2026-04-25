@@ -45,12 +45,14 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
     const filteredText = text.replace(allowedPattern, '');
 
     if (filteredText.length > 1) {
-      // Handle paste
+      // Handle paste or auto-fill
       const pastedCode = filteredText.slice(0, length);
-      const newCode = [...code];
+      const newCode = Array(length).fill('');
+      
+      // Fill from the beginning regardless of which input triggered the auto-fill
       pastedCode.split('').forEach((char, i) => {
-        if (index + i < length) {
-          newCode[index + i] = char;
+        if (i < length) {
+          newCode[i] = char;
         }
       });
       setCode(newCode);
@@ -58,11 +60,11 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
       const codeString = newCode.join('');
       onChangeText?.(codeString);
 
-      // Focus the next empty input or the last one
-      const nextIndex = Math.min(index + pastedCode.length, length - 1);
-      inputRefs.current[nextIndex]?.focus();
+      // Focus the last filled input or the last one if all are filled
+      const lastFilledIndex = Math.min(pastedCode.length - 1, length - 1);
+      inputRefs.current[lastFilledIndex]?.focus();
 
-      if (codeString.length === length) {
+      if (codeString.length === length && codeString.split('').every(digit => digit !== '')) {
         onCodeComplete?.(codeString);
       }
       return;
@@ -121,9 +123,11 @@ const CodeInput = forwardRef<CodeInputRef, CodeInputProps>(({
               onChangeText={(text) => handleChange(text, index)}
               onKeyPress={(e) => handleKeyPress(e, index)}
               keyboardType={numericOnly ? 'number-pad' : 'default'}
-              maxLength={1}
+              maxLength={length}
               selectTextOnFocus
               editable={editable}
+              autoComplete={index === 0 ? 'one-time-code' : 'off'}
+              textContentType={index === 0 ? 'oneTimeCode' : 'none'}
             />
           </View>
         </TouchableOpacity>

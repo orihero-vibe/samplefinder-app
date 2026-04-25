@@ -54,6 +54,7 @@ export {
   fetchAllEvents,
   fetchAllUpcomingEvents,
   fetchEventById,
+  fetchEventByIdForHistory,
   fetchEventsByLocation,
   fetchEventsForLocationId,
 } from './events';
