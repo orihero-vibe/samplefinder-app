@@ -56,7 +56,6 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
         }}
         title={marker.title}
         onPress={handlePress}
-        anchor={{ x: 0.5, y: ANCHOR_Y }}
         tracksViewChanges={tracksViewChanges}
       >
         <View style={styles.markerWrapper}>
@@ -82,7 +81,6 @@ const MapMarker: React.FC<MapMarkerProps> = ({ marker, onPress }) => {
         }}
         title={marker.title}
         onPress={handlePress}
-        anchor={{ x: 0.5, y: ANCHOR_Y }}
         tracksViewChanges={tracksViewChanges}
       >
         <View style={styles.markerWrapper}>
@@ -110,26 +108,27 @@ const PIN_WIDTH = Platform.OS === 'android' ? BASE_PIN_WIDTH * ANDROID_SCALE : B
 
 const PIN_NUMBER_CIRCLE_SIZE = Platform.OS === 'android' ? 20 : 20;
 
-/** Extra space below pin so the tip is not clipped by the map's marker view */
-const BOTTOM_PADDING = Platform.OS === 'android' ? 6 : 12;
-
 // White center circle in the SVG is vertically centered at y≈17.673 in a 62px-tall viewBox
 const CENTER_CIRCLE_Y_RATIO = 17.673 / 62;
+
+// SVG path tip sits at y≈60.36 inside the 62px viewBox, leaving ~1.64px of empty space below.
+const SVG_TIP_Y_RATIO = 60.36 / 62;
+
+// react-native-maps centers view-based markers on the coordinate (the `anchor` prop is
+// unreliable for child-view markers on iOS). We extend the wrapper downward with empty
+// space so the visible SVG tip lands at the wrapper's vertical center — that puts the
+// tip on the coordinate via the default centering, with no platform-specific props.
+const WRAPPER_HEIGHT = 2 * PIN_HEIGHT * SVG_TIP_Y_RATIO;
 
 // Size and top offset for the event-count circle rendered over the SVG center circle
 const EVENT_CIRCLE_SIZE = Platform.OS === 'android' ? 20 : 24;
 const EVENT_CIRCLE_TOP = PIN_HEIGHT * CENTER_CIRCLE_Y_RATIO - EVENT_CIRCLE_SIZE / 2;
 
-/** Anchor y so the pin tip (not wrapper bottom) is on the coordinate: tip is at PIN_HEIGHT of (PIN_HEIGHT + BOTTOM_PADDING) */
-const ANCHOR_Y = PIN_HEIGHT / (PIN_HEIGHT + BOTTOM_PADDING);
-
 const styles = StyleSheet.create({
   markerWrapper: {
     width: PIN_WIDTH,
-    height: PIN_HEIGHT + BOTTOM_PADDING,
-    paddingBottom: BOTTOM_PADDING,
+    height: WRAPPER_HEIGHT,
     alignItems: 'center',
-    justifyContent: 'flex-end',
   },
   pinContainer: {
     width: PIN_WIDTH,
