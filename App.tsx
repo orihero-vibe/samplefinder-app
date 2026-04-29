@@ -41,6 +41,14 @@ import './reactotron';
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
+/**
+ * How long to suppress a recently-dismissed trivia from reappearing in this session.
+ * Without this gate the periodic refetch would re-prompt the user immediately after
+ * they close the modal; without an expiry the trivia would stay blocked until app
+ * restart, even when there are still active trivias to surface.
+ */
+const PROCESSED_TRIVIA_TTL_MS = 5 * 60 * 1000;
+
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [showTrivia, setShowTrivia] = useState(false);
@@ -50,13 +58,25 @@ export default function App() {
   const triviaShownRef = useRef(false);
   const prevQueueLengthRef = useRef(0);
   const triviaQueueRef = useRef(triviaQueue);
-  /** Client-side set of trivia IDs already answered/skipped this session; prevents re-showing before backend propagates */
-  const processedTriviaIdsRef = useRef<Set<string>>(new Set());
+  /**
+   * Trivia IDs the user dismissed/answered, mapped to the timestamp at which they were
+   * processed. Entries older than PROCESSED_TRIVIA_TTL_MS are ignored on filter so the
+   * trivia can resurface later in the same session.
+   */
+  const processedTriviaIdsRef = useRef<Map<string, number>>(new Map());
   triviaQueueRef.current = triviaQueue;
   const currentQuestion = triviaQueue[0] ?? null;
 
-  const filterProcessedTrivia = useCallback((questions: TriviaQuestion[]) =>
-    questions.filter((q) => !processedTriviaIdsRef.current.has(q.$id)), []);
+  const filterProcessedTrivia = useCallback((questions: TriviaQuestion[]) => {
+    const now = Date.now();
+    // Drop expired entries lazily so the map doesn't grow unbounded across long sessions.
+    for (const [id, ts] of processedTriviaIdsRef.current) {
+      if (now - ts > PROCESSED_TRIVIA_TTL_MS) {
+        processedTriviaIdsRef.current.delete(id);
+      }
+    }
+    return questions.filter((q) => !processedTriviaIdsRef.current.has(q.$id));
+  }, []);
 
   const shouldShowTier1Modal = useTier1ModalStore((s) => s.shouldShowTier1Modal);
   const setShouldShowTier1Modal = useTier1ModalStore((s) => s.setShouldShowTier1Modal);
@@ -407,7 +427,7 @@ export default function App() {
   const handleTriviaClose = () => {
     const q = triviaQueue[0];
     if (q) {
-      processedTriviaIdsRef.current.add(q.$id);
+      processedTriviaIdsRef.current.set(q.$id, Date.now());
     }
     setTriviaQueue((prev) => prev.slice(1));
   };
@@ -528,9 +548,8 @@ export default function App() {
                 const q = triviaQueue[0];
                 if (!q) return;
                 const profileId = await resolveUserProfileIdForTrivia();
-                if (profileId) {
-                  dismissTrivia(profileId, q.$id);
-                }
+                if (!profileId) return;
+                return dismissTrivia(profileId, q.$id);
               }}
             />
           )}

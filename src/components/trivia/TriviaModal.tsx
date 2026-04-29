@@ -35,11 +35,15 @@ interface TriviaModalProps {
   onClose: () => void;
   onSubmitAnswer: (answerIndex: number) => Promise<SubmitAnswerResult>;
   onAnswerResult?: (isCorrect: boolean, pointsAwarded: number) => void;
-  /** Called when user closes without answering (skip or countdown missed) */
-  onSkipped?: () => void;
+  /**
+   * Called when user closes without answering (skip or countdown missed).
+   * May return `{ correctAnswerIndex }` so the modal can reveal the correct
+   * answer in the "Times Up" state.
+   */
+  onSkipped?: () => Promise<{ correctAnswerIndex?: number } | void> | void;
 }
 
-type AnswerState = 'idle' | 'submitting' | 'correct' | 'incorrect';
+type AnswerState = 'idle' | 'submitting' | 'correct' | 'incorrect' | 'timesUp';
 
 export const TriviaModal: React.FC<TriviaModalProps> = ({
   visible,
@@ -53,7 +57,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
   const [pointsAwarded, setPointsAwarded] = useState<number>(0);
-  const [countdown, setCountdown] = useState<number>(5);
+  const [countdown, setCountdown] = useState<number>(10);
   const [closeEnabledAfterWin, setCloseEnabledAfterWin] = useState(true);
   const [isCapturingShare, setIsCapturingShare] = useState(false);
   const modalRef = useRef<View>(null);
@@ -66,7 +70,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       setCorrectAnswerIndex(null);
       setAnswerState('idle');
       setPointsAwarded(0);
-      setCountdown(5);
+      setCountdown(10);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -97,12 +101,27 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     }
   }, [visible, answerState, countdown]);
 
-  // Close modal when countdown reaches 0
+  // Show "Times Up" result when countdown reaches 0
   useEffect(() => {
     if (visible && answerState === 'idle' && countdown === 0) {
-      handleClose();
+      setAnswerState('timesUp');
+      void (async () => {
+        try {
+          const result = await onSkipped?.();
+          if (
+            result &&
+            typeof result === 'object' &&
+            'correctAnswerIndex' in result &&
+            typeof result.correctAnswerIndex === 'number'
+          ) {
+            setCorrectAnswerIndex(result.correctAnswerIndex);
+          }
+        } catch (err) {
+          console.warn('[TriviaModal] Failed to reveal correct answer on timeout:', err);
+        }
+      })();
     }
-  }, [visible, answerState, countdown]);
+  }, [visible, answerState, countdown, onSkipped]);
 
   // When user wins, keep close disabled briefly then allow dismiss
   useEffect(() => {
@@ -227,7 +246,9 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
     const isSelected = selectedAnswerIndex === index;
     const isSubmitting = answerState === 'submitting';
     const isCorrectAnswer = correctAnswerIndex === index;
-    const showCorrectState = (answerState === 'correct' || answerState === 'incorrect') && isCorrectAnswer;
+    const showCorrectState =
+      (answerState === 'correct' || answerState === 'incorrect' || answerState === 'timesUp') &&
+      isCorrectAnswer;
     const showIncorrectState = answerState === 'incorrect' && isSelected && !isCorrectAnswer;
 
     const getButtonStyle = () => {
@@ -266,7 +287,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
         key={index}
         style={getButtonStyle()}
         onPress={() => handleAnswerPress(index)}
-        disabled={selectedAnswerIndex !== null || isSubmitting}
+        disabled={selectedAnswerIndex !== null || isSubmitting || answerState === 'timesUp'}
         activeOpacity={0.8}
       >
         {showCorrectState ? (
@@ -336,7 +357,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           )}
         </View>
       );
-    } else if (answerState === 'incorrect') {
+    } else if (answerState === 'incorrect' || answerState === 'timesUp') {
       return (
         <View style={styles.resultContainer}>
           <View style={styles.incorrectIconContainer}>
