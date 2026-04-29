@@ -227,16 +227,20 @@ export const submitTriviaAnswer = async (
   }
 };
 
+export interface DismissTriviaResult {
+  correctAnswerIndex?: number;
+}
+
 /**
  * Record that the user skipped or missed a trivia question (closed without answering).
- * The backend adds the user to the trivia's skippedUsers so it won't be shown again.
+ * Returns the correct answer index so the UI can reveal it after the user runs out of time.
  * @param userId - The user's profile document ID
  * @param triviaId - The trivia document ID that was dismissed
  */
 export const dismissTrivia = async (
   userId: string,
   triviaId: string
-): Promise<void> => {
+): Promise<DismissTriviaResult> => {
   const functionId = APPWRITE_EVENTS_FUNCTION_ID || '';
 
   if (!functionId) {
@@ -244,7 +248,7 @@ export const dismissTrivia = async (
   }
 
   if (!userId || !triviaId) {
-    return;
+    return {};
   }
 
   try {
@@ -261,21 +265,31 @@ export const dismissTrivia = async (
 
     if (execution.status === 'failed' && execution.responseBody) {
       console.warn('[trivia.dismissTrivia] Execution failed:', execution.responseBody);
-      return;
+      return {};
     }
 
-    // Server may return 200 with { success: false, error: "..." } (e.g. Invalid endpoint if not deployed)
     if (execution.responseBody) {
       try {
-        const body = JSON.parse(execution.responseBody) as { success?: boolean; error?: string };
+        const body = JSON.parse(execution.responseBody) as {
+          success?: boolean;
+          error?: string;
+          correctAnswerIndex?: number;
+        };
         if (body.success === false) {
           console.warn('[trivia.dismissTrivia] API returned error:', body.error || execution.responseBody);
+          return {};
+        }
+        if (typeof body.correctAnswerIndex === 'number') {
+          return { correctAnswerIndex: body.correctAnswerIndex };
         }
       } catch {
         // ignore parse errors
       }
     }
+
+    return {};
   } catch (error) {
     console.warn('[trivia.dismissTrivia] Error dismissing trivia:', error);
+    return {};
   }
 };
