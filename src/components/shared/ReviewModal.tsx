@@ -91,7 +91,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
         scrollViewRef.current?.scrollToEnd({ animated: true });
         focusScrollTimerRef.current = null;
       },
-      Platform.OS === 'android' ? 300 : 150
+      Platform.OS === 'android' ? 450 : 150
     );
   }, []);
 
@@ -152,10 +152,13 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       onChange={handleSheetChanges}
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
+      handleStyle={styles.handleContainer}
       backdropComponent={renderBackdrop}
-      keyboardBehavior="extend"
+      keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
-      android_keyboardInputMode="adjustResize"
+      android_keyboardInputMode="adjustNothing"
+      overDragResistanceFactor={0}
+      bottomInset={0}
     >
       <BottomSheetScrollView
         ref={scrollViewRef}
@@ -284,10 +287,14 @@ const styles = StyleSheet.create({
   handleIndicator: {
     display: 'none',
   },
+  handleContainer: {
+    padding: 0,
+    height: 0,
+  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 36,
+    paddingBottom: Platform.OS === 'android' ? 0 : 36,
   },
   closeButton: {
     position: 'absolute',
