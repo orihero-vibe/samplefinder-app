@@ -133,6 +133,7 @@ const BrandDetailsScreen: React.FC<BrandDetailsScreenProps> = ({ route }) => {
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled={Platform.OS === 'ios'}
       >
         <ScrollView
           style={styles.scrollView}

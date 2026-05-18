@@ -1,15 +1,17 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import BottomSheet, {
   BottomSheetScrollView,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
+import type { BottomSheetScrollViewMethods } from '@gorhom/bottom-sheet';
 import type { ComponentProps } from 'react';
 import GradientBottomSheetBackdrop from '@/components/shared/GradientBottomSheetBackdrop';
 import { Monicon } from '@monicon/native';
@@ -51,6 +53,9 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [purchased, setPurchased] = useState<boolean | null>(null);
 
+  const scrollViewRef = useRef<BottomSheetScrollViewMethods>(null);
+  const focusScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const snapPoints = useMemo(() => ['90%'], []);
 
   const resetState = useCallback(() => {
@@ -63,12 +68,32 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const handleSheetChanges = useCallback(
     (index: number) => {
       if (index === -1) {
+        if (focusScrollTimerRef.current) {
+          clearTimeout(focusScrollTimerRef.current);
+          focusScrollTimerRef.current = null;
+        }
         resetState();
         onClose?.();
       }
     },
     [onClose, resetState]
   );
+
+  const handleReviewInputFocus = useCallback(() => {
+    if (focusScrollTimerRef.current) {
+      clearTimeout(focusScrollTimerRef.current);
+    }
+    // Wait for the keyboard show + Android adjustResize layout pass to settle
+    // before scrolling, otherwise the scroll target is computed against the
+    // pre-resize content height and the input ends up hidden again.
+    focusScrollTimerRef.current = setTimeout(
+      () => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+        focusScrollTimerRef.current = null;
+      },
+      Platform.OS === 'android' ? 450 : 150
+    );
+  }, []);
 
   const renderBackdrop = useMemo(
     () => (props: ComponentProps<typeof GradientBottomSheetBackdrop>) => (
@@ -127,12 +152,16 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       onChange={handleSheetChanges}
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.handleIndicator}
+      handleStyle={styles.handleContainer}
       backdropComponent={renderBackdrop}
-      keyboardBehavior="extend"
+      keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
-      android_keyboardInputMode="adjustResize"
+      android_keyboardInputMode="adjustNothing"
+      overDragResistanceFactor={0}
+      bottomInset={0}
     >
       <BottomSheetScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -225,6 +254,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             placeholderTextColor="#999"
             value={reviewText}
             onChangeText={setReviewText}
+            onFocus={handleReviewInputFocus}
             maxLength={500}
             textAlignVertical="top"
           />
@@ -257,10 +287,14 @@ const styles = StyleSheet.create({
   handleIndicator: {
     display: 'none',
   },
+  handleContainer: {
+    padding: 0,
+    height: 0,
+  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 36,
+    paddingBottom: Platform.OS === 'android' ? 0 : 36,
   },
   closeButton: {
     position: 'absolute',
