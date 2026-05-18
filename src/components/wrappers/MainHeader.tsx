@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ImageBackground, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Monicon } from '@monicon/native';
 import { MapIcon, SampleFinderIcon } from '@/icons';
@@ -15,7 +15,6 @@ interface MainHeaderProps {
 const MainHeader: React.FC<MainHeaderProps> = ({
   onMapPress,
   onListPress,
-  location = 'Pennsylvania Convention Center',
   showLeftIcons = true,
   activeView = 'list',
 }) => {
@@ -70,12 +69,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  appTitle: {
-    fontSize: 18,
-    fontFamily: 'Quicksand_700Bold',
-    color: '#FFFFFF',
-  },
 });
 
 export default MainHeader;
-

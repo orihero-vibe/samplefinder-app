@@ -2,7 +2,7 @@
   "expo": {
     "name": "SampleFinder",
     "slug": "samplefinder-app",
-    "version": "1.0.2",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,8 +13,8 @@
       "backgroundColor": "#1a1a2e"
     },
     "ios": {
-      "buildNumber": "67",
-      "supportsTablet": true,
+      "buildNumber": "71",
+      "supportsTablet": false,
       "bundleIdentifier": "com.samplefinder.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
@@ -36,19 +36,25 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "versionCode": 67,
+      "versionCode": 71,
       "package": "com.samplefinder.app",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
+        "SYSTEM_ALERT_WINDOW",
+        "RECORD_AUDIO",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "CAMERA",
-        "POST_NOTIFICATIONS"
+        "WRITE_EXTERNAL_STORAGE"
       ],
       "config": {
         "googleMaps": {
