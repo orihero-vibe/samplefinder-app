@@ -156,14 +156,17 @@ export const useSignUpScreen = () => {
     if (!value.trim()) {
       return 'Password is required';
     }
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
     // Password must have at least 1 digit, 1 uppercase, 1 lowercase, and 1 special character
     const hasDigit = /\d/.test(value);
     const hasUpperCase = /[A-Z]/.test(value);
     const hasLowerCase = /[a-z]/.test(value);
     const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value);
-    
+
     if (!hasDigit || !hasUpperCase || !hasLowerCase || !hasSpecialChar) {
-      return 'Password must contain at least 1 digit, 1 uppercase letter, 1 lowercase letter, and 1 special character';
+      return 'Password must be at least 8 characters and contain at least 1 digit, 1 uppercase letter, 1 lowercase letter, and 1 special character';
     }
     
     // Password should not be the same as the username (case-insensitive, trimmed)
