@@ -35,6 +35,7 @@ const SignUpScreen = () => {
     password,
     referralCode,
     fieldErrors,
+    passwordChecks,
     isCheckingUsername,
     showError,
     showPushNotificationModal,
@@ -173,8 +174,29 @@ const SignUpScreen = () => {
           type="password"
           {...signUpFieldProps}
           error={!!fieldErrors.password}
-          errorMessage={fieldErrors.password}
         />
+
+        <View style={styles.requirementsContainer}>
+          {[
+            { met: passwordChecks.minLength, label: 'minimum of 8 characters' },
+            { met: passwordChecks.noUsername, label: 'may not include username' },
+            { met: passwordChecks.hasUppercase, label: 'must include at least 1 Uppercase' },
+            { met: passwordChecks.hasLowercase, label: 'must include at least 1 lowercase' },
+            { met: passwordChecks.hasNumber, label: 'must include 1 number' },
+            { met: passwordChecks.hasSpecial, label: 'must include at least 1 special character' },
+          ].map(({ met, label }) => (
+            <View key={label} style={styles.requirementRow}>
+              <Monicon
+                name={met ? 'mdi:check' : 'mdi:circle-outline'}
+                size={16}
+                color={met ? Colors.success : '#999'}
+              />
+              <Text style={[styles.requirementText, met && styles.requirementTextMet]}>
+                {label}
+              </Text>
+            </View>
+          ))}
+        </View>
 
         <CustomInput
           label="Referral code (optional)"

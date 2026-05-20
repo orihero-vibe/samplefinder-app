@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
@@ -514,6 +514,32 @@ export const useSignUpScreen = () => {
     setErrorMessage('');
   };
 
+  // Live per-rule indicators for the password requirements list.
+  // Mirrors validatePassword so the UI checkmarks stay in sync with submit validation.
+  const passwordChecks = useMemo(() => {
+    if (!password) {
+      return {
+        minLength: false,
+        noUsername: false,
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSpecial: false,
+      };
+    }
+    const trimmedUsername = username.trim();
+    return {
+      minLength: password.length >= 8,
+      noUsername:
+        trimmedUsername.length === 0 ||
+        password.trim().toLowerCase() !== trimmedUsername.toLowerCase(),
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasNumber: /\d/.test(password),
+      hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    };
+  }, [password, username]);
+
   // Phone number is optional; omitted from the required-field check.
   const isFormValid =
     firstName.trim() !== '' &&
@@ -706,6 +732,7 @@ export const useSignUpScreen = () => {
     password,
     referralCode,
     fieldErrors,
+    passwordChecks,
     isCheckingUsername,
     showError,
     showPushNotificationModal,

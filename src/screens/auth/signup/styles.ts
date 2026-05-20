@@ -108,6 +108,25 @@ const styles = StyleSheet.create({
   zipCodeContainer: {
     marginTop: 12,
   },
+  requirementsContainer: {
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  requirementText: {
+    fontSize: 14,
+    fontFamily: 'Quicksand_400Regular',
+    color: '#999',
+    lineHeight: 20,
+    marginLeft: 6,
+  },
+  requirementTextMet: {
+    color: Colors.success,
+  },
 });
 
 export default styles;
