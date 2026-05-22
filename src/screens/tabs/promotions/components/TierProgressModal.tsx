@@ -248,8 +248,8 @@ const TierProgressModal: React.FC<TierProgressModalProps> = ({
                 ]}
               >
                 {isMaxTier
-                  ? `${userTotalPoints.toLocaleString()} points earned`
-                  : `${userTotalPoints.toLocaleString()} / ${tierGoalPoints.toLocaleString()} points`}
+                  ? `${userTotalPoints.toLocaleString('en-US')} points earned`
+                  : `${userTotalPoints.toLocaleString('en-US')} / ${tierGoalPoints.toLocaleString('en-US')} points`}
               </Text>
 
               <View style={styles.progressContainer}>

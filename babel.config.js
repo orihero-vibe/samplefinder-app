@@ -1,5 +1,13 @@
 module.exports = function(api) {
-  api.cache(true);
+  // Invalidate the Babel cache when .env changes so react-native-dotenv
+  // picks up new values without a manual cache wipe.
+  api.cache.using(() => {
+    try {
+      return require('fs').readFileSync(require('path').join(__dirname, '.env'), 'utf8');
+    } catch {
+      return '';
+    }
+  });
   return {
     presets: ['babel-preset-expo'],
     plugins: [

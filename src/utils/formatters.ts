@@ -32,7 +32,7 @@ export const getTierEarnedPointsMessage = (
   if (tierOrder === 1) {
     return 'You earned 100 points with SampleFinder, just for signing up!';
   }
-  return `You reached **${requiredPoints.toLocaleString()}** points with SampleFinder, unlocking your new tier!`;
+  return `You reached **${requiredPoints.toLocaleString('en-US')}** points with SampleFinder, unlocking your new tier!`;
 };
 
 /**

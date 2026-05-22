@@ -78,7 +78,7 @@ const ReferFriendSuccessBottomSheet: React.FC<ReferFriendSuccessBottomSheetProps
             </View>
 
             {/* Center points value */}
-            <Text style={styles.pointsValue}>{points}</Text>
+            <Text style={styles.pointsValue}>{points.toLocaleString('en-US')}</Text>
 
             {/* Bottom curved text - CONGRATS! */}
             <View style={styles.bottomCurvedTextContainer}>

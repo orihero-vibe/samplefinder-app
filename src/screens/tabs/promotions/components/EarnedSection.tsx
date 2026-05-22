@@ -87,7 +87,7 @@ const EarnedSection: React.FC<EarnedSectionProps> = ({
             onPress={() => onPointsPress?.(totalPoints, currentTier || undefined)}
             activeOpacity={0.7}
           >
-            <Text style={styles.pointsValue}>{totalPoints.toLocaleString()}</Text>
+            <Text style={styles.pointsValue}>{totalPoints.toLocaleString('en-US')}</Text>
             <Text style={styles.pointsLabel}>Points Earned</Text>
           </TouchableOpacity>
 

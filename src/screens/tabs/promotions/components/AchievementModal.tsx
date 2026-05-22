@@ -138,7 +138,7 @@ const AchievementModal: React.FC<AchievementModalProps> = ({
     if (isEarned) {
       return getTierEarnedPointsMessage(tierNumber, requiredPoints, points);
     }
-    return `${currentPoints} / ${requiredPoints.toLocaleString()} points`;
+    return `${currentPoints.toLocaleString('en-US')} / ${requiredPoints.toLocaleString('en-US')} points`;
   };
 
   const mainMessage = getMainMessage();

@@ -53,7 +53,7 @@ const TierItem: React.FC<TierItemProps> = ({ tier, onIconPress }) => {
           <Text style={styles.badgeEarnedText}>Badge Earned!</Text>
         ) : (
           <Text style={styles.points}>
-            {tier.currentPoints} / {tier.requiredPoints.toLocaleString()} points
+            {tier.currentPoints.toLocaleString('en-US')} / {tier.requiredPoints.toLocaleString('en-US')} points
           </Text>
         )}
         <View style={styles.progressBarContainer}>
