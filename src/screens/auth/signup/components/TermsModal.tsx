@@ -55,7 +55,11 @@ export const TermsModal: React.FC<TermsModalProps> = ({
               <MaterialIcons name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.modalBody}
+            contentContainerStyle={styles.modalBodyContent}
+            showsVerticalScrollIndicator={false}
+          >
             {isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#2D1B69" />
@@ -115,9 +119,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalBody: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
     maxHeight: 400,
+  },
+  // Padding lives on the content container, not the ScrollView's `style`: on
+  // Android, bottom padding set via `style` clips the last line of scrollable
+  // content (e.g. the contact email at the end of the Terms). The extra
+  // paddingBottom guarantees the final line clears the fold on Android.
+  modalBodyContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 28,
   },
   termsModalText: {
     fontSize: 16,
