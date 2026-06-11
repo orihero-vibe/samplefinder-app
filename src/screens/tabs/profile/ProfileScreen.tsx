@@ -35,7 +35,6 @@ const ProfileScreen = () => {
     error,
     isLoggingOut,
     showLogoutModal,
-    formattedDOB,
     referralCode,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
@@ -130,9 +129,6 @@ const ProfileScreen = () => {
           <PersonalInfoSection
             data={{
               tierStatus,
-              dateOfBirth: formattedDOB,
-              phoneNumber: profile?.phoneNumber || '',
-              email: authUser?.email || '',
             }}
           />
           <BrandAmbassadorSection 
