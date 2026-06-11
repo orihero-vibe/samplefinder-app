@@ -4,28 +4,23 @@ import { Colors } from '@/constants/Colors';
 
 export interface PersonalInfoData {
   tierStatus?: string;
-  dateOfBirth?: string;
-  phoneNumber?: string;
-  email?: string;
 }
 
 interface PersonalInfoSectionProps {
   data?: PersonalInfoData;
 }
 
+// Note: personal/contact details (date of birth, phone number, email) are
+// intentionally NOT rendered here. This section is captured into the shared
+// profile image, so any PII shown would leak when a user shares their profile.
+// Keep this section limited to non-sensitive, shareable info.
 const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
   data = {
     tierStatus: 'NewbieSampler',
-    dateOfBirth: 'April 3, 1979',
-    phoneNumber: '(215) 555-1212',
-    email: 'thesamplefinder@gmail.com',
   },
 }) => {
   const rows: { label: string; value?: string }[] = [
     { label: 'TIER STATUS:', value: data.tierStatus },
-    { label: 'DATE OF BIRTH:', value: data.dateOfBirth },
-    { label: 'PHONE NUMBER:', value: data.phoneNumber },
-    { label: 'EMAIL:', value: data.email },
   ];
 
   return (

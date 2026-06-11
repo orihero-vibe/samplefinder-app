@@ -76,10 +76,10 @@ export const useEditProfileScreen = () => {
       setPendingAvatarLocalUri(null);
       setPendingAvatarRemoval(false);
       
+      // Do not log phone number or email — this runs in production and PII
+      // must not leak into device/log-capture sinks (logcat, Console, crash SDKs).
       console.log('[EditProfileScreen] Profile loaded:', {
         username: userProfile.username,
-        phoneNumber: userProfile.phoneNumber,
-        email: user.email,
         hasAvatar: !!userProfile.avatarURL,
       });
     } catch (err: any) {

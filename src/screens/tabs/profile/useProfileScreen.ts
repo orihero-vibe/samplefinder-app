@@ -7,7 +7,6 @@ import { logout } from '@/lib/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { captureAndShareView } from '@/utils/captureAndShare';
 import { getUserProfile, calculateTierStatus, fetchTiers, resolveEffectiveTier, UserProfileRow, getUserCheckInsCount, getUserReviewsCount, getUnreadNotificationCount } from '@/lib/database';
-import { formatDateForDisplay } from '@/utils/formatters';
 import { countAchievedBadges, APP_STORE_SHARE_SUFFIX } from '@/constants';
 
 interface UseProfileScreenOptions {
@@ -24,7 +23,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [profile, setProfile] = useState<UserProfileRow | null>(null);
-  const [authUser, setAuthUser] = useState<{ email: string; name?: string } | null>(null);
+  const [authUser, setAuthUser] = useState<{ name?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [statistics, setStatistics] = useState({
@@ -54,7 +53,7 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
         return;
       }
 
-      setAuthUser({ email: user.email, name: user.name });
+      setAuthUser({ name: user.name });
 
       const userProfile = await getUserProfile(user.$id);
       setProfile(userProfile);
@@ -244,7 +243,6 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
     }
   };
 
-  const formattedDOB = profile?.dob ? formatDateForDisplay(profile.dob) : '';
   const referralCode = profile?.referralCode || 'N/A';
 
   return {
@@ -258,7 +256,6 @@ export const useProfileScreen = (options: UseProfileScreenOptions = {}) => {
     error,
     isLoggingOut,
     showLogoutModal,
-    formattedDOB,
     referralCode,
     referFriendBottomSheetRef,
     referFriendSuccessBottomSheetRef,
