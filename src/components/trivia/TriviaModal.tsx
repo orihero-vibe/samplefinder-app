@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,9 @@ import ModalBackdrop from '@/components/shared/ModalBackdrop';
 import { APP_STORE_SHARE_SUFFIX } from '@/constants';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+/** Seconds the user gets to answer a single question. */
+const COUNTDOWN_SECONDS = 10;
 
 // Re-export the TriviaQuestion type for convenience
 export type { TriviaQuestion } from '../../lib/database/trivia';
@@ -58,20 +61,32 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
   const [pointsAwarded, setPointsAwarded] = useState<number>(0);
-  const [countdown, setCountdown] = useState<number>(10);
+  const [countdown, setCountdown] = useState<number>(COUNTDOWN_SECONDS);
   const [closeEnabledAfterWin, setCloseEnabledAfterWin] = useState(true);
   const [isCapturingShare, setIsCapturingShare] = useState(false);
   const modalRef = useRef<View>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
 
+  /**
+   * Clears everything that belongs to a single question. Must include the
+   * countdown: one modal instance is reused for a whole queue of questions, so a
+   * leftover `countdown === 0` would drop the next question straight into
+   * "timesUp" before the user could answer it.
+   */
+  const resetForQuestion = useCallback(() => {
+    setSelectedAnswerIndex(null);
+    setCorrectAnswerIndex(null);
+    setAnswerState('idle');
+    setPointsAwarded(0);
+    setCountdown(COUNTDOWN_SECONDS);
+  }, []);
+
+  // Reset on open and on every question change — the queue advances while the
+  // modal stays visible, so `visible` alone is not enough to re-arm the timer.
   React.useEffect(() => {
     if (visible) {
-      setSelectedAnswerIndex(null);
-      setCorrectAnswerIndex(null);
-      setAnswerState('idle');
-      setPointsAwarded(0);
-      setCountdown(10);
+      resetForQuestion();
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -90,7 +105,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
       scaleAnim.setValue(0.9);
       setIsCapturingShare(false);
     }
-  }, [visible]);
+  }, [visible, question.$id, resetForQuestion]);
 
   // Countdown timer
   useEffect(() => {
@@ -194,10 +209,9 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
 
   const handleClose = () => {
     const wasSkipped = answerState === 'idle';
-    setSelectedAnswerIndex(null);
-    setCorrectAnswerIndex(null);
-    setAnswerState('idle');
-    setPointsAwarded(0);
+    // Re-arms the countdown as well; leaving it at 0 would immediately time out
+    // the next question in the queue.
+    resetForQuestion();
     if (wasSkipped) {
       onSkipped?.();
     }
@@ -292,15 +306,15 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
         activeOpacity={0.8}
       >
         {showCorrectState ? (
+          // Filled, not an outlined white pill: a white-on-white highlight makes the
+          // revealed option look like it vanished from the modal.
           <LinearGradient
             colors={['#95268B', '#3713DA']}
             start={{ x: 0.5, y: 0 }}
             end={{ x: 0.5, y: 1 }}
-            style={styles.answerButtonCorrectBorder}
+            style={styles.answerButtonInner}
           >
-            <View style={styles.answerButtonCorrectInner}>
-              <ButtonContent />
-            </View>
+            <ButtonContent />
           </LinearGradient>
         ) : showIncorrectState ? (
           <LinearGradient
@@ -364,7 +378,9 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
           <View style={styles.incorrectIconContainer}>
             <WrongAnswerIcon size={80} />
           </View>
-          <Text style={styles.incorrectMessage}>Better luck next time!</Text>
+          <Text style={styles.incorrectMessage}>
+            {answerState === 'timesUp' ? "Time's up!" : 'Better luck next time!'}
+          </Text>
         </View>
       );
     }
@@ -557,19 +573,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#6B46C1',
   },
   answerButtonCorrect: {},
-  answerButtonCorrectBorder: {
-    padding: 2,
-    borderRadius: 12,
-  },
-  answerButtonCorrectInner: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-  },
   answerButtonIncorrect: {
     borderWidth: 0,
   },
@@ -586,7 +589,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   answerButtonTextCorrect: {
-    color: Colors.blueColorMode,
+    color: '#FFFFFF',
   },
   sparkleContainer: {
     position: 'absolute',
