@@ -3,7 +3,6 @@ import { useAuthStore } from '@/stores/authStore';
 import {
   createUserNotification,
   getUserProfile,
-  updateUserProfile,
   getUnreadNotifications,
 } from '@/lib/database';
 import type { UserNotification } from '@/lib/database';
@@ -30,6 +29,11 @@ const SPECIAL_BADGE_CONTENT: Record<SpecialBadgeType, { title: string; message: 
 
 type SpecialBadgeState = Record<SpecialBadgeType, boolean>;
 const DEFAULT_BADGE_STATE: SpecialBadgeState = { ambassador: false, influencer: false };
+/**
+ * Display value only — the points figure shown in the badge modal. The award itself is made by the
+ * Notification function's /send-badge-notification handler, NOT here. See the note on
+ * `syncSpecialBadgeAwards` for why the client must not grant points.
+ */
 const SPECIAL_BADGE_POINTS = 100;
 const getBadgeStateStorageKey = (authId: string) => `specialBadgeState:${authId}`;
 
@@ -158,8 +162,33 @@ const awardsFromUnreadSpecialBadgeNotifications = (
  *
  * - Surfaces every **unread** `badgeEarned` notification for those types so the modal can repeat
  *   whenever admin (or the client) issues a new notification.
- * - Still creates points + a notification on the client when the profile flag transitions
- *   disabled → enabled, or when the badge is enabled but no historical notification exists yet.
+ * - Creates a notification on the client when the profile flag transitions disabled → enabled, or
+ *   when the badge is enabled but no historical notification exists yet, so the modal appears
+ *   without waiting on push delivery.
+ *
+ * This function does NOT grant points, and must not start doing so again.
+ *
+ * It used to add SPECIAL_BADGE_POINTS whenever it saw a disabled → enabled transition, where
+ * "disabled" came from `readLastBadgeState` — an AsyncStorage cache on the device that returns
+ * DEFAULT_BADGE_STATE (both badges false) on any miss. For a user whose badge was already enabled
+ * server-side, a reinstall, a cleared app storage, or simply a new device made the cache miss look
+ * like a fresh grant, so the client added another 100 points. With no idempotency key it could
+ * repeat indefinitely: points climbing with no user activity, which is what the client reported as
+ * "several users' points jumped 100 at the same time".
+ *
+ * Neither available store could fix that from here. AsyncStorage is per-device and lost on
+ * reinstall; `user_profiles.notifications` is server-side but capped at MAX_NOTIFICATIONS (50) in
+ * createUserNotification, so an old badge notification is eventually evicted and the "already
+ * awarded" evidence disappears. A client simply cannot tell "granted just now" from "granted a year
+ * ago on a phone I no longer have".
+ *
+ * The grant therefore lives where the transition is actually known: the admin panel detects
+ * `nowAmbassador && !wasAmbassador` against the stored profile and calls the Notification function's
+ * /send-badge-notification once per grant, and that handler awards the points server-side. Device
+ * state can no longer cause a re-award.
+ *
+ * Caveat: flipping `isAmbassador` / `isInfluencer` directly in the Appwrite console bypasses that
+ * endpoint, so it grants the badge without points. Toggle badges through the admin panel.
  */
 export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> => {
   const user = useAuthStore.getState().user;
@@ -184,30 +213,22 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
 
   const unreadAwards = awardsFromUnreadSpecialBadgeNotifications(unreadNotifications);
 
-  let updatedTotalPoints = Number(profile.totalPoints || 0);
   const clientCreatedAwards: AwardedSpecialBadge[] = [];
 
-  const maybeAwardBadge = async (badgeType: SpecialBadgeType, isEnabled: boolean) => {
+  const maybeAnnounceBadge = async (badgeType: SpecialBadgeType, isEnabled: boolean) => {
     if (!isEnabled) {
       return;
     }
 
     // Primary trigger: badge flag changed from disabled -> enabled.
+    // NOTE: `lastBadgeState` is a device-local cache, so this can also fire on a reinstall for a
+    // badge granted long ago. That is now harmless — it only decides whether to surface a modal,
+    // never whether to grant points.
     const transitionedToEnabled = !lastBadgeState[badgeType] && currentBadgeState[badgeType];
     // Backfill: badge is enabled but no historical special notification exists yet.
     const missingHistoricalNotification = !hasSpecialBadgeNotification(existingNotifications, badgeType);
     if (!transitionedToEnabled && !missingHistoricalNotification) {
       return;
-    }
-
-    // Award points on transition only (not backfill) to avoid double-awarding.
-    // The backfill path is triggered when the flag was already enabled on a prior run
-    // but the notification was never stored, so points were already awarded then.
-    if (transitionedToEnabled) {
-      updatedTotalPoints += SPECIAL_BADGE_POINTS;
-      await updateUserProfile(profile.$id, {
-        totalPoints: updatedTotalPoints,
-      });
     }
 
     // If the admin portal already issued a matching `badgeEarned` notification, use it
@@ -268,8 +289,8 @@ export const syncSpecialBadgeAwards = async (): Promise<AwardedSpecialBadge[]> =
     });
   };
 
-  await maybeAwardBadge('ambassador', currentBadgeState.ambassador);
-  await maybeAwardBadge('influencer', currentBadgeState.influencer);
+  await maybeAnnounceBadge('ambassador', currentBadgeState.ambassador);
+  await maybeAnnounceBadge('influencer', currentBadgeState.influencer);
   await writeBadgeState(user.$id, currentBadgeState);
 
   const seenIds = new Set<string>();
