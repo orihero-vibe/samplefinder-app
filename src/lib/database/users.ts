@@ -887,7 +887,14 @@ export const getUserProfile = async (authID: string): Promise<UserProfileRow | n
       notifications: profile.notifications || [],
       notificationPreferences: profile.notificationPreferences,
       tierLevel: profile.tierLevel ?? null,
-      phoneVerified: Boolean(profile.phoneVerified),
+      // Preserve `undefined` when the attribute is absent from the document —
+      // i.e. not yet deployed to Appwrite — so the routing gate FAILS OPEN.
+      // Coercing with Boolean() would read a missing attribute as `false` and
+      // lock EVERY existing user into phone verification the moment the feature
+      // flag is switched on. Only an explicit `false` gates a user; both gate
+      // sites test `=== false` for exactly this reason.
+      phoneVerified:
+        typeof profile.phoneVerified === 'boolean' ? profile.phoneVerified : undefined,
     };
   } catch (error: any) {
     console.error('[database.getUserProfile] Error fetching user profile:', error);

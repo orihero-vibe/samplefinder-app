@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { sendPhoneVerification, verifyPhone, logout } from '@/lib/auth';
+import { sendPhoneVerification, verifyPhone, logout, hasAccountPhone } from '@/lib/auth';
 import { markPhoneVerified, getUserProfile } from '@/lib/database';
 import { useAuthStore } from '@/stores/authStore';
 import { completeSignupOnboarding } from '@/lib/signupOnboarding';
@@ -74,11 +74,40 @@ export const useConfirmPhoneScreen = () => {
 
         if (!sentRef.current) {
           sentRef.current = true;
-          await sendPhoneVerification();
-          setResendTimer(RESEND_COOLDOWN_SECONDS);
-          setCanResend(false);
+          try {
+            // Appwrite can only send to a phone that is set on the ACCOUNT.
+            // Check first so a missing one produces an actionable message rather
+            // than an opaque provider error the user cannot do anything about.
+            // `null` means the check failed; fall through and let the send try.
+            if ((await hasAccountPhone()) === false) {
+              sentRef.current = false;
+              setCanResend(true);
+              setError(
+                'We could not find a phone number on your account. Please sign out and sign in again, or contact support if this keeps happening.'
+              );
+              return;
+            }
+
+            await sendPhoneVerification();
+            setResendTimer(RESEND_COOLDOWN_SECONDS);
+            setCanResend(false);
+          } catch (sendError: any) {
+            // The first send failed (provider not configured, unregistered 10DLC
+            // campaign, carrier reject...). Re-open BOTH retry paths: clear
+            // sentRef so a remount re-sends, and enable Resend so the user can
+            // retry in place. Without this the screen is a dead end — Resend
+            // stays disabled because the cooldown timer never started.
+            sentRef.current = false;
+            setCanResend(true);
+            setError(
+              sendError?.message || 'Failed to send verification code. Please try again.'
+            );
+          }
         }
       } catch (e: any) {
+        // Session or profile lookup failed. Leave Resend enabled so the user has
+        // a way forward rather than a stuck screen.
+        setCanResend(true);
         setError(e?.message || 'Failed to send verification code. Please try again.');
       }
     };
@@ -98,24 +127,52 @@ export const useConfirmPhoneScreen = () => {
     }
     setIsLoading(true);
     setError('');
+
+    // Step 1 — the OTP check. This is the ONLY failure the user can act on, so
+    // it is the only one surfaced as an error on this screen.
     try {
       await verifyPhone(userId, code);
-      await markPhoneVerified(userId);
-
-      // One-time onboarding, run after BOTH verifications. Shared with the
-      // email-only path (Task 6) via completeSignupOnboarding.
-      await completeSignupOnboarding(userId);
-
-      verificationCompletedRef.current = true;
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] });
     } catch (error: any) {
       console.error('[ConfirmPhone] Verification error:', error);
       setError(error?.message || 'Failed to verify phone. Please check your code.');
       setCode('');
       codeInputRef.current?.focus();
-    } finally {
       setIsLoading(false);
+      return;
     }
+
+    // Past this point the OTP is consumed and account.phoneVerification is true.
+    // Nothing below may block entry to the app or be reported as a bad code.
+
+    // Step 2 — mirror the flag into user_profiles; this drives the routing gate.
+    // Retried once: if it never lands, the user still enters the app now but is
+    // re-gated to this screen on next launch.
+    try {
+      await markPhoneVerified(userId);
+    } catch (firstError: any) {
+      console.warn('[ConfirmPhone] markPhoneVerified failed, retrying:', firstError?.message);
+      try {
+        await markPhoneVerified(userId);
+      } catch (retryError: any) {
+        console.error(
+          '[ConfirmPhone] markPhoneVerified failed after retry; user will be re-gated next launch:',
+          retryError?.message
+        );
+      }
+    }
+
+    // Step 3 — one-time onboarding, run after BOTH verifications. Shared with
+    // the email-only path via completeSignupOnboarding, which guards each of its
+    // own steps and does not throw.
+    try {
+      await completeSignupOnboarding(userId);
+    } catch (onboardingError: any) {
+      console.error('[ConfirmPhone] Signup onboarding failed:', onboardingError?.message);
+    }
+
+    verificationCompletedRef.current = true;
+    setIsLoading(false);
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] });
   };
 
   const handleResendCode = async () => {

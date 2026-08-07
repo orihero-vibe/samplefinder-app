@@ -168,18 +168,6 @@ export const signup = async (credentials: SignUpCredentials): Promise<User> => {
       console.log('[auth.signup] User profile created successfully');
 
       await storePendingReferralCode(credentials.referralCode);
-
-      // Set the phone number on the Appwrite account (E.164) so Appwrite can
-      // later send the verification SMS. Requires the active session + password,
-      // both available here. A duplicate phone throws 409 and is handled by the
-      // outer catch (mapped to the "phone already exists" message).
-      if (PHONE_VERIFICATION_ENABLED) {
-        await account.updatePhone({
-          phone: toE164US(credentials.phoneNumber),
-          password: credentials.password,
-        });
-        console.log('[auth.signup] Account phone set for verification');
-      }
     } catch (profileError: any) {
       console.error('[auth.signup] Error creating user profile:', profileError);
       console.error('[auth.signup] Profile error message:', profileError?.message);
@@ -187,6 +175,39 @@ export const signup = async (credentials: SignUpCredentials): Promise<User> => {
       // Re-throw the error so it's visible to the user
       // The signup should fail if profile creation fails
       throw new Error(`Failed to create user profile: ${profileError?.message || 'Unknown error'}`);
+    }
+
+    // Set the phone number on the Appwrite account (E.164) so Appwrite can later
+    // send the verification SMS. Requires the active session + password, both
+    // available here.
+    //
+    // Deliberately OUTSIDE the profile try/catch above: the account and profile
+    // both exist by now, so a failure here must not be reported as "Failed to
+    // create user profile", and must not be re-thrown as a bare Error whose
+    // message the outer 409 handler then has to guess at.
+    if (PHONE_VERIFICATION_ENABLED) {
+      try {
+        await account.updatePhone({
+          phone: toE164US(credentials.phoneNumber),
+          password: credentials.password,
+        });
+        console.log('[auth.signup] Account phone set for verification');
+      } catch (phoneError: any) {
+        console.error('[auth.signup] Failed to set account phone:', phoneError?.message);
+        console.error('[auth.signup] Phone error code:', phoneError?.code);
+
+        if (phoneError?.code === 409) {
+          throw new Error(
+            'An account with this phone number already exists. Please use the login page to sign in.'
+          );
+        }
+
+        // The account and profile are valid; login()'s repair path
+        // (ensureAccountPhoneForVerification) re-attempts this on next sign-in.
+        throw new Error(
+          'Your account was created, but we could not save your phone number for verification. Please log in to finish setting up your account.'
+        );
+      }
     }
 
     const result = {
@@ -509,19 +530,61 @@ export const verifyPhone = async (userId: string, secret: string): Promise<void>
 export const ensureAccountPhoneForVerification = async (
   phoneNumber: string,
   password: string
-): Promise<void> => {
+): Promise<boolean> => {
+  // Distinguish the failure modes instead of flattening them into one warning:
+  // a missing/!valid profile phone is a data problem that no retry will fix,
+  // whereas an API failure is transient. Both are non-fatal for login, but they
+  // need to be told apart in the logs to be diagnosable.
+  if (!phoneNumber || !phoneNumber.trim()) {
+    console.error(
+      '[auth.ensureAccountPhoneForVerification] User profile has no phone number; cannot repair the account phone.'
+    );
+    return false;
+  }
+
+  let e164: string;
+  try {
+    e164 = toE164US(phoneNumber);
+  } catch (formatError: any) {
+    console.error(
+      '[auth.ensureAccountPhoneForVerification] Profile phone is not a valid US number:',
+      formatError?.message
+    );
+    return false;
+  }
+
   try {
     const acct = await account.get();
-    if (!acct.phone) {
-      await account.updatePhone({ phone: toE164US(phoneNumber), password });
-      console.log('[auth.ensureAccountPhoneForVerification] Account phone set (repair)');
+    if (acct.phone) {
+      return true; // Already set; nothing to repair.
     }
+    await account.updatePhone({ phone: e164, password });
+    console.log('[auth.ensureAccountPhoneForVerification] Account phone set (repair)');
+    return true;
   } catch (error: any) {
-    console.warn(
+    console.error(
       '[auth.ensureAccountPhoneForVerification] Could not ensure account phone:',
-      error?.message
+      error?.message,
+      'code:',
+      error?.code
     );
-    // Non-fatal: sendPhoneVerification will surface a clear error if the phone is missing.
+    return false;
+  }
+};
+
+/**
+ * Whether the Appwrite account currently has a phone number set. Used by the
+ * phone-verification screen to give a specific, actionable message instead of
+ * letting createPhoneVerification fail with an opaque provider error.
+ * Returns null when the check itself could not be performed.
+ */
+export const hasAccountPhone = async (): Promise<boolean | null> => {
+  try {
+    const acct = await account.get();
+    return Boolean(acct.phone);
+  } catch (error: any) {
+    console.warn('[auth.hasAccountPhone] Could not read account:', error?.message);
+    return null;
   }
 };
 

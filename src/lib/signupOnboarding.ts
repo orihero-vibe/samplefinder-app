@@ -13,16 +13,28 @@ const welcomeAttempted = new Set<string>();
  * after the user has completed ALL required verifications (email, and phone
  * when enabled). Safe to retry: the welcome notification is attempted at most
  * once per user per app session.
+ *
+ * Never throws. Every step is guarded independently so one failing side-effect
+ * can neither block entry to the app nor be reported to the user as a failed
+ * verification — by the time this runs, verification has already succeeded.
  */
 export const completeSignupOnboarding = async (userId: string): Promise<void> => {
   // Apply any pending referral code now that the account is fully verified.
-  await applyReferralAfterVerification(userId);
+  try {
+    await applyReferralAfterVerification(userId);
 
-  // Small delay so the backend has updated the profile with usedReferralCode.
-  await new Promise((resolve) => setTimeout(resolve, 500));
+    // Small delay so the backend has updated the profile with usedReferralCode.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  } catch (referralError) {
+    console.warn('[signupOnboarding] Failed to apply referral code:', referralError);
+  }
 
   // Populate the auth store before App.tsx's Tier 1 modal effect reads `user`.
-  await useAuthStore.getState().fetchUser();
+  try {
+    await useAuthStore.getState().fetchUser();
+  } catch (fetchError) {
+    console.warn('[signupOnboarding] Failed to refresh auth user:', fetchError);
+  }
 
   // Register the FCM + Appwrite push target BEFORE the welcome notification:
   // createUserNotification triggers sendPushNotification, which needs a target.

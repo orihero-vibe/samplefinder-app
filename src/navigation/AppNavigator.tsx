@@ -272,7 +272,17 @@ const AppNavigator = () => {
         return;
       }
 
+      // Both verifications are mandatory once the feature is on. Email is the
+      // FIRST gate: without it, a signup abandoned before the email OTP would
+      // resume at the phone step and reach the app with an unverified email.
+      // Kept behind the flag so this branch stays fully dormant until rollout.
       if (PHONE_VERIFICATION_ENABLED) {
+        if (!user.emailVerification) {
+          console.log('[AppNavigator] Email not verified, routing to ConfirmAccount');
+          setInitialRouteName('ConfirmAccount');
+          return;
+        }
+
         try {
           const profile = await getUserProfile(user.$id);
           if (profile && profile.phoneVerified === false) {

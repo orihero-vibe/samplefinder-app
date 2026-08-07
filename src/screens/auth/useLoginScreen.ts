@@ -166,7 +166,14 @@ export const useLoginScreen = () => {
       // 2) Phone not verified (new, non-grandfathered users) → phone step.
       if (PHONE_VERIFICATION_ENABLED && profile && profile.phoneVerified === false) {
         console.log('[LoginScreen] Phone not verified, navigating to ConfirmPhone');
-        await ensureAccountPhoneForVerification(profile.phoneNumber, password);
+        // Non-fatal: never block sign-in on the repair. When it fails, ConfirmPhone
+        // detects the missing account phone and shows an actionable message.
+        const phoneReady = await ensureAccountPhoneForVerification(profile.phoneNumber, password);
+        if (!phoneReady) {
+          console.warn(
+            '[LoginScreen] Could not prepare the account phone; ConfirmPhone will explain why.'
+          );
+        }
         navigation.reset({
           index: 0,
           routes: [{ name: 'ConfirmPhone', params: { phoneNumber: profile.phoneNumber } }],
