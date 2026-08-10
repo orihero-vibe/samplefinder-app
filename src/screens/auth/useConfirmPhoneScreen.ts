@@ -4,10 +4,11 @@ import { Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { sendPhoneVerification, verifyPhone, logout, hasAccountPhone } from '@/lib/auth';
-import { markPhoneVerified, getUserProfile } from '@/lib/database';
+import { sendPhoneVerification, verifyPhone, logout, hasAccountPhone, changeAccountPhone } from '@/lib/auth';
+import { markPhoneVerified, getUserProfile, updateUserProfile } from '@/lib/database';
 import { useAuthStore } from '@/stores/authStore';
 import { completeSignupOnboarding } from '@/lib/signupOnboarding';
+import { isPhoneReverificationPending, clearPhoneReverification } from '@/lib/phoneReverification';
 import { CodeInputRef } from '@/components/shared/CodeInput';
 
 type ConfirmPhoneNavProp = NativeStackNavigationProp<RootStackParamList, 'ConfirmPhone'>;
@@ -28,6 +29,14 @@ export const useConfirmPhoneScreen = () => {
   const [resendTimer, setResendTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  // Correcting a mistyped number. Without this the screen is a dead end: the
+  // code goes to the wrong phone and the routing gate returns the user here on
+  // every launch, with no way out.
+  const [showChangePhone, setShowChangePhone] = useState(false);
+  const [newPhoneNumber, setNewPhoneNumber] = useState('');
+  const [changePhonePassword, setChangePhonePassword] = useState('');
+  const [changePhoneError, setChangePhoneError] = useState('');
+  const [isChangingPhone, setIsChangingPhone] = useState(false);
   const codeInputRef = useRef<CodeInputRef>(null);
   const sentRef = useRef(false);
   const verificationCompletedRef = useRef(false);
@@ -161,18 +170,44 @@ export const useConfirmPhoneScreen = () => {
       }
     }
 
-    // Step 3 — one-time onboarding, run after BOTH verifications. Shared with
-    // the email-only path via completeSignupOnboarding, which guards each of its
-    // own steps and does not throw.
-    try {
-      await completeSignupOnboarding(userId);
-    } catch (onboardingError: any) {
-      console.error('[ConfirmPhone] Signup onboarding failed:', onboardingError?.message);
+    // Step 3 — one-time onboarding, but ONLY on the signup path. This screen is
+    // also reached by an existing user re-verifying a number they changed in
+    // Edit Profile; running signup onboarding for them re-shows the Tier 1
+    // welcome modal, re-sends the welcome notification and re-applies a
+    // referral code. Resolved here rather than cached at mount so the answer is
+    // authoritative at the moment it is used.
+    const isReverification =
+      route.params?.mode === 'reverify' || (await isPhoneReverificationPending(userId));
+
+    if (isReverification) {
+      await clearPhoneReverification(userId);
+      // Onboarding would normally refresh this; the profile screen reads the
+      // new number from it, so keep the store current on this path too.
+      try {
+        await useAuthStore.getState().fetchUser();
+      } catch (fetchError: any) {
+        console.warn('[ConfirmPhone] Failed to refresh user after re-verification:', fetchError?.message);
+      }
+    } else {
+      // Shared with the email-only path via completeSignupOnboarding, which
+      // guards each of its own steps and does not throw.
+      try {
+        await completeSignupOnboarding(userId);
+      } catch (onboardingError: any) {
+        console.error('[ConfirmPhone] Signup onboarding failed:', onboardingError?.message);
+      }
     }
 
     verificationCompletedRef.current = true;
     setIsLoading(false);
-    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] });
+    // Re-verification started from Edit Profile, so return to Profile rather
+    // than dropping the user on Home with no sign their change took effect.
+    navigation.reset({
+      index: 0,
+      routes: isReverification
+        ? [{ name: 'MainTabs', params: { screen: 'Profile' as const } }]
+        : [{ name: 'MainTabs' }],
+    });
   };
 
   const handleResendCode = async () => {
@@ -188,6 +223,106 @@ export const useConfirmPhoneScreen = () => {
       setError(error?.message || 'Failed to resend verification code. Please try again.');
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleOpenChangePhone = () => {
+    if (isLoading || isLeaving) return;
+    setNewPhoneNumber('');
+    setChangePhonePassword('');
+    setChangePhoneError('');
+    setShowChangePhone(true);
+  };
+
+  const handleCancelChangePhone = () => {
+    setShowChangePhone(false);
+    setNewPhoneNumber('');
+    setChangePhonePassword('');
+    setChangePhoneError('');
+  };
+
+  const handleNewPhoneNumberChange = (text: string) => {
+    setNewPhoneNumber(text);
+    if (changePhoneError) setChangePhoneError('');
+  };
+
+  const handleChangePhonePasswordChange = (text: string) => {
+    setChangePhonePassword(text);
+    if (changePhoneError) setChangePhoneError('');
+  };
+
+  const handleSubmitPhoneChange = async () => {
+    const digits = newPhoneNumber.replace(/\D/g, '');
+    // Mirrors toE164US so the user gets a field-level message rather than that
+    // helper's throw surfacing as a generic failure.
+    const isValidUsPhone = digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
+    if (!isValidUsPhone) {
+      setChangePhoneError('Enter a valid 10-digit US phone number.');
+      return;
+    }
+    if (!changePhonePassword) {
+      setChangePhoneError('Enter your password to confirm.');
+      return;
+    }
+    if (!userId) {
+      setChangePhoneError('User information not available. Please try again.');
+      return;
+    }
+
+    setIsChangingPhone(true);
+    setChangePhoneError('');
+    try {
+      // Point the ACCOUNT at the corrected number first: a rejection here —
+      // wrong password, or the number already in use — must leave the existing
+      // one untouched rather than half-applying the change.
+      await changeAccountPhone(newPhoneNumber, changePhonePassword);
+
+      // Mirror into the profile so the routing gate and the profile screen
+      // agree with the account. Non-fatal: the account drives where the SMS
+      // goes, and the gate re-checks the profile on next launch anyway.
+      try {
+        const profile = await getUserProfile(userId);
+        if (profile) {
+          await updateUserProfile(profile.$id, {
+            phoneNumber: newPhoneNumber.trim(),
+            phoneVerified: false,
+          });
+        }
+      } catch (profileError: any) {
+        console.warn(
+          '[ConfirmPhone] Failed to mirror corrected phone into profile:',
+          profileError?.message
+        );
+      }
+
+      setPhoneNumber(newPhoneNumber.trim());
+      setCode('');
+      setError('');
+      setShowChangePhone(false);
+      setNewPhoneNumber('');
+      setChangePhonePassword('');
+
+      // Send to the corrected number straight away — that is the point of the
+      // correction — and restart the cooldown against the new number.
+      try {
+        await sendPhoneVerification();
+        sentRef.current = true;
+        setResendTimer(RESEND_COOLDOWN_SECONDS);
+        setCanResend(false);
+      } catch (sendError: any) {
+        sentRef.current = false;
+        setCanResend(true);
+        setError(
+          sendError?.message ||
+            'Your number was updated, but we could not send the code. Tap Resend to try again.'
+        );
+      }
+    } catch (changeError: any) {
+      setChangePhoneError(
+        changeError?.message || 'Could not update your phone number. Please try again.'
+      );
+    } finally {
+      setIsChangingPhone(false);
     }
   };
 
@@ -251,10 +386,20 @@ export const useConfirmPhoneScreen = () => {
     canResend,
     error,
     codeInputRef,
+    showChangePhone,
+    newPhoneNumber,
+    changePhonePassword,
+    changePhoneError,
+    isChangingPhone,
     handleCodeChange,
     handleCodeComplete,
     handleVerify,
     handleResendCode,
     handleBack,
+    handleOpenChangePhone,
+    handleCancelChangePhone,
+    handleNewPhoneNumberChange,
+    handleChangePhonePasswordChange,
+    handleSubmitPhoneChange,
   };
 };

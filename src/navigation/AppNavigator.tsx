@@ -28,10 +28,17 @@ export type RootStackParamList = {
   SignUp: { referralCode?: string } | undefined;
   NotificationSetup: { phoneNumber?: string };
   ConfirmAccount: { phoneNumber?: string };
-  ConfirmPhone: { phoneNumber?: string };
+  /**
+   * `mode` separates a first-time signup verification from re-verifying a
+   * number changed in Edit Profile. Only the signup path may run the one-time
+   * onboarding side-effects. Absent on the cold-start gate, which falls back to
+   * the persisted flag in @/lib/phoneReverification.
+   */
+  ConfirmPhone: { phoneNumber?: string; mode?: 'signup' | 'reverify' };
   ForgotPassword: { email?: string };
   PasswordReset: { email: string; userId?: string };
-  MainTabs: undefined;
+  /** `screen` selects a tab, e.g. returning to Profile after re-verifying a phone. */
+  MainTabs: { screen?: 'Home' | 'Profile' | 'Favorites' | 'Calendar' | 'Promotions' } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

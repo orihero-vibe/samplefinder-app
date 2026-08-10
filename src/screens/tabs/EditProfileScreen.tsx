@@ -18,7 +18,7 @@ import { USERNAME_MAX_LENGTH } from '@/constants/Profile';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { useEditProfileScreen } from './profile/edit-profile/useEditProfileScreen';
-import { ProfilePictureSection, PasswordSection } from './profile/edit-profile/components';
+import { ProfilePictureSection, PasswordSection, PasswordPromptModal } from './profile/edit-profile/components';
 import styles from './profile/edit-profile/styles';
 import SampleFinderIcon from '@/icons/SampleFinderIcon';
 import TopLinks from './profile/components/TopLinks';
@@ -49,6 +49,9 @@ const EditProfileScreen = () => {
     showErrorModal,
     errorModalMessage,
     showUnsavedChangesModal,
+    showPasswordPrompt,
+    promptPassword,
+    promptError,
     error,
     validationErrors,
     isCheckingUsername,
@@ -68,6 +71,9 @@ const EditProfileScreen = () => {
     setPassword,
     handleBackPress,
     handleSaveUpdates,
+    handleConfirmPasswordPrompt,
+    handleCancelPasswordPrompt,
+    handlePromptPasswordChange,
     handleChangeProfilePicture,
     handleDeleteAccountPress,
     handleConfirmDelete,
@@ -327,6 +333,18 @@ const EditProfileScreen = () => {
         cancelText="Keep Editing"
         onConfirm={handleConfirmDiscard}
         onCancel={handleCancelDiscard}
+      />
+
+      {/* Password confirmation for a phone-number change */}
+      <PasswordPromptModal
+        visible={showPasswordPrompt}
+        description="Changing your phone number requires your password. You'll then get a code by text to verify the new number."
+        value={promptPassword}
+        onChangeValue={handlePromptPasswordChange}
+        onConfirm={handleConfirmPasswordPrompt}
+        onCancel={handleCancelPasswordPrompt}
+        errorMessage={promptError}
+        isLoading={isSaving}
       />
     </View>
   );

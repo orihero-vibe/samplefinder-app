@@ -5,7 +5,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { deleteAccount } from '@/lib/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { getUserProfile, updateUserProfile, UserProfileRow, checkUsernameExistsForDifferentUser, checkPhoneNumberExistsForDifferentUser } from '@/lib/database';
-import { updateEmail, updatePassword } from '@/lib/auth';
+import { updateEmail, updatePassword, changeAccountPhone } from '@/lib/auth';
+import { markPhoneReverificationPending } from '@/lib/phoneReverification';
+import { PHONE_VERIFICATION_ENABLED } from '@/constants/featureFlags';
 import { uploadAvatar, deleteAvatar, extractFileIdFromUrl } from '@/lib/storage';
 import { USERNAME_MAX_LENGTH, USERNAME_TOO_LONG_MESSAGE } from '@/constants/Profile';
 
@@ -37,6 +39,12 @@ export const useEditProfileScreen = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  // Credential prompt for a phone change. Kept separate from the Change
+  // Password fields below: reusing "Current Password" for this made the form
+  // read as though a new password were required to change the number.
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [promptPassword, setPromptPassword] = useState('');
+  const [promptError, setPromptError] = useState('');
   const [validationErrors, setValidationErrors] = useState<{
     password?: string;
     phoneNumber?: string;
@@ -239,7 +247,12 @@ export const useEditProfileScreen = () => {
     };
   };
 
-  const validateForm = (): string | null => {
+  /**
+   * @param effectiveCurrentPassword the credential actually available for this
+   * save — either the "Current Password" field or the one entered in the phone
+   * prompt.
+   */
+  const validateForm = (effectiveCurrentPassword: string): string | null => {
     const newValidationErrors: { password?: string; phoneNumber?: string; username?: string } = {};
     
     if (!username.trim()) {
@@ -282,13 +295,27 @@ export const useEditProfileScreen = () => {
     const emailChanged = authUser && email !== authUser.email;
     
     // If email is changing, current password is required
-    if (emailChanged && !currentPassword) {
+    if (emailChanged && !effectiveCurrentPassword) {
       return 'Current password is required to update email';
     }
-    
+
+    // Changing the phone number re-verifies it, which means pointing the
+    // Appwrite account at the new number — and account.updatePhone requires the
+    // password. Normally unreachable: the save flow opens the credential prompt
+    // before validating. Kept as a backstop.
+    if (
+      PHONE_VERIFICATION_ENABLED &&
+      profile &&
+      phoneNumber !== (profile.phoneNumber || '') &&
+      !effectiveCurrentPassword
+    ) {
+      return 'Please confirm your password to change your phone number';
+    }
+
     // Password validation - validate the new password field if user is updating password
     if (password) {
-      // Require current password when setting new password
+      // Deliberately the FIELD, not the effective credential: confirming a
+      // phone change must not also authorise setting a new password.
       if (!currentPassword) {
         return 'Current password is required to update password';
       }
@@ -310,11 +337,40 @@ export const useEditProfileScreen = () => {
     return null;
   };
 
-  const handleSaveUpdates = async () => {
+  const closePasswordPrompt = () => {
+    setShowPasswordPrompt(false);
+    setPromptPassword('');
+    setPromptError('');
+  };
+
+  /**
+   * @param credentialOverride password supplied by the phone-change prompt.
+   * When present the save is a retry from that modal, so credential failures
+   * are reported inside it instead of as a page-level alert.
+   */
+  const performSave = async (credentialOverride?: string) => {
     // Wait for username check to complete if in progress
     if (isCheckingUsername) {
       setErrorModalMessage('Please wait while we verify the username availability');
       setShowErrorModal(true);
+      return;
+    }
+
+    const fromPrompt = credentialOverride !== undefined;
+    const credential = credentialOverride ?? currentPassword;
+
+    // A phone change needs the account password, but asking for it via the
+    // Change Password section implied the user was also setting a new one.
+    // Ask for it on its own terms, with the reason stated.
+    if (
+      PHONE_VERIFICATION_ENABLED &&
+      profile &&
+      phoneNumber !== (profile.phoneNumber || '') &&
+      !credential
+    ) {
+      setPromptPassword('');
+      setPromptError('');
+      setShowPasswordPrompt(true);
       return;
     }
 
@@ -351,6 +407,9 @@ export const useEditProfileScreen = () => {
             ...prev,
             phoneNumber: message,
           }));
+          // Not a credential problem, so it belongs on the form, not in the
+          // prompt — and two stacked modals would fight over the screen.
+          closePasswordPrompt();
           setErrorModalMessage(message);
           setShowErrorModal(true);
           return;
@@ -363,11 +422,38 @@ export const useEditProfileScreen = () => {
         }
       }
 
-      const validationError = validateForm();
+      const validationError = validateForm(credential);
       if (validationError) {
+        closePasswordPrompt();
         setErrorModalMessage(validationError);
         setShowErrorModal(true);
         return;
+      }
+
+      // A changed phone number must be re-verified: point the Appwrite account
+      // at it first (which resets account.phoneVerification), then mirror that
+      // into the profile. Ordered BEFORE the profile write so a rejected phone
+      // — wrong password, or already in use — leaves the old verified number in
+      // place rather than persisting one the account never accepted.
+      const phoneChanged = phoneNumber !== (profile.phoneNumber || '');
+      const mustReverifyPhone = PHONE_VERIFICATION_ENABLED && phoneChanged;
+
+      if (mustReverifyPhone) {
+        console.log('[EditProfileScreen] Phone changed — re-verification required');
+        try {
+          await changeAccountPhone(phoneNumber.trim(), credential);
+        } catch (phoneError: any) {
+          // A wrong password lands here. When the credential came from the
+          // prompt, report it there so the user can retry the one field that
+          // failed rather than losing the whole form to an alert.
+          if (fromPrompt) {
+            setPromptPassword('');
+            setPromptError(phoneError?.message || 'Could not update your phone number.');
+            return;
+          }
+          throw phoneError;
+        }
+        profileUpdates.phoneVerified = false;
       }
 
       if (Object.keys(profileUpdates).length > 0) {
@@ -378,10 +464,10 @@ export const useEditProfileScreen = () => {
       // Update email if changed
       if (email !== authUser.email) {
         console.log('[EditProfileScreen] Updating email');
-        if (!currentPassword) {
+        if (!credential) {
           throw new Error('Current password is required to update email');
         }
-        await updateEmail(email.trim(), currentPassword);
+        await updateEmail(email.trim(), credential);
       }
 
       // Update password if provided
@@ -425,16 +511,77 @@ export const useEditProfileScreen = () => {
         }
       }
 
+      // A re-verification is pending: the profile now says phoneVerified=false,
+      // so send the user straight to the phone step rather than showing a
+      // success modal and dropping them back into the app. Otherwise they would
+      // sit in an unverified state until the next cold start triggers the gate.
+      if (mustReverifyPhone) {
+        console.log('[EditProfileScreen] Routing to ConfirmPhone to verify the new number');
+
+        // Tell ConfirmPhone this is a re-verification, not a signup, so it skips
+        // the one-time onboarding (Tier 1 modal, welcome notification, referral).
+        // Persisted as well as passed: if the user kills the app before entering
+        // the code, the cold-start gate re-opens that screen with no params.
+        await markPhoneReverificationPending(user.$id);
+
+        closePasswordPrompt();
+
+        const rootNavigation =
+          navigation.getParent()?.getParent() || navigation.getParent() || navigation;
+        rootNavigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: 'ConfirmPhone',
+                params: { phoneNumber: phoneNumber.trim(), mode: 'reverify' },
+              },
+            ],
+          })
+        );
+        return;
+      }
+
+      closePasswordPrompt();
+
       // Show custom success modal instead of generic Alert
       setShowSuccessModal(true);
     } catch (err: any) {
       console.error('[EditProfileScreen] Error saving profile:', err);
       const errorMessage = err?.message || 'Failed to update profile. Please try again.';
       setError(errorMessage);
+      // Credential failures are handled at the changeAccountPhone call site and
+      // never reach here; anything that does is unrelated to the password, so
+      // surface it on the page rather than under an open prompt.
+      closePasswordPrompt();
       Alert.alert('Update Failed', errorMessage);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Zero-arg entry point: bound straight to onPress, which would otherwise pass
+  // the press event in as the credential override.
+  const handleSaveUpdates = () => {
+    void performSave();
+  };
+
+  const handleConfirmPasswordPrompt = () => {
+    if (!promptPassword) {
+      setPromptError('Please enter your password.');
+      return;
+    }
+    setPromptError('');
+    void performSave(promptPassword);
+  };
+
+  const handleCancelPasswordPrompt = () => {
+    closePasswordPrompt();
+  };
+
+  const handlePromptPasswordChange = (text: string) => {
+    setPromptPassword(text);
+    if (promptError) setPromptError('');
   };
 
   const requestImagePickerPermissions = async (): Promise<boolean> => {
@@ -643,6 +790,9 @@ export const useEditProfileScreen = () => {
     showErrorModal,
     errorModalMessage,
     showUnsavedChangesModal,
+    showPasswordPrompt,
+    promptPassword,
+    promptError,
     error,
     validationErrors,
     isCheckingUsername,
@@ -662,6 +812,9 @@ export const useEditProfileScreen = () => {
     setPassword,
     handleBackPress,
     handleSaveUpdates,
+    handleConfirmPasswordPrompt,
+    handleCancelPasswordPrompt,
+    handlePromptPasswordChange,
     handleChangeProfilePicture,
     handleDeleteAccountPress,
     handleConfirmDelete,
