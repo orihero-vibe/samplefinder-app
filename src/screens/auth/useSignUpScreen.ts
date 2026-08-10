@@ -13,6 +13,7 @@ import {
   takePendingReferralCode,
 } from '@/lib/referral';
 import { REFERRAL_CODE_PATTERN } from '@/lib/deepLink.constants';
+import { PHONE_VERIFICATION_ENABLED } from '@/constants/featureFlags';
 
 type SignUpScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -57,11 +58,21 @@ export const useSignUpScreen = () => {
   const [showError, setShowError] = useState(false);
   const [showPushNotificationModal, setShowPushNotificationModal] = useState(false);
   const [showAgeVerificationModal, setShowAgeVerificationModal] = useState(false);
+  // Last look at the destination number before the account exists. Only shown
+  // when a code will actually be sent — otherwise it is friction with no payoff.
+  const [showPhoneConfirmModal, setShowPhoneConfirmModal] = useState(false);
   const [showAgeRestrictionModal, setShowAgeRestrictionModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  /**
+   * Explicit opt-in to the verification SMS. Required by A2P 10DLC: the consent
+   * must be an affirmative action tied to the messaging program, not implied by
+   * the general terms acknowledgement. This is the checkbox the campaign's
+   * message_flow describes, so it must exist and be visible during TCR review.
+   */
+  const [smsConsent, setSmsConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -585,6 +596,7 @@ export const useSignUpScreen = () => {
     username.trim() !== '' &&
     email.trim() !== '' &&
     password.trim() !== '' &&
+    smsConsent &&
     Object.keys(fieldErrors).length === 0;
 
   const handleSignIn = () => {
@@ -617,6 +629,22 @@ export const useSignUpScreen = () => {
       return;
     }
 
+    // Every field is valid; the only thing left to check is that the number is
+    // the one the user meant. Confirm BEFORE the account exists — once it does,
+    // a typo has sent a code to a stranger and locked that number away from its
+    // real owner, since Appwrite enforces unique account phones.
+    if (PHONE_VERIFICATION_ENABLED) {
+      setShowError(false);
+      setErrorMessage('');
+      setShowPhoneConfirmModal(true);
+      return;
+    }
+
+    await performSignUp();
+  };
+
+  /** The account-creating half of signup. Everything is already validated. */
+  const performSignUp = async () => {
     setShowError(false);
     setErrorMessage('');
     setIsLoading(true);
@@ -653,6 +681,17 @@ export const useSignUpScreen = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleConfirmPhoneNumber = () => {
+    setShowPhoneConfirmModal(false);
+    void performSignUp();
+  };
+
+  const handleEditPhoneNumber = () => {
+    // Dismiss back to the form with everything still filled in; the phone field
+    // is the one they just read in the modal.
+    setShowPhoneConfirmModal(false);
   };
 
   const handlePushNotificationEnable = () => {
@@ -754,9 +793,23 @@ export const useSignUpScreen = () => {
       : 'Sign up failed. Please try again.';
   };
 
+  const toggleSmsConsent = () => {
+    setSmsConsent((prev) => {
+      if (!prev) setErrorMessage('');
+      return !prev;
+    });
+  };
+
   const handleSignUp = async () => {
     if (!ageVerified) {
       setShowAgeVerificationModal(true);
+      return;
+    }
+
+    // Backstop: the Sign Up button is disabled without consent, but never let
+    // an account be created without an affirmative SMS opt-in on record.
+    if (!smsConsent) {
+      setErrorMessage('Please agree to receive a verification code by text message to continue.');
       return;
     }
 
@@ -785,11 +838,14 @@ export const useSignUpScreen = () => {
     showError,
     showPushNotificationModal,
     showAgeVerificationModal,
+    showPhoneConfirmModal,
     showAgeRestrictionModal,
     ageRestrictionMessage: UNDER_AGE_MODAL_MESSAGE,
     showTermsModal,
     showPrivacyModal,
     ageVerified,
+    smsConsent,
+    toggleSmsConsent,
     isLoading,
     errorMessage,
     isFormValid,
@@ -817,6 +873,8 @@ export const useSignUpScreen = () => {
     handlePrivacyLinkPress,
     handlePrivacyAccept,
     handleSignUp,
+    handleConfirmPhoneNumber,
+    handleEditPhoneNumber,
     handleBack,
   };
 };

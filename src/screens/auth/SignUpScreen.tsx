@@ -10,7 +10,7 @@ import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomInput from '@/components/shared/CustomInput';
 import CustomButton from '@/components/shared/CustomButton';
 import { useSignUpScreen } from './useSignUpScreen';
-import { AgeVerificationModal, TermsModal, PrivacyModal, PushNotificationModal } from './signup/components';
+import { AgeVerificationModal, TermsModal, PrivacyModal, PushNotificationModal, PhoneConfirmModal } from './signup/components';
 import ErrorModal from '@/components/shared/ErrorModal';
 import styles from './signup/styles';
 import { Colors } from '@/constants/Colors';
@@ -41,10 +41,13 @@ const SignUpScreen = () => {
     showError,
     showPushNotificationModal,
     showAgeVerificationModal,
+    showPhoneConfirmModal,
     showAgeRestrictionModal,
     ageRestrictionMessage,
     showTermsModal,
     showPrivacyModal,
+    smsConsent,
+    toggleSmsConsent,
     isLoading,
     errorMessage,
     isFormValid,
@@ -72,6 +75,8 @@ const SignUpScreen = () => {
     handlePrivacyLinkPress,
     handlePrivacyAccept,
     handleSignUp,
+    handleConfirmPhoneNumber,
+    handleEditPhoneNumber,
     handleBack,
   } = useSignUpScreen();
 
@@ -227,6 +232,32 @@ const SignUpScreen = () => {
           </View>
         ) : null}
 
+        {/*
+          Explicit SMS opt-in, required for A2P 10DLC. Consent must be an
+          affirmative action tied to the messaging program and must appear
+          before the action it authorises — do not fold this into the general
+          terms text below.
+        */}
+        <TouchableOpacity
+          style={styles.smsConsentContainer}
+          onPress={toggleSmsConsent}
+          activeOpacity={0.8}
+          disabled={isLoading}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: smsConsent, disabled: isLoading }}
+          accessibilityLabel="Agree to receive a one-time verification code by text message"
+        >
+          <View style={[styles.smsConsentCheckbox, smsConsent && styles.smsConsentCheckboxChecked]}>
+            {smsConsent && <Monicon name="mdi:check" size={14} color={Colors.white} />}
+          </View>
+          <Text style={styles.smsConsentText}>
+            I agree to receive a one-time verification code by text message from
+            SampleFinder by Polaris Brand Promotions at the mobile number I provided.
+            Message frequency: one message per verification request. Message and data
+            rates may apply. Reply HELP for help or STOP to opt out.
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.buttonContainer}>
           <CustomButton
             title={isLoading ? 'Signing Up...' : 'Sign Up'}
@@ -301,6 +332,13 @@ const SignUpScreen = () => {
         visible={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
         onAccept={handlePrivacyAccept}
+      />
+
+      <PhoneConfirmModal
+        visible={showPhoneConfirmModal}
+        phoneNumber={phoneNumber}
+        onConfirm={handleConfirmPhoneNumber}
+        onEdit={handleEditPhoneNumber}
       />
     </ScreenWrapper>
   );
