@@ -573,6 +573,38 @@ export const ensureAccountPhoneForVerification = async (
 };
 
 /**
+ * Point the Appwrite account at a NEW phone number, for the edit-profile flow.
+ *
+ * Appwrite resets account.phoneVerification to false as a side effect of
+ * updatePhone, so the native flag self-corrects; the caller is responsible for
+ * mirroring that into user_profiles.phoneVerified and re-gating the user.
+ *
+ * This must run BEFORE the new number is persisted to the profile: if it fails,
+ * the profile must keep the old, verified number rather than storing one the
+ * account never accepted.
+ */
+export const changeAccountPhone = async (
+  newPhoneNumber: string,
+  password: string
+): Promise<void> => {
+  console.log('[auth.changeAccountPhone] Updating account phone for re-verification');
+  try {
+    await account.updatePhone({ phone: toE164US(newPhoneNumber), password });
+    console.log('[auth.changeAccountPhone] Account phone updated; verification reset by Appwrite');
+  } catch (error: any) {
+    console.error('[auth.changeAccountPhone] Error:', error?.message, 'code:', error?.code);
+
+    if (error?.code === 401) {
+      throw new Error('That password is incorrect. Please re-enter it to change your phone number.');
+    }
+    if (error?.code === 409) {
+      throw new Error('An account with this phone number already exists. Please use a different number.');
+    }
+    throw new Error(error?.message || 'Could not update your phone number. Please try again.');
+  }
+};
+
+/**
  * Whether the Appwrite account currently has a phone number set. Used by the
  * phone-verification screen to give a specific, actionable message instead of
  * letting createPhoneVerification fail with an opaque provider error.

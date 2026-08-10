@@ -13,5 +13,10 @@ declare module '@env' {
   export const APPWRITE_BUCKET_ID: string;
   export const APPWRITE_EVENTS_FUNCTION_ID: string;
   export const DEEP_LINK_SCHEME: string | undefined;
+  /**
+   * "true" enables SMS phone verification. Any other value (or absent) disables
+   * it. Undefined in prod .env until rollout — see @/constants/featureFlags.
+   */
+  export const PHONE_VERIFICATION_ENABLED: string | undefined;
 }
 

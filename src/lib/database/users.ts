@@ -333,6 +333,12 @@ export const updateUserProfile = async (
     totalPoints?: number;
     favoriteIds?: string[];
     tierLevel?: string | null;
+    /**
+     * Only ever set to false here, when the user changes their phone number and
+     * must re-verify. Setting it true is reserved for markPhoneVerified, which
+     * runs after a real OTP.
+     */
+    phoneVerified?: boolean;
   }
 ): Promise<UserProfileRow> => {
   console.log('[database.updateUserProfile] Updating user profile:', {

@@ -1,64 +1,62 @@
 /**
- * Legal content constants for Terms & Conditions and Privacy Policy
- * Store your legal content here as static strings
+ * OFFLINE FALLBACK ONLY — not the legal text users normally see, and
+ * deliberately NOT a copy of it.
+ *
+ * Legal content is dynamic and admin-managed. PrivacyModal and TermsModal fetch
+ * getSetting('privacy_policy') / getSetting('termsAndCondition') from the
+ * Appwrite `settings` collection; the constants below render only when the row
+ * is missing or that fetch fails.
+ *
+ * The canonical documents are the published pages at the URLs in LEGAL_URLS.
+ * They are what A2P/TCR reviewers and the App Store read, and what goes in the
+ * A2P campaign's Privacy Policy / Terms URL fields.
+ *
+ * These fallbacks point at those URLs rather than restating the policies,
+ * on purpose: a second, differently-worded copy of a legal document is both a
+ * legal risk and an A2P rejection cause on its own — Twilio treats conflicting
+ * statements across policies as grounds to reject a campaign (error 30908).
+ * Keep these as pointers. Do not paste policy text back in here.
+ *
+ * See samplefinder-admin/legal/README.md for the update workflow.
  */
+
+/**
+ * The published legal pages. Canonical for the app, the App Store listing and
+ * A2P 10DLC campaign registration.
+ */
+export const LEGAL_URLS = {
+  privacyPolicy: 'https://samplefinder.com/privacy-policy/',
+  termsAndConditions: 'https://samplefinder.com/terms-and-conditions/',
+} as const;
 
 export const TERMS_AND_CONDITIONS = `
 Terms & Conditions
 
-Last Updated: January 24, 2026
+We couldn't load the latest Terms & Conditions right now.
 
-1. Introduction
-Welcome to SampleFinder. By using our app, you agree to these terms.
+You can always read the current version here:
 
-2. User Responsibilities
-- You must be 18 years or older to use certain features
-- You are responsible for maintaining account security
-- You agree not to misuse the service
+${LEGAL_URLS.termsAndConditions}
 
-3. Privacy
-Your privacy is important to us. Please review our Privacy Policy.
+It covers your account, eligibility, acceptable use, and how we communicate with
+you by email and text message.
 
-4. Liability
-SampleFinder is provided "as is" without warranties.
-
-5. Changes to Terms
-We may update these terms. Continued use means acceptance.
-
-6. Contact
-For questions, contact us at support@samplefinder.com
-
-[Add your complete terms and conditions here]
+Questions: support@samplefinder.com
 `;
 
 export const PRIVACY_POLICY = `
 Privacy Policy
 
-Last Updated: January 24, 2026
+We couldn't load the latest Privacy Policy right now.
 
-1. Information We Collect
-- Account information (name, email, phone)
-- Location data for event discovery
-- Usage data and preferences
+You can always read the current version here:
 
-2. How We Use Your Information
-- To provide and improve our services
-- To send notifications about events
-- To personalize your experience
+${LEGAL_URLS.privacyPolicy}
 
-3. Data Sharing
-We do not sell your personal information to third parties.
+It covers what we collect, how we use it, and our text messaging practices —
+including that your mobile number is used solely to send one-time verification
+codes, that message and data rates may apply, and how to reply HELP for help or
+STOP to opt out.
 
-4. Data Security
-We implement security measures to protect your data.
-
-5. Your Rights
-- Access your data
-- Request deletion
-- Opt-out of communications
-
-6. Contact Us
-For privacy concerns: privacy@samplefinder.com
-
-[Add your complete privacy policy here]
+Questions: privacy@samplefinder.com
 `;
