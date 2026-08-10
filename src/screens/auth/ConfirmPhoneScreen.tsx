@@ -1,19 +1,26 @@
 // samplefinder-app/src/screens/auth/ConfirmPhoneScreen.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Monicon } from '@monicon/native';
 import ScreenWrapper from '@/components/wrappers/ScreenWrapper';
 import CustomButton from '@/components/shared/CustomButton';
 import CodeInput from '@/components/shared/CodeInput';
+import ChangePhoneNumberModal from '@/components/shared/ChangePhoneNumberModal';
+import { Colors } from '@/constants/Colors';
 import { useConfirmPhoneScreen } from './useConfirmPhoneScreen';
 import styles from './confirm-account/styles';
 
-/** Show only the last 4 digits, e.g. "(•••) •••-1212". */
-const maskPhone = (phone: string): string => {
+/**
+ * Shown in full, not masked. This is the user's own number, typed moments ago,
+ * and spotting a typo here is the entire purpose of the line — a mask that hides
+ * the first six digits hides exactly where mistakes happen.
+ */
+const formatUsPhone = (phone: string): string => {
   const digits = phone.replace(/\D/g, '');
-  if (digits.length < 4) return phone;
-  return `(•••) •••-${digits.slice(-4)}`;
+  const local = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  if (local.length !== 10) return phone;
+  return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
 };
 
 const ConfirmPhoneScreen = () => {
@@ -27,14 +34,25 @@ const ConfirmPhoneScreen = () => {
     canResend,
     error,
     codeInputRef,
+    showChangePhone,
+    newPhoneNumber,
+    changePhonePassword,
+    changePhoneError,
+    isChangingPhone,
     handleCodeChange,
     handleCodeComplete,
     handleVerify,
     handleResendCode,
     handleBack,
+    handleOpenChangePhone,
+    handleCancelChangePhone,
+    handleNewPhoneNumberChange,
+    handleChangePhonePasswordChange,
+    handleSubmitPhoneChange,
   } = useConfirmPhoneScreen();
 
   const backDisabled = isLoading || isLeaving;
+  const changeNumberDisabled = isLoading || isLeaving || isResending || isChangingPhone;
 
   return (
     <ScreenWrapper
@@ -64,7 +82,42 @@ const ConfirmPhoneScreen = () => {
         {phoneNumber ? (
           <>
             <Text style={styles.instruction}>We've sent a verification code by text to:</Text>
-            <Text style={styles.emailText}>{maskPhone(phoneNumber)}</Text>
+            <Text style={[styles.emailText, localStyles.phoneNumberText]}>
+              {formatUsPhone(phoneNumber)}
+            </Text>
+
+            {/*
+              Same prompt-plus-action row the signup screen uses for "Have an
+              account? Sign In" — the app's existing idiom for a secondary
+              action, so this needs no visual language of its own.
+            */}
+            <TouchableOpacity
+              onPress={handleOpenChangePhone}
+              disabled={changeNumberDisabled}
+              style={localStyles.changeNumberContainer}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Change phone number"
+              accessibilityState={{ disabled: changeNumberDisabled }}
+            >
+              <Text
+                style={[
+                  localStyles.changeNumberPrompt,
+                  changeNumberDisabled && localStyles.changeNumberDisabled,
+                ]}
+              >
+                Wrong number?{' '}
+              </Text>
+              <Text
+                style={[
+                  localStyles.changeNumberAction,
+                  changeNumberDisabled && localStyles.changeNumberDisabled,
+                ]}
+              >
+                Change it
+              </Text>
+            </TouchableOpacity>
+
             <Text style={styles.instruction}>Enter your code below:</Text>
           </>
         ) : (
@@ -112,8 +165,48 @@ const ConfirmPhoneScreen = () => {
           )}
         </TouchableOpacity>
       </View>
+
+      <ChangePhoneNumberModal
+        visible={showChangePhone}
+        phoneNumber={newPhoneNumber}
+        password={changePhonePassword}
+        onChangePhoneNumber={handleNewPhoneNumberChange}
+        onChangePassword={handleChangePhonePasswordChange}
+        onSubmit={handleSubmitPhoneChange}
+        onCancel={handleCancelChangePhone}
+        errorMessage={changePhoneError}
+        isLoading={isChangingPhone}
+      />
     </ScreenWrapper>
   );
 };
+
+const localStyles = StyleSheet.create({
+  // styles.emailText is shared with ConfirmAccountScreen, so the tighter gap to
+  // the action below it is applied here rather than edited at the source.
+  phoneNumberText: {
+    marginBottom: 4,
+  },
+  changeNumberContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  changeNumberPrompt: {
+    fontSize: 16,
+    fontFamily: 'Quicksand_500Medium',
+    color: Colors.grayText,
+  },
+  changeNumberAction: {
+    fontSize: 16,
+    fontFamily: 'Quicksand_700Bold',
+    color: Colors.grayText,
+  },
+  // Matches styles.resendTextDisabled, the screen's existing disabled treatment.
+  changeNumberDisabled: {
+    color: '#CCC',
+  },
+});
 
 export default ConfirmPhoneScreen;
